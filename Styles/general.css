@@ -1,0 +1,101 @@
+
+/***************************\
+ * General design by Lasse *
+ * Copyright: Lasse © 2023 *
+ * Modified on: 18/06/2026 *
+\***************************/
+
+html, body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/** {*/
+/*    transition: color 100ms ease-in-out, background-color 90ms ease-out;*/
+/*}*/
+
+h1 {
+    margin: 0;
+}
+
+button, .button, input, select {
+    cursor: pointer;
+	background-color: #ffffff38;
+	border: 1px solid #ffffff70;
+	border-radius: 5px;
+    user-select: none;
+}
+
+.blur button,
+.blur .button,
+.blur input:not([type="range"]),
+.blur select {
+    backdrop-filter: blur(10px);
+}
+
+button:hover,
+.button:hover,
+select:hover {
+    background-color: #ffffff2b;
+}
+
+select {
+    color-scheme: light;
+}
+
+select option,
+select optgroup {
+    background-color: var(--bg, #ffffff);
+    color: var(--fg, #000000);
+}
+
+button:active,
+.button:active {
+    background-color: #0000002b;
+}
+
+input[type="number"] {
+    appearance: unset;
+    -moz-appearance: textfield;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    * {
+        color: white;
+    }
+
+    select {
+        color-scheme: dark;
+    }
+
+    button, .button, input, select {
+        border-color: #9595953b;
+        background-color: #0000004a;
+    }
+}
+
+/* Global focus ring — apply to all interactive elements */
+:focus-visible {
+  outline: 2px solid oklch(0.52 0.22 265);
+  outline-offset: 3px;
+}
+
+/* Remove ring on mouse/touch click */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Dark mode: brighter ring for contrast */
+@media (prefers-color-scheme: dark) {
+  :focus-visible {
+    outline-color: oklch(0.7 0.2 265);
+  }
+}
+
+/* High contrast: thicker ring */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid LinkText;
+  }
+}

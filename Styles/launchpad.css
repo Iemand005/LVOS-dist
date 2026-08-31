@@ -1,0 +1,57 @@
+
+#launchpad, .launchpad {
+	transition: all 1s linear;
+}
+
+#launchpad.open {
+	pointer-events: auto;
+	z-index: 100000;
+}
+
+#launchpad > ul {
+	display: flex;
+	margin: 0;
+	padding: 10px;
+	flex-wrap: wrap;
+	justify-content: space-evenly;
+
+	height: 100%;
+	overflow: auto;
+}
+/* Disable the close btn */
+#launchpad > button {
+	/* display: none; */
+}
+
+#launchpad li {
+	display: block;
+
+	/* width: 25%; */
+	
+
+	padding: 10px;
+}
+
+#launchpad li img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: cover;
+}
+
+#launchpad li button {
+	width: 70px;
+	height: 70px;
+
+	border-radius: 20px;
+}
+
+#launchpad label {
+	/* width: 70px; */
+	display: block;
+	text-align: center;
+	align-content: center;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	font-size: smaller;
+}

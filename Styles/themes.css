@@ -1,0 +1,870 @@
+
+/* .window themes */
+
+:root {
+	--bg: white;
+	--fg: black;
+
+	--window-radius: 20px;
+	--window-border-width: 10px;
+
+	--wf-sx: 1;
+	--wf-sy: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+:root {
+	--bg: #111;
+	--fg: #eee;
+}
+}
+
+::view-transition-group(root) {
+	animation: none;
+}
+
+::view-transition-group(window-fullscreen) {
+	animation-duration: 280ms;
+	animation-timing-function: cubic-bezier(0.44, 0.41, 0, 1);
+}
+
+::view-transition-old(window-fullscreen),
+::view-transition-new(window-fullscreen) {
+	width: 100%;
+	height: 100%;
+	object-fit: fill;
+	/*animation: none;*/
+}
+
+html:has(body.slow-animations)::view-transition-group(*) {
+	animation-duration: 3s;
+}
+
+.window {
+	--window-outer-radius: var(--window-radius);
+	border-radius: var(--window-outer-radius);
+	/*view-transition-name: window-fullscreen;*/
+}
+
+.window > content > article,
+.modern .window header {
+	border-radius: calc(var(--window-outer-radius) - var(--window-border-width));
+}
+
+.window content {
+	padding: var(--window-border-width);
+}
+
+.window.rounded-corners {
+	border-radius: var(--window-radius) !important;
+}
+
+.window.rounded-corners > content > article {
+	border-radius: calc(var(--window-radius) / 2);
+}
+
+.window.sharp-corners {
+	border-radius: 0px !important;
+}
+
+.window.maximized {
+	--window-radius: 0px !important;
+}
+
+.default-theme .window > content > article {
+	border: inherit;
+
+}
+
+.default-theme .window > content > article > iframe {
+	background-color: rgba(0, 0, 0, 0.267);
+	box-shadow: inset 0px 0px 10px black;
+}
+
+.default-theme .window content {
+	background-color: white;
+}
+
+.mica .window content {
+	background-color: transparent !important;
+}
+
+.mica .window article {
+	background-color: transparent !important;
+}
+
+.windows #dockapplist,
+.windows-10 #launchpad {
+	width: 100%;
+    background: #0d0d0d57;
+    backdrop-filter: blur(10px);
+
+	transform: none;
+	-webkit-transform: none;
+	left: 0;
+
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	padding-left: 5px;
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+}
+
+.windows-11 #dockapplist {
+	justify-content: center;
+	padding-left: 0;
+}
+
+.windows #dock {
+	display: none;
+}
+
+.windows button,
+.windows-10 button,
+.windows-11 button {
+	background-color: rgb(253, 253, 253);
+	border-color: rgb(208, 208, 208);
+	border-bottom-color: rgb(186, 186, 186);
+	border-radius: 4px;
+	border-width: 1px;
+}
+
+.windows .window,
+.windows-10 .window,
+.windows-11 .window {
+	color: black;
+}
+
+.windows .window,
+.windows-10 .window {
+	--window-radius: 0px;
+}
+
+.windows-11 .window {
+	--window-radius: 12px;
+}
+
+.windows .window > div,
+.windows-10 .window > div,
+.windows-11 .window > div,
+.mac-os .window > div {
+	z-index: 1;
+}
+
+.windows .window header button,
+.windows-10 .window header button,
+.windows-11 .window header button {
+	background: transparent;
+	display: flex;
+    place-content: center;
+    place-items: center;
+    width: 45px;
+}
+
+.windows .window header button:hover,
+.windows-10 .window header button:hover,
+.windows-11 .window header button:hover {
+	background-color: rgba(0, 0, 0, 0.08);
+}
+
+.windows .window header button:active,
+.windows-10 .window header button:active,
+.windows-11 .window header button:active {
+	background-color: rgba(0, 0, 0, 0.16);
+}
+
+.windows .window header button:nth-child(3):hover,
+.windows-10 .window header button:nth-child(3):hover,
+.windows-11 .window header button:nth-child(3):hover {
+	background-color: #e81123;
+}
+
+.windows .window header button:nth-child(3):active,
+.windows-10 .window header button:nth-child(3):active,
+.windows-11 .window header button:nth-child(3):active {
+	background-color: #c50f1f;
+}
+
+.windows .window content,
+.windows .window .content,
+.windows-10 .window content,
+.windows-10 .window .content,
+.windows-11 .window content,
+.windows-11 .window .content,
+.windows-11 button {
+	background-color: rgb(243, 243, 243);
+	border: 1px solid rgba(255, 255, 255, 0.301);
+}
+
+
+.windows .window content,
+.windows .window .content,
+.windows-10 .window content,
+.windows-10 .window .content,
+.windows-11 .window content,
+.windows-11 .window .content {
+	padding: 0;
+}
+
+button {
+	margin: 3px;
+	padding: 5px;
+}
+
+.windows,
+.windows-10 {
+	/* border-radius: 0px; */
+	--window-radius: 0px;
+	--window-border-width: 0px;
+}
+
+.windows #dockapplist, #dock-area {
+	height: 40px;
+}
+
+.windows .window {
+	max-height: calc(100% - 40px);
+}
+
+.windows-95 .window {
+	max-height: calc(100% - 27px);
+}
+
+.windows #dockapplist > button {
+	height: 100%;
+	margin: 0;
+	    height: 100%;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+	padding: 0 5px;	
+}
+
+.windows #dockapplist > button:hover {
+	background-color: #ffffff1c;
+}
+
+.windows .window header,
+.windows .window .header,
+.windows-10 .window header,
+.windows-10 .window .header,
+.windows-11 .window header,
+.windows-11 .window .header {
+	align-content: center;
+}
+
+.windows .window header h1,
+.windows .window .header h1,
+.windows-10 .window header h1,
+.windows-10 .window .header h1,
+.windows-11 .window header h1,
+.windows-11 .window .header h1 {
+	margin-left: 10px;
+	font-size: 12px;
+	font-weight: 500;
+	width: 100%;
+}
+
+.windows .window header section,
+.windows .window .header section,
+.windows-10 .window header section,
+.windows-10 .window .header section,
+.windows-11 .window header section,
+.windows-11 .window .header section {
+	border-radius: 0;
+	background-color: unset;
+}
+
+.windows .window header button,
+.windows .window header section,
+.windows .window .header button,
+.windows .window .header section,
+.windows .window .header,
+.windows .window header,
+.windows-10 .window header button,
+.windows-10 .window header section,
+.windows-10 .window .header button,
+.windows-10 .window .header section,
+.windows-10 .window .header,
+.windows-10 .window header,
+.windows-11 .window header button,
+.windows-11 .window header section,
+.windows-11 .window .header button,
+.windows-11 .window .header section,
+.windows-11 .window .header,
+.windows-11 .window header {
+	height: 30px;
+	box-sizing: border-box;
+	padding: 0;
+}
+
+.windows-10 .window article,
+.windows-11 .window article {
+	background-color: rgb(240, 240, 240);
+}
+
+.windows .window article > * {
+	background-color: transparent;
+}
+
+.windows-95 time, .windows-95 footer {
+	color: black;
+}
+
+.windows.windows-95 .window.animating {
+	transition-timing-function: linear !important;
+	transition-duration: 150ms !important;
+}
+
+.windows-95 button,
+.windows-95 .window header button,
+.windows.windows-95 #dockapplist > button,
+.windows-95.windows .window content,
+.windows.windows-95 #launchpad li button,
+.windows.windows-95 #dockapplist,
+.windows-95 input,
+.windows-95 #launchpad {
+	background-color:  rgb(192, 192, 192);
+	color: black;
+	border-radius: 0;
+	border-image: url("data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22256px%22%20height%3D%22256px%22%20viewBox%3D%220%200%20256%20256%22%3E%0A%09%09%09%0A%09%09%3Cpath%20d%3D%22M0%200h224v32h-192v192h-32v-224z%22%20fill%3D%22%20rgb(255%2C%20255%2C%20255)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M224%200h32v256h-256v-32h224v-224z%22%20fill%3D%22%20rgb(0%2C%200%2C%200)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M32%2032h160v32h-128v128h-32v-160z%22%20fill%3D%22%20rgb(223%2C%20223%2C%20223)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M192%2032h32v192h-192v-32h160v-160z%22%20fill%3D%22%20rgb(128%2C%20128%2C%20128)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M64%2064h128v128h-128v-128z%22%20fill%3D%22%20rgb(192%2C%20192%2C%20192)%22%2F%3E%0A%09%0A%09%09%3C%2Fsvg%3E") 64 / 2px;
+}
+
+.windows-95 input {
+	background-color: white;
+}
+
+.windows-95 label {
+	color: black;
+}
+
+.windows-95 .window h1 {
+	color: white;
+}
+
+.windows-95 button:active,
+.windows-95 .window header button:active,
+.windows.windows-95 #dockapplist > button:active,
+.windows.windows-95 #launchpad li button:active,
+.windows-95 #clock,
+.windows-95 input {
+	border-image: url("data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22256px%22%20height%3D%22256px%22%20viewBox%3D%220%200%20256%20256%22%3E%0A%09%09%09%0A%09%09%3Cpath%20d%3D%22M0%200h224v32h-192v192h-32v-224z%22%20fill%3D%22%20rgb(0%2C%200%2C%200)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M224%200h32v256h-256v-32h224v-224z%22%20fill%3D%22%20rgb(255%2C%20255%2C%20255)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M32%2032h160v32h-128v128h-32v-160z%22%20fill%3D%22%20rgb(128%2C%20128%2C%20128)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M192%2032h32v192h-192v-32h160v-160z%22%20fill%3D%22%20rgb(223%2C%20223%2C%20223)%22%2F%3E%0A%09%09%3Cpath%20d%3D%22M64%2064h128v128h-128v-128z%22%20fill%3D%22%20rgb(192%2C%20192%2C%20192)%22%2F%3E%0A%09%0A%09%09%3C%2Fsvg%3E") 64 / 2px;
+}
+
+.windows-95 #clock {
+	padding: 2px 10px;
+	text-shadow: none;
+}
+
+.windows-95 #launchpad {
+	width: 206px;
+	height: 340px;
+	left: 2px;
+    bottom: 25px;
+}
+
+.windows-10 #launchpad {
+	width: 40%;
+	height: 70%;
+}
+
+.windows-95 #launchpad ul {
+	padding: 2px;
+}
+
+.windows-95 #launchpad li {
+    display: flex;
+	padding: 0;
+	width: 100%;
+}
+
+.windows-95 #launchpad li:hover,
+.windows-95 #launchpad li:hover button,
+.windows-95 #launchpad li:hover label
+ {
+	background-color: blue;
+	color: white !important;
+}
+
+.windows-95 #launchpad li button {
+	border: none;
+	border-image: none !important;
+	background: transparent !important;
+	width: 30px;
+    height: 30px;
+	margin: 0;
+	padding: 0;
+}
+
+.windows.windows-95 #dockapplist {
+	backdrop-filter: unset;
+	/* height: height: 27px;; */
+	height: 27px;
+}
+
+.windows-95 svg {
+	fill: black;
+}
+
+.windows.windows-95 .window > content,
+.windows-95 .window .content {
+	background-color: rgb(192, 192, 192);
+	padding: 2px;
+}
+
+.windows-95 .window header {
+	margin-bottom: 2px;
+	height: 18px;
+	background: linear-gradient(to right, rgb(0, 0, 128) 0%, rgb(16, 132, 208) 100%);
+}
+
+.windows-95 .window header button {
+	width: 16px;
+	height: 14px;
+}
+
+.windows-95 .window header button:nth-child(3) {
+	margin: 0 2px;
+}
+
+.windows-95 .window header button svg {
+	margin: 0;
+    width: 8px;
+}
+
+.windows-95 .window header section {
+	position: relative;
+	height: auto;
+}
+
+.windows-95 .window header img {
+	width: 16px;
+	height: 16px;
+}
+
+.flippy .window:not(.maximized) {
+	/* sanimation: spin360 500ms ease-in-out reverse; */
+	animation-direction: reverse;
+}
+
+.flippy .window.maximized {
+	animation: flip 500ms linear;
+	animation-direction: normal;
+}
+
+.gnome .selector {
+	border: 2px solid rgb(59, 59, 59);
+	background-color: rgba(165, 165, 165, 0.308);
+	border-radius: 12px;
+}
+
+.modern .window {
+	/* border-radius: 15px; */
+	--window-border-width: 7px;
+}
+
+.window > div {
+    width: calc(max(var(--window-radius) * 0.75, 5px));
+    height: calc(max(var(--window-radius) * 0.75, 5px));
+}
+
+.modern .window header {
+	display: flex;
+    padding: 0;
+    justify-content: space-between;
+}
+
+.modern .window header button {
+	background: none;
+}
+
+.modern .window header button::after {
+	display: none;
+}
+
+.modern .window header h1 {
+	align-content: center;
+	margin-left: 8px;
+}
+
+.modern .window header > section {
+	height: 100%;
+	position: relative;
+}
+
+.modern .window content::before,
+.modern button::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	padding: .5px;
+	background: linear-gradient(rgba(255,255,255,0.1), transparent 75%);
+	mask: linear-gradient(#ffffff 0 0) content-box, linear-gradient(#ffffff 0 0);
+	-webkit-mask: linear-gradient(#ffffff 0 0) content-box, linear-gradient(#ffffff 0 0);
+	-webkit-mask-componsite: xor;
+	mask-composite: exclude;
+	pointer-events: none;
+}
+
+.modern .window content::after
+{
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	padding: .5px;
+	background: rgba(255,255,255,0.1);
+	pointer-events: none;
+}
+
+
+.modern .window content,
+.modern button {
+	background: linear-gradient(358deg, #161616, #333232);
+	border: 0px solid black !important;
+}
+
+.modern button:active {
+	background: linear-gradient(358deg, #333232, #161616);
+}
+
+.modern .window content {
+	z-index: 1;
+}
+
+.modern button {
+	padding: 5px;
+	position: relative;
+	border-radius: 100px;
+	padding: 5px 10px;
+}
+
+.modern .backdrop-clip {
+	display: none;
+}
+
+@media (prefers-color-scheme: light) {
+
+.modern .window {
+	color: #161616;
+}
+
+.modern .window content {
+	background: linear-gradient(358deg, #d9d9d9, #f7f7f7);
+}
+
+.modern button {
+	background: linear-gradient(358deg, #d9d9d9, #f7f7f7);
+	color: #161616;
+}
+
+.modern .window content::before,
+.modern button::after {
+	background: linear-gradient(rgba(0, 0, 0, 0.06), transparent 75%);
+}
+
+.modern .window content::after {
+	background: rgba(0, 0, 0, 0.06);
+}
+
+	footer {
+		background: white;
+	}
+
+}
+
+.opacity .window {
+	transition: opacity 0.2s ease-in-out;
+}
+.opacity .window:not(:hover) {
+	opacity: 0.9;
+}
+
+.modern.blur button {
+	background: linear-gradient(358deg, #1616162b, #33323200);
+}
+
+.modern.blur .window content {
+	background: rgba(27, 27, 27, 0.72);
+	backdrop-filter: blur(20px) saturate(160%);
+	-webkit-backdrop-filter: blur(20px) saturate(160%);
+	box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
+	transition: background-color 0.3s ease;
+}
+
+.modern.blur .window content::before {
+	background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.16) 35%, rgba(255, 255, 255, 0.06) 65%, transparent 85%);
+}
+
+.modern.blur .window content::after {
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 35%, rgba(255, 255, 255, 0.02) 65%, transparent 85%);
+}
+
+body.no-blur.modern.blur .window content {
+	background: #1b1b1b;
+}
+
+@media (prefers-color-scheme: light) {
+
+.modern.blur .window content {
+	background: rgba(238, 238, 238, 0.7);
+	box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+body.no-blur.modern.blur .window content {
+	background: #eeeeee;
+}
+
+.modern.blur .window content::before {
+	background: linear-gradient(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0.18) 70%, transparent 90%);
+}
+
+.modern.blur .window content::after {
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.22) 40%, transparent 70%);
+}
+
+}
+
+
+.mac-os .window {
+	--window-radius: 10px;
+	--window-border-width: 0;
+}
+
+.mac-os .window header {
+    display: flex;
+    flex-direction: row-reverse;
+    position: relative;
+
+	padding: 3px;
+}
+
+.mac-os .window header img {
+	display: none;
+}
+
+.mac-os .window header h1 {
+    width: 100%;
+    margin: 0;
+    text-align: center;
+}
+
+.mac-os .window header section {
+    position: absolute;
+    left: 0;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 8px;
+	margin-left: 5px;
+}
+
+.mac-os .window header section button {
+    width: 13px;
+    height: 13px;
+    padding: 0;
+    margin: 0;
+    border-radius: 50% !important;
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+    font-size: 0;
+    line-height: 0;
+    overflow: hidden;
+    transition: filter 0.15s ease;
+}
+
+.mac-os .window header section button:hover {
+    filter: brightness(0.85);
+}
+
+.mac-os .window header section button:active {
+    filter: brightness(0.7);
+}
+
+/* macOS-style: hovering the pill reveals the buttons' symbols */
+.mac-os .window header section:hover button {
+    font-size: 10px;
+    line-height: 13px;
+}
+
+.mac-os .window header section:hover button:nth-child(1) {
+    color: #177a2e;
+}
+
+.mac-os .window header section:hover button:nth-child(2) {
+    color: #8a6400;
+}
+
+.mac-os .window header section:hover button:nth-child(3) {
+    color: #a02823;
+}
+
+/* Traffic lights — the header section is reversed, so DOM 1/2/3 render right-to-left as green/yellow/red. */
+.mac-os .window header section button:nth-child(1) {
+    background-color: #28c840;
+}
+
+.mac-os .window header section button:nth-child(2) {
+    background-color: #febc2e;
+}
+
+.mac-os .window header section button:nth-child(3) {
+    background-color: #ff5f57;
+}
+
+.color-debug .window header,
+.color-debug .window article {
+	background-color: black;
+}
+
+.color-debug .window content {
+	background: transparent !important;
+}
+
+.color-debug .window > .sizer-1,
+.color-debug .window > div.touch-sizer-1 {
+    background-color: red;
+}
+
+.color-debug .window > .sizer-2,
+.color-debug .window > div.touch-sizer-2 {
+	background-color: green;
+}
+
+.color-debug .window > .sizer-3,
+.color-debug .window > div.touch-sizer-3 {
+	background-color: yellow;
+}
+
+.color-debug .window > .sizer-4,
+.color-debug .window > div.touch-sizer-4 {
+	background-color: blue;
+}
+
+.color-debug .window > .sizer-5,
+.color-debug .window > div.touch-sizer-5 {
+	background-color: purple;
+}
+
+.color-debug .window > .sizer-6,
+.color-debug .window > div.touch-sizer-6 {
+	background-color: orange;
+}
+
+.color-debug .window > .sizer-7,
+.color-debug .window > div.touch-sizer-7 {
+	background-color: cyan;
+}
+
+.color-debug .window > .sizer-8,
+.color-debug .window > div.touch-sizer-8 {
+	background-color: pink;
+}
+
+.color-debug .window > div.touch {
+	opacity: 0.5;
+}
+
+@supports (corner-shape: squircle) {
+	.squircles .window {
+		--window-outer-radius: calc(var(--window-radius) * 2);
+	}
+
+	.window > content::before,
+	.window > content::after,
+	.modern button::after {
+		    corner-shape: inherit;
+	}
+
+	.squircles .window > content::before,
+	.squircles .window > content::after,
+	.squircles .window > content,
+	.squircles .window > content > article,
+	.squircles .backdrop-clip,
+	.squircles .backdrop-filter {
+		corner-shape: squircle; 
+	}
+}
+
+@keyframes flip {
+0%     { transform: rotateY(0deg); }
+50%    { transform: rotateY(90deg); }
+50.01% { transform: rotateY(271deg); }
+100%   { transform: rotateY(360deg); }
+}
+
+@supports (filter: url("#firefox-glass")) {
+
+	.glass .window > content {
+		backdrop-filter: blur(3px) !important;
+	}
+
+	.glass .backdrop-filter {
+		backdrop-filter: blur(3px) !important;
+		filter: url(#glass) !important;
+	}
+}
+
+@supports (backdrop-filter: none) or (-webkit-backdrop-filter: none) {
+
+    body.blur:not(.modern) .window {
+        --window-radius: 8px;
+	}
+
+	body.blur:not(.modern) .window > content {
+		z-index: 0;
+	}
+}
+
+@media (prefers-color-scheme: dark) {
+
+	.windows-95 time, .windows-95 footer nav svg * {
+		color: black;
+		fill: none;
+	}
+
+	.windows-10 .window,
+	.windows-11 .window {
+		color: white;
+	}
+
+	.windows-10 .window content,
+	.windows-11 .window content,
+	.windows-11 button {
+		background-color: rgb(32, 32, 32);
+		/* border: 1px solid rgba(255, 255, 255, 0.267); */
+		backdrop-filter: none;
+	}
+
+	.windows-10 .window article,
+	.windows-10 .window article > *,
+	.windows-11 .window article,
+	.windows-11 .window article > * {
+		background-color: rgb(25, 25, 25);
+	}
+
+	.windows-10 button {
+		background-color: rgb(51, 51, 51);
+		border-color: rgb(90, 90, 90);
+		border-bottom-color: rgb(74, 74, 74);
+	}
+
+	.windows-10 button:hover {
+		background-color: rgb(61, 61, 61);
+	}
+
+	.windows-10 button:active {
+		background-color: rgb(69, 69, 69);
+	}
+
+	/* .glass content {
+	background: none !important;
+} */
+}
