@@ -933,7 +933,7 @@ function getRect(element, index) {
 function messageReceived(type, data, source) {
   if (source && windowManager) {
     var dialog = windowManager.windows[source];
-    if (type === "windowSize") dialog.resizeBody(data.width, data.height);
+    if (type === "window-size") dialog.resizeBody(data.width, data.height);
     switch (type) {
       case "launchOverlay":
         var overlay = bodyCrawler.getOverlay();
@@ -1706,7 +1706,7 @@ Object.defineProperty(Dialog.prototype, "frame", {
   }
 });
 Dialog.prototype.reportState = function() {
-  this.messageFrame("windowSize", {});
+  this.messageFrame("window-size", {});
   this.messageFrame("theme", { className: document.body.className });
 };
 Dialog.prototype.toggleOpen = function(forceOpen, kill) {
