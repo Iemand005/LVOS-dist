@@ -6,6 +6,8 @@
 body {
 	display: flex;
 	flex-direction: column;
+	background: black;
+	overflow: hidden;
 }
 
 main {
@@ -18,6 +20,25 @@ main {
 	position: sticky;
 	background: black;
 	z-index: 10000000;
+}
+
+.spring-board {
+	width: 100%;
+	height: 100%;
+	    display: flex;
+    flex-direction: column;
+	transform-origin: left center;
+	transform: perspective(5000px) rotateY(30deg) scaleX(1.2);
+
+	--mask: linear-gradient(to right, black 0%, black 100%);
+
+	mask-image: var(--mask);
+	-webkit-mask-image: var(--mask);
+}
+
+#rotation {
+	z-index: 2000;
+	pointer-events: auto;
 }
 
 

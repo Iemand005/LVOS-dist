@@ -662,7 +662,10 @@ Launchpad.prototype._createMobileButton = function(app) {
 };
 Launchpad.prototype.addApp = function(app) {
   var appElement = document.createElement("li");
-  if (this._isMobile) {
+  if ("createOpenButton" in app) {
+    var openButton = app.createOpenButton();
+    appElement.appendChild(openButton);
+  } else {
     var openButton = this._createMobileButton(app);
     appElement.appendChild(openButton);
     openButton.onclick = function() {
@@ -671,9 +674,6 @@ Launchpad.prototype.addApp = function(app) {
     var appLabel = document.createElement("label");
     appLabel.textContent = app && app.title || "Unknown";
     appElement.appendChild(appLabel);
-  } else {
-    var openButton = app.createOpenButton();
-    appElement.appendChild(openButton);
   }
   this.list.appendChild(appElement);
 };
@@ -1641,8 +1641,14 @@ Dialog.prototype.initWithObject = function(object) {
           windowManager.dragAction.set(id);
           cancelDomEvent(ev);
         };
-        if (supportsPointer) sizer.onpointerdown = pointerDown;
-        else sizer.onmousedown = pointerDown;
+        var pointerUp = function() {
+          windowManager.disableDialogDrag();
+        };
+        if (supportsPointer) {
+          sizer.onpointerdown = pointerDown;
+          sizer.onpointerup = pointerUp;
+          sizer.onpointercancel = pointerUp;
+        } else sizer.onmousedown = pointerDown;
         target.appendChild(sizer);
         if (createTouchSizers) {
           var touchSizerId = "touch-sizer-" + id;
@@ -1652,7 +1658,11 @@ Dialog.prototype.initWithObject = function(object) {
           touchSizer.id = "touch-" + id;
           touchSizer.classList.add(touchSizerId);
           touchSizer.classList.add("touch");
-          if (supportsPointer) touchSizer.onpointerdown = pointerDown;
+          if (supportsPointer) {
+            touchSizer.onpointerdown = pointerDown;
+            touchSizer.onpointerup = pointerUp;
+            touchSizer.onpointercancel = pointerUp;
+          }
           target.appendChild(touchSizer);
         }
       };
@@ -2742,16 +2752,6 @@ Dialog.prototype.setMaxSize = function(width, height) {
 Dialog.prototype.setMinAspectRatio = function(ratio) {
   this._minAspectRatio = ratio;
   this.resize();
-};
-Dialog.prototype.resizeWithAspect = function(width, height) {
-  var ratio = this.aspectRatio;
-  var widthDelta = Math.abs(width - this.width);
-  var heightDelta = Math.abs(height - this.height);
-  if (widthDelta > heightDelta) {
-    this.resize(width, width / ratio);
-  } else {
-    this.resize(height * ratio, height);
-  }
 };
 Dialog.prototype.updateBodyOffset = function() {
   var bodyRect = this.getBodyRect();
@@ -4503,17 +4503,24 @@ function init() {
   if (!launchpad || !launchpadElement) return;
   launchpad.init(launchpadElement);
   if (typeof appRegistry !== "undefined") {
-    appRegistry.forEachApp(function(app, id) {
-      launchpad.addApp(app);
-    });
-  } else if (typeof windowManager !== "undefined" && "windowManager" in window) {
+    appRegistry.forEachApp(launchpad.addApp.bind(launchpad));
+  }
+  if (typeof windowManager !== "undefined" && "windowManager" in window) {
     windowManager.forEachWindow(function(dialog) {
-      if (dialog.application) launchpad.addApp(dialog);
+      if (launchpad && dialog.application) launchpad.addApp(dialog);
     });
     if (!isBlink) DesktopManager.removeTheme("glass");
     windowManager.initializeDialogs();
-    toggleReflections(reflections);
+    toggleReflections(false);
     LVMessenger.receive(messageReceived);
+  }
+  if (location.protocol === "file:") {
+    var scripts = document.querySelectorAll('script[type="module"]');
+    scripts.forEach(function(s) {
+      var replacement = document.createElement("script");
+      replacement.src = s.src;
+      s.replaceWith(replacement);
+    });
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
   if (window.__LVMessenger)

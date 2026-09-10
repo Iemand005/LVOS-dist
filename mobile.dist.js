@@ -510,7 +510,10 @@ Launchpad.prototype._createMobileButton = function(app) {
 };
 Launchpad.prototype.addApp = function(app) {
   var appElement = document.createElement("li");
-  if (this._isMobile) {
+  if ("createOpenButton" in app) {
+    var openButton = app.createOpenButton();
+    appElement.appendChild(openButton);
+  } else {
     var openButton = this._createMobileButton(app);
     appElement.appendChild(openButton);
     openButton.onclick = function() {
@@ -519,9 +522,6 @@ Launchpad.prototype.addApp = function(app) {
     var appLabel = document.createElement("label");
     appLabel.textContent = app && app.title || "Unknown";
     appElement.appendChild(appLabel);
-  } else {
-    var openButton = app.createOpenButton();
-    appElement.appendChild(openButton);
   }
   this.list.appendChild(appElement);
 };
@@ -1544,6 +1544,44 @@ window.addEventListener("load", function(e) {
     console.log("I gotta handle backnav!");
     goBack();
   });
+  const blurGradient = document.createElement("div");
+  blurGradient.className = "blur-gradient";
+  blurGradient.classList.add("horizontal");
+  const layers = 30;
+  const blur = 0.2;
+  const reverse = true;
+  const blurLayers = [];
+  for (let i = 0; i < layers; i++) {
+    const element = document.createElement("div");
+    const progress = Math.pow((layers - i) / layers, 0.5);
+    const start = reverse ? 100 - progress * 100 : 0;
+    const end = reverse ? 100 : progress * 100;
+    element.style.setProperty("--blur", `${blur * i}px`);
+    element.style.setProperty("--start", `${start}%`);
+    element.style.setProperty("--end", `${end}%`);
+    blurGradient.appendChild(element);
+    blurLayers.push(element);
+  }
+  this.document.body.appendChild(blurGradient);
+  const springBoard = document.querySelector(".spring-board");
+  const rotation = document.querySelector("#rotation");
+  if (!(springBoard instanceof HTMLElement)) return;
+  var setProgress = function(value, max) {
+    const degrees = value;
+    const scale = 1 + degrees / 150;
+    const blurScale = degrees / 30;
+    blurLayers.forEach((element, i) => {
+      element.style.setProperty("--blur", `${blur * i * blurScale}px`);
+    });
+    springBoard.style.transform = `perspective(5000px) rotateY(${degrees}deg) scaleX(${scale})`;
+    const maskProgress = 1 - degrees / (max / 1.7);
+    const opacity = Math.min(1, (maskProgress + 0.5) * 3);
+    springBoard.style.setProperty("--mask", `linear-gradient(to right, rgb(0 0 0 / ${opacity}), rgb(0 0 0 / ${maskProgress}))`);
+  };
+  if (!(rotation instanceof HTMLInputElement)) return;
+  rotation.addEventListener("input", function() {
+    setProgress(Number(rotation.value), Number(rotation.max));
+  });
 });
 var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
@@ -1552,17 +1590,24 @@ function init() {
   if (!launchpad || !launchpadElement) return;
   launchpad.init(launchpadElement);
   if (typeof appRegistry !== "undefined") {
-    appRegistry.forEachApp(function(app, id) {
-      launchpad.addApp(app);
-    });
-  } else if (typeof windowManager !== "undefined" && "windowManager" in window) {
+    appRegistry.forEachApp(launchpad.addApp.bind(launchpad));
+  }
+  if (typeof windowManager !== "undefined" && "windowManager" in window) {
     windowManager.forEachWindow(function(dialog) {
-      if (dialog.application) launchpad.addApp(dialog);
+      if (launchpad && dialog.application) launchpad.addApp(dialog);
     });
     if (!isBlink) DesktopManager.removeTheme("glass");
     windowManager.initializeDialogs();
-    toggleReflections(reflections);
+    toggleReflections(false);
     LVMessenger.receive(messageReceived);
+  }
+  if (location.protocol === "file:") {
+    var scripts = document.querySelectorAll('script[type="module"]');
+    scripts.forEach(function(s) {
+      var replacement = document.createElement("script");
+      replacement.src = s.src;
+      s.replaceWith(replacement);
+    });
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
   if (window.__LVMessenger)
