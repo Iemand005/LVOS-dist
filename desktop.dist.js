@@ -816,6 +816,7 @@ var supportsTransitions = false;
 var supportsTransform = false;
 var isBlink = "chrome" in window;
 var isIE = typeof window !== "undefined" && typeof document !== "undefined" && !!window.MSInputMethodContext && document.documentMode === 11;
+var isLocal = location.protocol === "file:" || location.hostname === "localhost";
 (function() {
   var style = document.createElement("div").style;
   supportsTransitions = "transition" in style || "WebkitTransition" in style || "MozTransition" in style || "OTransition" in style || "msTransition" in style;
@@ -2785,11 +2786,26 @@ Dialog.prototype.openUrl = function(url) {
   var frame = this.getOrCreateFrame(true);
   if (!frame) return;
   var self2 = this;
+  let timeout = -1;
   frame.onload = function() {
+    clearTimeout(timeout);
     self2.reportState();
   };
-  frame.src = url;
-  this._src = url;
+  if (!this.application) return;
+  var baseUrls = [url, this.application.distSrc];
+  if (!isLocal) baseUrls.reverse();
+  var fallbackUrls = baseUrls.concat(this.application.altUrls);
+  let index = 0;
+  function tryNext() {
+    var url2 = fallbackUrls[index++];
+    if (index >= fallbackUrls.length || !frame || !url2) return;
+    frame.src = url2;
+    self2._src = url2;
+    clearTimeout(timeout);
+    timeout = setTimeout(tryNext, 3e3);
+  }
+  frame.addEventListener("error", tryNext);
+  tryNext();
 };
 Dialog.prototype.quit = function() {
   this.close();
@@ -4154,6 +4170,19 @@ var applications = [
     title: "Gamepad Input Recorder",
     id: "inputrecorder",
     src: "https://iemand005.github.io/GamepadRecorder/"
+  },
+  {
+    title: "LVOS Mobile",
+    id: "mobile",
+    src: "./mobile.html",
+    distSrc: "https://iemand005.github.io/LVOS/mobile.html"
+  },
+  {
+    title: "LVOS",
+    id: "lvos",
+    src: "index.html",
+    distSrc: "https://iemand005.github.io/LVOS",
+    altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
   }
 ];
 var games = [

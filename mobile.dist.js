@@ -1329,6 +1329,19 @@ var applications = [
     title: "Gamepad Input Recorder",
     id: "inputrecorder",
     src: "https://iemand005.github.io/GamepadRecorder/"
+  },
+  {
+    title: "LVOS Mobile",
+    id: "mobile",
+    src: "./mobile.html",
+    distSrc: "https://iemand005.github.io/LVOS/mobile.html"
+  },
+  {
+    title: "LVOS",
+    id: "lvos",
+    src: "index.html",
+    distSrc: "https://iemand005.github.io/LVOS",
+    altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
   }
 ];
 var games = [
@@ -1582,6 +1595,7 @@ window.addEventListener("load", function(e) {
   rotation.addEventListener("input", function() {
     setProgress(Number(rotation.value), Number(rotation.max));
   });
+  setProgress(0, Number(rotation.max));
 });
 var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
