@@ -505,8 +505,8 @@ YouTubeParser.prototype = {
 "use strict";
 function LVMessenger() {
 }
-LVMessenger.broadcast = function(target, type, message, id) {
-  if (target && "JSON" in window) target.postMessage(JSON.stringify({ type, data: message, id }), "*");
+LVMessenger.broadcast = function(target, type, data, id) {
+  if (target && "JSON" in window) target.postMessage(JSON.stringify({ type, data, id }), "*");
 };
 LVMessenger.receive = function(callback, destroyWhenType) {
   var messageListener = function(ev) {
@@ -714,15 +714,21 @@ function handleStorageException(exception) {
   console.warn("A problem occurred, app state saving has been disabled for this session.");
   canSave = false;
 }
-function AppRegistry() {
+function AppManager() {
   this._apps = {};
+  this._wallpapers = {};
+  this._wallpaper = null;
 }
-AppRegistry.prototype.addApp = function(app) {
+AppManager.prototype.addApp = function(app) {
   if (!app || typeof app !== "object") return;
   if (!app.id) app.id = app.title || "unknown";
   this._apps[app.id] = app;
+  if (app.wallpaper) {
+    this._wallpapers[app.id] = app;
+    if (!this._wallpaper) this._wallpaper = app;
+  }
 };
-AppRegistry.prototype.addApps = function() {
+AppManager.prototype.addApps = function() {
   for (var i = 0; i < arguments.length; i++) {
     var arr = arguments[i];
     if (arr instanceof Array)
@@ -730,26 +736,26 @@ AppRegistry.prototype.addApps = function() {
         this.addApp(arr[j]);
   }
 };
-AppRegistry.prototype.getApp = function(id) {
+AppManager.prototype.getApp = function(id) {
   if (!id) return null;
   return this._apps[id] || null;
 };
-AppRegistry.prototype.removeApp = function(id) {
+AppManager.prototype.removeApp = function(id) {
   if (!id) return;
   delete this._apps[id];
 };
-AppRegistry.prototype.forEachApp = function(callback) {
+AppManager.prototype.forEachApp = function(callback) {
   if (typeof callback !== "function") return;
   for (var id in this._apps)
     if (this._apps.hasOwnProperty(id))
       callback(this._apps[id], id);
 };
-Object.defineProperty(AppRegistry.prototype, "apps", {
+Object.defineProperty(AppManager.prototype, "apps", {
   get: function() {
     return this._apps;
   }
 });
-Object.defineProperty(AppRegistry.prototype, "installedApps", {
+Object.defineProperty(AppManager.prototype, "installedApps", {
   get: function() {
     if (!hasLocalStorage) return [];
     try {
@@ -763,7 +769,7 @@ Object.defineProperty(AppRegistry.prototype, "installedApps", {
     }
   }
 });
-AppRegistry.prototype.saveApp = function(app) {
+AppManager.prototype.saveApp = function(app) {
   if (!canSave || !hasLocalStorage) return;
   if (!app || typeof app !== "object" || !app.id) return;
   try {
@@ -777,7 +783,7 @@ AppRegistry.prototype.saveApp = function(app) {
     handleStorageException(exception);
   }
 };
-AppRegistry.prototype.loadApps = function() {
+AppManager.prototype.loadApps = function() {
   if (!canSave || !hasLocalStorage) return;
   var self2 = this;
   try {
@@ -790,7 +796,7 @@ AppRegistry.prototype.loadApps = function() {
     handleStorageException(exception);
   }
 };
-AppRegistry.prototype.createApp = function(url, title, id, iconUrl) {
+AppManager.prototype.createApp = function(url, title, id, iconUrl) {
   var app = {
     src: url,
     id: id || "custom." + getDomain(url),
@@ -799,15 +805,43 @@ AppRegistry.prototype.createApp = function(url, title, id, iconUrl) {
   if (iconUrl) app.iconUrl = iconUrl;
   return app;
 };
-AppRegistry.prototype.setWallpaper = function(id) {
+AppManager.prototype.setWallpaper = function(id) {
   var wallpaperFrame = document.getElementById("wallpaper-frame");
   if (!(wallpaperFrame instanceof HTMLIFrameElement)) return;
   var app = this.getApp(id);
   if (!app) return;
   wallpaperFrame.src = app.src;
 };
-var appRegistry = new AppRegistry();
-window.appRegistry = appRegistry;
+AppManager.prototype.openAppInIFrame = function(id, frame, onLoad2) {
+  var self2 = this;
+  let timeout = -1;
+  var src = null;
+  frame.onload = function() {
+    clearTimeout(timeout);
+    if (onLoad2) onLoad2(src);
+  };
+  var application = this.getApp(id);
+  if (!application) return;
+  var baseUrls = [application.src, application.distSrc];
+  if (!isLocal) baseUrls.reverse();
+  var fallbackUrls = baseUrls.concat(application.altUrls);
+  let index = 0;
+  function tryNext() {
+    var url = fallbackUrls[index++];
+    if (index >= fallbackUrls.length || !frame || !url) return;
+    frame.src = url;
+    src = url;
+    clearTimeout(timeout);
+    timeout = setTimeout(tryNext, 3e3);
+  }
+  frame.addEventListener("error", tryNext);
+  tryNext();
+};
+AppManager.prototype.reloadWallpaper = function() {
+  if (this._wallpaper) this.setWallpaper(this._wallpaper.id);
+};
+var appManager = new AppManager();
+window.appManager = appManager;
 "use strict";
 var useTransform = true, useScale = false;
 var supportsPointer = typeof window !== "undefined" && ("PointerEvent" in window || "MSPointerEvent" in window);
@@ -831,6 +865,7 @@ var flags = {
   aeroSnap: false,
   updateRateLimit: isBlink,
   useDragOverlay: true,
+  broadcastWindowMoves: true,
   _useTransform: useTransform,
   get useTransform() {
     return this._useTransform;
@@ -1069,6 +1104,18 @@ function WindowManager() {
   this.ticking = false;
   this.flipped = false;
   this.focusedDialog = null;
+  this.channel = new BroadcastChannel("lvos");
+  this.channel.onmessage = function(ev) {
+    var data = ev.data;
+    if (typeof data === "string") try {
+      data = JSON.parse(data);
+    } catch (ex) {
+      return;
+    }
+    if (!data || typeof data !== "object" || typeof data.type !== "string") return;
+    console.log("Got a broadcast from another tab!", data);
+    windowManager.handleBroadcast(data.type, data.data, data.id);
+  };
   var self2 = this;
   this.resizeHandler = function() {
     self2.forEachWindow(function(window2) {
@@ -1416,6 +1463,43 @@ WindowManager.prototype.updateTopZ = function(newZ) {
     if (dialog && dialog.z >= self2.topZ) self2.topZ = dialog.z + 1;
   });
 };
+WindowManager.prototype.broadcast = function(type, data, id) {
+  LVMessenger.broadcast(this.channel, type, data, id);
+};
+WindowManager.prototype.handleBroadcast = function(type, data, id) {
+  var dialog;
+  switch (type) {
+    case "window-open":
+      if (!data || !id) return;
+      dialog = this.windows[id];
+      if (!dialog) {
+        if (!appManager) return;
+        var app = appManager.getApp(id);
+        if (!app) return;
+        this.loadApp(app);
+        dialog = this.windows[id];
+      }
+      if (!dialog) return;
+      dialog.toggleOpen(true);
+      if (typeof data.x === "number" || typeof data.y === "number") dialog.move(data.x, data.y);
+      if (typeof data.width === "number" || typeof data.height === "number") dialog.resize(data.width, data.height);
+      return;
+    case "window-close":
+      if (!id) return;
+      dialog = this.windows[id];
+      if (dialog) dialog.toggleOpen(false);
+      return;
+    case "window-move":
+    case "window-size":
+      if (!data || !id) return;
+      dialog = this.windows[id];
+      if (!dialog) return;
+      if (typeof data.x === "number" || typeof data.y === "number") dialog.move(data.x, data.y);
+      if (typeof data.width === "number" || typeof data.height === "number") dialog.resize(data.width, data.height);
+      return;
+  }
+  messageReceived(type, data, id);
+};
 function ClickOffset() {
   this.clickX = 0;
   this.clickY = 0;
@@ -1510,6 +1594,7 @@ function Dialog(object, create) {
   this._isMinHeight = false;
   this._popupWindow = null;
   this._src = null;
+  this._loaded = false;
   this._previousX = 0;
   this._previousY = 0;
   this._minWidth = 200;
@@ -1531,6 +1616,7 @@ function Dialog(object, create) {
   this._rotation = 0;
   this._maximizing = false;
   this.maximizeAnimations = 0;
+  this.fixed = false;
   this._stateOpen = false;
   this._bodyOffset = { width: 0, height: 0, x: 0, y: 0 };
   this._animationProps = { _fsTimeout: 0, _fsRaf: null, _fsToken: null, _fsTokenAtStart: null };
@@ -1579,22 +1665,28 @@ Dialog.prototype.initWithObject = function(object) {
   }
   if (!(object instanceof Dialog)) {
     if (isElement(object)) {
-      if (!isDialog(object)) return console.warn("This is not a dialog element");
+      if (!isDialog(object)) console.warn("This is not a dialog element");
       this.target = object;
       if (this.target.parentElement && this.target.parentElement.nodeName === "TEMPLATE") return;
       this.close();
     } else {
       this.application = object;
-      this.target = createDialog();
+      if (object.exists) {
+        this.target = document.getElementById(object.id);
+        var doc = this.contentDocument;
+        if (doc && doc.readyState !== "complete") this.openUrl(this.application.src);
+      } else {
+        createDialog();
+        this.openUrl(object.src);
+      }
       if (this.windowTarget) this.windowTarget.dialog = this;
       if (object.classes && typeof object.classes === "object") {
         object.classes.forEach(function(clazz) {
           this.target && this.target.classList.add(clazz);
         }, this);
       }
-      this.openUrl(object.src);
       this.setTitle(object.title);
-      this.fixed = object.fixed;
+      this.fixed = object.fixed || false;
       this.scroll = object.scroll;
       if (this.frame) {
         if (object.microphone || object.camera) this.frame.setAttribute("allow", "camera; microphone");
@@ -1702,6 +1794,10 @@ Dialog.prototype.initWithObject = function(object) {
     if (object instanceof Dialog)
       this.move(object.x, object.y);
     else this.moveToCenter(window.innerWidth / 2, window.innerHeight / 2);
+  if (this.application && this.application.launch) this.launch();
+  if (this.frame) this.frame.addEventListener("load", function() {
+    self2._loaded = true;
+  });
 };
 Object.defineProperty(Dialog.prototype, "isOpen", {
   get: function() {
@@ -1724,6 +1820,7 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
   var target = this.target;
   if (!target) return;
   var self2 = this;
+  var wasOpen = this._stateOpen;
   this._stateOpen = forceOpen || false;
   this.toggleClassAnimated("open", forceOpen, function(a) {
     return a === "opacity";
@@ -1738,6 +1835,7 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
   });
   windowManager.saveState();
   self2.reportState();
+  if (wasOpen !== this._stateOpen) this.broadcastUpdate(forceOpen ? "window-open" : "window-close", { x: this.x, y: this.y, width: this.width, height: this.height });
 };
 Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = this.frame;
@@ -2478,7 +2576,15 @@ Dialog.prototype.updatePosition = function() {
     console.warn(ex);
   }
 };
+Dialog.prototype.broadcastUpdate = function(type, data) {
+  if (!windowManager || !flags.broadcastWindowMoves || !document.hasFocus()) return;
+  windowManager.broadcast(type, data, this.id);
+};
+Dialog.prototype.broadcastState = function(type) {
+  this.broadcastUpdate(type, { x: this.x, y: this.y, width: this.width, height: this.height });
+};
 Dialog.prototype.move = function(x, y, update, animate) {
+  if (this.fixed) return;
   if (flags.useSkewAnimations) {
     this._previousX = this.x;
     this._previousY = this.y;
@@ -2492,12 +2598,14 @@ Dialog.prototype.move = function(x, y, update, animate) {
   if (bounds.bottom !== Infinity && y > bounds.bottom - this.height) y = bounds.bottom - this.height;
   var windowWidth = window.innerWidth;
   var windowHeight = window.innerHeight;
+  var previousX = this._x, previousY = this._y;
   this._x = x / windowWidth;
   this._y = y / windowHeight;
   if (update !== false) {
     if (animate) this.animate(this.updatePosition);
     else this.updatePosition();
   }
+  if (previousX !== this._x || previousY !== this._y) this.broadcastState("window-move");
 };
 Dialog.prototype.moveBy = function(deltaX, deltaY) {
   this.move(this.x + deltaX, this.y + deltaY);
@@ -2507,6 +2615,7 @@ Dialog.prototype.moveToCenter = function(centerX, centerY) {
   this.move(centerX - this.width / 2, centerY - this.height / 2);
 };
 Dialog.prototype.setZ = function(z) {
+  if (this.fixed) return;
   if (typeof z === "undefined") {
     if (this._z !== windowManager.topZ) this._z = ++windowManager.topZ;
   } else this._z = z;
@@ -2563,10 +2672,13 @@ Dialog.prototype.setHeight = function(height, update, animate) {
   }
 };
 Dialog.prototype.resize = function(width, height, direction) {
+  if (this.fixed) return;
   if (typeof width === "undefined" || width === null) width = this.width;
   if (typeof height === "undefined" || height === null) height = this.height;
+  var oldWidth = this.width, oldHeight = this.height;
   if (this._aspectRatioEnabled && this._aspectRatio) this._resizeWithAspect(width, height, direction);
   else this._resizeFree(width, height, direction);
+  if (oldWidth !== this.width || oldHeight !== this.height) this.broadcastState("window-size");
 };
 Dialog.prototype._resizeFree = function(width, height, direction) {
   var oldX = this.x, oldY = this.y;
@@ -2792,7 +2904,7 @@ Dialog.prototype.openUrl = function(url) {
     self2.reportState();
   };
   if (!this.application) return;
-  var baseUrls = [url, this.application.distSrc];
+  var baseUrls = [url || this.src, this.application.distSrc];
   if (!isLocal) baseUrls.reverse();
   var fallbackUrls = baseUrls.concat(this.application.altUrls);
   let index = 0;
@@ -2806,6 +2918,14 @@ Dialog.prototype.openUrl = function(url) {
   }
   frame.addEventListener("error", tryNext);
   tryNext();
+};
+Dialog.prototype.refresh = function() {
+  if (this.frame) this.openUrl(this.frame.src);
+};
+Dialog.prototype.loadFrame = function() {
+  if (!this.application) return;
+  var frame = this.getOrCreateFrame(true);
+  if (frame) appManager.openAppInIFrame(this.application.id, frame);
 };
 Dialog.prototype.quit = function() {
   this.close();
@@ -2969,7 +3089,7 @@ Dialog.prototype.flip = function(enable) {
   this.toggleClassAnimated("flipped", enable);
 };
 Dialog.prototype.makeWallpaper = function() {
-  if (this.id) appRegistry.setWallpaper(this.id);
+  if (this.id) appManager.setWallpaper(this.id);
 };
 Dialog.prototype.getState = function() {
   return {
@@ -3835,21 +3955,21 @@ var elements = {
 function installAppFromUrl(useProxy) {
   var url = (elements.installAppUrl && elements.installAppUrl.value || "").trim();
   if (!url) return;
-  if (typeof appRegistry !== "undefined") {
+  if (typeof appManager !== "undefined") {
     var app;
     if (useProxy) {
       var proxyUrl = "https://browz.netlify.app/browz-set-cookie/";
-      app = appRegistry.createApp(
+      app = appManager.createApp(
         proxyUrl + url,
         getSiteName(url),
         "custom." + getDomain(url),
         getFaviconUrl(url)
       );
     } else {
-      app = appRegistry.createApp(url);
+      app = appManager.createApp(url);
     }
-    appRegistry.addApp(app);
-    appRegistry.saveApp(app);
+    appManager.addApp(app);
+    appManager.saveApp(app);
     if (elements.installAppUrl) elements.installAppUrl.value = "";
     return;
   }
@@ -3940,6 +4060,15 @@ function downloadSettings() {
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
 var applications = [
+  {
+    title: "Wallpaper",
+    id: "wallpaper",
+    src: "./Applications/FrostedColours/index.html",
+    borderless: true,
+    fixed: true,
+    launch: true,
+    exists: true
+  },
   {
     title: "Calculator",
     id: "calculator",
@@ -4116,6 +4245,18 @@ var applications = [
     iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
   },
   {
+    title: "Awolnation",
+    id: "foxyz.awolnation",
+    src: "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz",
+    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
+  },
+  {
+    title: "Papa Roach",
+    id: "foxyz.papa-roach",
+    src: "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X",
+    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
+  },
+  {
     title: "Monaco",
     id: "foxyz.monaco",
     src: "./Applications/Monaco/monaco.html"
@@ -4183,6 +4324,13 @@ var applications = [
     src: "index.html",
     distSrc: "https://iemand005.github.io/LVOS",
     altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
+  },
+  {
+    title: "Frosted Colors",
+    id: "colors",
+    distSrc: "https://iemand005.github.io/FrostedColours",
+    src: "Applications/FrostedColours/index.html",
+    wallpaper: true
   }
 ];
 var games = [
@@ -4265,9 +4413,9 @@ var initApps = function() {
     }
   }
 };
-if (typeof appRegistry !== "undefined") {
-  appRegistry.addApps(applications, games);
-  appRegistry.loadApps();
+if (typeof appManager !== "undefined") {
+  appManager.addApps(applications, games);
+  appManager.loadApps();
 }
 window.addEventListener("load", initApps, false);
 var bindConsole = false;
@@ -4531,8 +4679,9 @@ function init() {
   var launchpadElement = document.getElementById("launchpad");
   if (!launchpad || !launchpadElement) return;
   launchpad.init(launchpadElement);
-  if (typeof appRegistry !== "undefined") {
-    appRegistry.forEachApp(launchpad.addApp.bind(launchpad));
+  if (typeof appManager !== "undefined") {
+    appManager.forEachApp(launchpad.addApp.bind(launchpad));
+    appManager.reloadWallpaper();
   }
   if (typeof windowManager !== "undefined" && "windowManager" in window) {
     windowManager.forEachWindow(function(dialog) {

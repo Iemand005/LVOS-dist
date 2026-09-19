@@ -562,15 +562,21 @@ function handleStorageException(exception) {
   console.warn("A problem occurred, app state saving has been disabled for this session.");
   canSave = false;
 }
-function AppRegistry() {
+function AppManager() {
   this._apps = {};
+  this._wallpapers = {};
+  this._wallpaper = null;
 }
-AppRegistry.prototype.addApp = function(app) {
+AppManager.prototype.addApp = function(app) {
   if (!app || typeof app !== "object") return;
   if (!app.id) app.id = app.title || "unknown";
   this._apps[app.id] = app;
+  if (app.wallpaper) {
+    this._wallpapers[app.id] = app;
+    if (!this._wallpaper) this._wallpaper = app;
+  }
 };
-AppRegistry.prototype.addApps = function() {
+AppManager.prototype.addApps = function() {
   for (var i = 0; i < arguments.length; i++) {
     var arr = arguments[i];
     if (arr instanceof Array)
@@ -578,26 +584,26 @@ AppRegistry.prototype.addApps = function() {
         this.addApp(arr[j]);
   }
 };
-AppRegistry.prototype.getApp = function(id) {
+AppManager.prototype.getApp = function(id) {
   if (!id) return null;
   return this._apps[id] || null;
 };
-AppRegistry.prototype.removeApp = function(id) {
+AppManager.prototype.removeApp = function(id) {
   if (!id) return;
   delete this._apps[id];
 };
-AppRegistry.prototype.forEachApp = function(callback) {
+AppManager.prototype.forEachApp = function(callback) {
   if (typeof callback !== "function") return;
   for (var id in this._apps)
     if (this._apps.hasOwnProperty(id))
       callback(this._apps[id], id);
 };
-Object.defineProperty(AppRegistry.prototype, "apps", {
+Object.defineProperty(AppManager.prototype, "apps", {
   get: function() {
     return this._apps;
   }
 });
-Object.defineProperty(AppRegistry.prototype, "installedApps", {
+Object.defineProperty(AppManager.prototype, "installedApps", {
   get: function() {
     if (!hasLocalStorage) return [];
     try {
@@ -611,7 +617,7 @@ Object.defineProperty(AppRegistry.prototype, "installedApps", {
     }
   }
 });
-AppRegistry.prototype.saveApp = function(app) {
+AppManager.prototype.saveApp = function(app) {
   if (!canSave || !hasLocalStorage) return;
   if (!app || typeof app !== "object" || !app.id) return;
   try {
@@ -625,7 +631,7 @@ AppRegistry.prototype.saveApp = function(app) {
     handleStorageException(exception);
   }
 };
-AppRegistry.prototype.loadApps = function() {
+AppManager.prototype.loadApps = function() {
   if (!canSave || !hasLocalStorage) return;
   var self = this;
   try {
@@ -638,7 +644,7 @@ AppRegistry.prototype.loadApps = function() {
     handleStorageException(exception);
   }
 };
-AppRegistry.prototype.createApp = function(url, title, id, iconUrl) {
+AppManager.prototype.createApp = function(url, title, id, iconUrl) {
   var app = {
     src: url,
     id: id || "custom." + getDomain(url),
@@ -647,20 +653,48 @@ AppRegistry.prototype.createApp = function(url, title, id, iconUrl) {
   if (iconUrl) app.iconUrl = iconUrl;
   return app;
 };
-AppRegistry.prototype.setWallpaper = function(id) {
+AppManager.prototype.setWallpaper = function(id) {
   var wallpaperFrame = document.getElementById("wallpaper-frame");
   if (!(wallpaperFrame instanceof HTMLIFrameElement)) return;
   var app = this.getApp(id);
   if (!app) return;
   wallpaperFrame.src = app.src;
 };
-var appRegistry = new AppRegistry();
-window.appRegistry = appRegistry;
+AppManager.prototype.openAppInIFrame = function(id, frame, onLoad) {
+  var self = this;
+  let timeout = -1;
+  var src = null;
+  frame.onload = function() {
+    clearTimeout(timeout);
+    if (onLoad) onLoad(src);
+  };
+  var application = this.getApp(id);
+  if (!application) return;
+  var baseUrls = [application.src, application.distSrc];
+  if (!isLocal) baseUrls.reverse();
+  var fallbackUrls = baseUrls.concat(application.altUrls);
+  let index = 0;
+  function tryNext() {
+    var url = fallbackUrls[index++];
+    if (index >= fallbackUrls.length || !frame || !url) return;
+    frame.src = url;
+    src = url;
+    clearTimeout(timeout);
+    timeout = setTimeout(tryNext, 3e3);
+  }
+  frame.addEventListener("error", tryNext);
+  tryNext();
+};
+AppManager.prototype.reloadWallpaper = function() {
+  if (this._wallpaper) this.setWallpaper(this._wallpaper.id);
+};
+var appManager = new AppManager();
+window.appManager = appManager;
 "use strict";
 function LVMessenger() {
 }
-LVMessenger.broadcast = function(target, type, message, id) {
-  if (target && "JSON" in window) target.postMessage(JSON.stringify({ type, data: message, id }), "*");
+LVMessenger.broadcast = function(target, type, data, id) {
+  if (target && "JSON" in window) target.postMessage(JSON.stringify({ type, data, id }), "*");
 };
 LVMessenger.receive = function(callback, destroyWhenType) {
   var messageListener = function(ev) {
@@ -994,21 +1028,21 @@ var elements = {
 function installAppFromUrl(useProxy) {
   var url = (elements.installAppUrl && elements.installAppUrl.value || "").trim();
   if (!url) return;
-  if (typeof appRegistry !== "undefined") {
+  if (typeof appManager !== "undefined") {
     var app;
     if (useProxy) {
       var proxyUrl = "https://browz.netlify.app/browz-set-cookie/";
-      app = appRegistry.createApp(
+      app = appManager.createApp(
         proxyUrl + url,
         getSiteName(url),
         "custom." + getDomain(url),
         getFaviconUrl(url)
       );
     } else {
-      app = appRegistry.createApp(url);
+      app = appManager.createApp(url);
     }
-    appRegistry.addApp(app);
-    appRegistry.saveApp(app);
+    appManager.addApp(app);
+    appManager.saveApp(app);
     if (elements.installAppUrl) elements.installAppUrl.value = "";
     return;
   }
@@ -1099,6 +1133,15 @@ function downloadSettings() {
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
 var applications = [
+  {
+    title: "Wallpaper",
+    id: "wallpaper",
+    src: "./Applications/FrostedColours/index.html",
+    borderless: true,
+    fixed: true,
+    launch: true,
+    exists: true
+  },
   {
     title: "Calculator",
     id: "calculator",
@@ -1275,6 +1318,18 @@ var applications = [
     iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
   },
   {
+    title: "Awolnation",
+    id: "foxyz.awolnation",
+    src: "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz",
+    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
+  },
+  {
+    title: "Papa Roach",
+    id: "foxyz.papa-roach",
+    src: "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X",
+    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
+  },
+  {
     title: "Monaco",
     id: "foxyz.monaco",
     src: "./Applications/Monaco/monaco.html"
@@ -1342,6 +1397,13 @@ var applications = [
     src: "index.html",
     distSrc: "https://iemand005.github.io/LVOS",
     altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
+  },
+  {
+    title: "Frosted Colors",
+    id: "colors",
+    distSrc: "https://iemand005.github.io/FrostedColours",
+    src: "Applications/FrostedColours/index.html",
+    wallpaper: true
   }
 ];
 var games = [
@@ -1424,9 +1486,9 @@ var initApps = function() {
     }
   }
 };
-if (typeof appRegistry !== "undefined") {
-  appRegistry.addApps(applications, games);
-  appRegistry.loadApps();
+if (typeof appManager !== "undefined") {
+  appManager.addApps(applications, games);
+  appManager.loadApps();
 }
 window.addEventListener("load", initApps, false);
 function probeAllStorage() {
@@ -1596,6 +1658,9 @@ window.addEventListener("load", function(e) {
     setProgress(Number(rotation.value), Number(rotation.max));
   });
   setProgress(0, Number(rotation.max));
+  LVMessenger.onHostBeingLVOS(function() {
+    document.body.classList.add("transparent");
+  });
 });
 var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
@@ -1603,8 +1668,9 @@ function init() {
   var launchpadElement = document.getElementById("launchpad");
   if (!launchpad || !launchpadElement) return;
   launchpad.init(launchpadElement);
-  if (typeof appRegistry !== "undefined") {
-    appRegistry.forEachApp(launchpad.addApp.bind(launchpad));
+  if (typeof appManager !== "undefined") {
+    appManager.forEachApp(launchpad.addApp.bind(launchpad));
+    appManager.reloadWallpaper();
   }
   if (typeof windowManager !== "undefined" && "windowManager" in window) {
     windowManager.forEachWindow(function(dialog) {
