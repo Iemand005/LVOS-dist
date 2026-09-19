@@ -687,6 +687,7 @@ Object.defineProperty(Launchpad.prototype, "isMobile", {
 });
 var canSave = true;
 var hasLocalStorage = false;
+var isLocal = location.protocol === "file:" || location.hostname === "localhost";
 try {
   hasLocalStorage = typeof localStorage !== "undefined";
 } catch (ex) {
@@ -813,7 +814,10 @@ AppManager.prototype.setWallpaper = function(id) {
   if (!(wallpaperFrame instanceof HTMLIFrameElement)) return;
   var app = this.getApp(id);
   if (!app) return;
-  wallpaperFrame.src = app.src;
+  wallpaperFrame.onerror = function() {
+    if (app?.distSrc) wallpaperFrame.src = app.distSrc;
+  };
+  wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
 AppManager.prototype.openAppInIFrame = function(id, frame, onLoad2) {
   var self2 = this;
@@ -3288,13 +3292,6 @@ var onLoad = function() {
     if (launchpad) launchpad.close();
     contextMenu.close();
   }, false);
-  var wallpaper2 = DesktopManager.getWallpaper();
-  if (wallpaper2 instanceof HTMLIFrameElement) {
-    wallpaper2.onerror = function() {
-      if (wallpaper2 instanceof HTMLIFrameElement) wallpaper2.src = "https://iemand005.github.io/FrostedColours/";
-    };
-    wallpaper2.src = wallpaper2.src;
-  }
   var applist = document.getElementById("applist");
   if (applist) {
     applist.addEventListener("submit", eventPrevent, false);
@@ -4086,14 +4083,11 @@ function downloadSettings() {
 var dockAppList = document.getElementById("dockapplist");
 var applications = [
   {
-    title: "Wallpaper",
-    id: "wallpaper",
-    src: "./Applications/FrostedColours/index.html",
-    distSrc: "https://iemand005.github.io/FrostedColours/",
-    borderless: true,
-    fixed: true,
-    launch: true,
-    exists: true
+    title: "Frosted Colors",
+    id: "colors",
+    distSrc: "https://iemand005.github.io/FrostedColours",
+    src: "Applications/FrostedColours/index.html",
+    wallpaper: true
   },
   {
     title: "Calculator",
@@ -4350,13 +4344,6 @@ var applications = [
     src: "index.html",
     distSrc: "https://iemand005.github.io/LVOS",
     altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
-  },
-  {
-    title: "Frosted Colors",
-    id: "colors",
-    distSrc: "https://iemand005.github.io/FrostedColours",
-    src: "Applications/FrostedColours/index.html",
-    wallpaper: true
   },
   {
     "title": "Speak",
