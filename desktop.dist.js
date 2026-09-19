@@ -1676,7 +1676,7 @@ Dialog.prototype.initWithObject = function(object) {
         var doc = this.contentDocument;
         if (doc && doc.readyState !== "complete") this.openUrl(this.application.src);
       } else {
-        createDialog();
+        this.target = createDialog();
         this.openUrl(object.src);
       }
       if (this.windowTarget) this.windowTarget.dialog = this;
@@ -3270,6 +3270,12 @@ var onLoad = function() {
     if (launchpad) launchpad.close();
     contextMenu.close();
   }, false);
+  var wallpaper2 = DesktopManager.getWallpaper();
+  if (wallpaper2) {
+    wallpaper2.onerror = function() {
+      if (wallpaper2 instanceof HTMLIFrameElement) wallpaper2.src = "https://iemand005.github.io/FrostedColours/";
+    };
+  }
   var applist = document.getElementById("applist");
   if (applist) {
     applist.addEventListener("submit", eventPrevent, false);
