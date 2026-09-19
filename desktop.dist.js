@@ -3271,10 +3271,11 @@ var onLoad = function() {
     contextMenu.close();
   }, false);
   var wallpaper2 = DesktopManager.getWallpaper();
-  if (wallpaper2) {
+  if (wallpaper2 instanceof HTMLIFrameElement) {
     wallpaper2.onerror = function() {
       if (wallpaper2 instanceof HTMLIFrameElement) wallpaper2.src = "https://iemand005.github.io/FrostedColours/";
     };
+    wallpaper2.src = wallpaper2.src;
   }
   var applist = document.getElementById("applist");
   if (applist) {
