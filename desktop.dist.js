@@ -754,6 +754,14 @@ AppManager.prototype.forEachApp = function(callback) {
       if (app) callback(app, id);
     }
 };
+AppManager.prototype.forEachWallpaper = function(callback) {
+  if (typeof callback !== "function") return;
+  for (var id in this._wallpapers)
+    if (this._wallpapers.hasOwnProperty(id)) {
+      var app = this._wallpapers[id];
+      if (app) callback(app, id);
+    }
+};
 Object.defineProperty(AppManager.prototype, "apps", {
   get: function() {
     return this._apps;
@@ -1259,8 +1267,10 @@ WindowManager.prototype.loadState = function(dialog) {
   }
 };
 WindowManager.prototype.forEachWindow = function(callback) {
-  for (var id in this.windows)
-    if (this.windows.hasOwnProperty(id)) callback(this.windows[id], id);
+  for (var id in this.windows) if (this.windows.hasOwnProperty(id)) {
+    var dialog = this.windows[id];
+    if (dialog) callback(dialog, id);
+  }
 };
 WindowManager.prototype.killAll = function() {
   this.forEachWindow(function(dialog) {
@@ -1274,8 +1284,10 @@ WindowManager.prototype.synchronizeStates = function() {
 };
 WindowManager.prototype.loadApp = function(app) {
   try {
-    this._windows[app.id] = new Dialog(app);
-    this._windows[app.id].mica = this.isMicaEnabled || false;
+    var dialog = new Dialog(app);
+    dialog.mica = this.isMicaEnabled || false;
+    this._windows[app.id] = dialog;
+    if (!(app instanceof HTMLElement)) appManager.addApp(app);
   } catch (ex) {
     console.warn("App load failed", ex);
   }
@@ -1481,7 +1493,20 @@ WindowManager.prototype.getWindowById = function(id) {
 WindowManager.prototype.broadcast = function(type, data, id) {
   LVMessenger.broadcast(this.channel, type, data, id);
 };
+WindowManager.prototype.broadcastTheme = function() {
+  if (!document.hasFocus()) return;
+  this.broadcast("theme", { className: document.body.className });
+};
 WindowManager.prototype.handleBroadcast = function(type, data, id) {
+  if (type === "theme") {
+    var className = data && data.className;
+    if (typeof className !== "string") return;
+    document.body.className = className;
+    this.forEachWindow(function(dialog2) {
+      dialog2.messageFrame("theme", { className });
+    });
+    return;
+  }
   if (type !== "dialog-state") {
     messageReceived(type, data, id);
     return;
@@ -1817,6 +1842,7 @@ Object.defineProperty(Dialog.prototype, "frame", {
 Dialog.prototype.reportState = function() {
   this.messageFrame("window-size", {});
   this.messageFrame("theme", { className: document.body.className });
+  if (windowManager) windowManager.broadcastTheme();
 };
 Dialog.prototype.toggleOpen = function(forceOpen, kill) {
   var target = this.target;
@@ -3312,9 +3338,9 @@ var onLoad = function() {
       clock.dateTime = date.toISOString();
       if (!("tracks" in clock))
         clock.innerHTML = date.toLocaleTimeString();
+      setTimeout(updateClock, 1e3 - Date.now() % 1e3);
     };
     updateClock();
-    setInterval(updateClock, 1e3);
     appButtons.appendChild(clock);
   }
   document.body.ondragover = window.ondragover = function(ev) {
@@ -3476,16 +3502,63 @@ DesktopManager.prototype.applyWallpaperImage = function(url, blurredUrl, onError
   }
   if (blurredUrl) this.wallpaperImage.setAttribute("blurred-src", blurredUrl);
 };
+DesktopManager.prototype.ensureWallpaperFrame = function() {
+  var wallpaper2 = DesktopManager.getWallpaper();
+  if (!wallpaper2) return null;
+  var frame = document.getElementById("wallpaper-frame");
+  if (frame instanceof HTMLIFrameElement) return frame;
+  frame = document.createElement("iframe");
+  frame.id = "wallpaper-frame";
+  frame.frameBorder = "0";
+  wallpaper2.appendChild(frame);
+  return frame;
+};
+DesktopManager.prototype.clearWallpaperContent = function() {
+  var wallpaper2 = DesktopManager.getWallpaper();
+  if (!wallpaper2) return;
+  this.wallpaperImage = null;
+  while (wallpaper2.firstChild) wallpaper2.removeChild(wallpaper2.firstChild);
+  wallpaper2.classList.remove("legacy-wallpaper");
+  wallpaper2.classList.remove("legacy-wallpaper-image");
+  wallpaper2.removeAttribute("data-blurred-src");
+  wallpaper2.style.backgroundImage = "";
+};
+DesktopManager.prototype.applyRegisteredWallpaper = function(id) {
+  this.clearWallpaperContent();
+  var frame = this.ensureWallpaperFrame();
+  if (!frame) return;
+  if (typeof appManager != "undefined" && typeof appManager.setWallpaper == "function")
+    appManager.setWallpaper(id);
+  else frame.src = "https://iemand005.github.io/FrostedColours/";
+};
+DesktopManager.prototype.restoreDefaultWallpaper = function() {
+  var defaultId = "colors";
+  if (typeof appManager != "undefined" && appManager._wallpaper)
+    defaultId = appManager._wallpaper.id;
+  this.applyRegisteredWallpaper(defaultId);
+};
+DesktopManager.prototype.clearWallpaperCache = function() {
+  try {
+    if (typeof settings != "undefined" && settings.set) settings.set("wallpaperImage", null);
+  } catch (ex) {
+  }
+  try {
+    window.localStorage.removeItem("wallpaperImage");
+  } catch (ex) {
+  }
+  initWallpaperDB(function(db) {
+    var transaction = db.transaction(["wallpapers"], "readwrite");
+    var store = transaction.objectStore("wallpapers");
+    store.delete("current");
+  }, function() {
+  });
+};
 DesktopManager.prototype.toggleOverlay = function(enable) {
   var overlay = bodyCrawler.getOverlay();
   if (!overlay) return;
   overlay.classList.toggle("open", enable);
 };
 window.desktopManager = new DesktopManager();
-window.desktopManager.applyWallpaperImage(
-  "file:///C:/Users/Lasse/Downloads/daniil-silantev-Rl7SZ19fgRQ-unsplash.jpg",
-  "file:///C:/Users/Lasse/Downloads/fox-blur.jpg"
-);
 window.ondrag = document.ondrag = function(ev) {
   ev.preventDefault();
   ev.stopPropagation();
@@ -3575,6 +3648,11 @@ function saveWallpaperToCache(blob, dataUrl) {
     localStorageFabblack(dataUrl);
   });
 }
+function hasRegisteredWallpaperSelection() {
+  if (typeof settings == "undefined" || !settings || typeof settings.get != "function") return false;
+  var selection = settings.get("wallpaper");
+  return typeof selection == "string" && selection.indexOf("registered:") === 0;
+}
 function loadWallpaperFromCache() {
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readonly");
@@ -3582,7 +3660,7 @@ function loadWallpaperFromCache() {
     var request = store.get("current");
     request.onsuccess = function() {
       var result = request.result;
-      if (result && result.blob && window.desktopManager) {
+      if (result && result.blob && window.desktopManager && !hasRegisteredWallpaperSelection()) {
         var objectUrl = URL.createObjectURL(result.blob);
         console.log("Loading cached wallpaper from IndexedDB");
         window.desktopManager.applyWallpaperImage(objectUrl);
@@ -3598,6 +3676,7 @@ function loadWallpaperFromCache() {
   });
 }
 function loadWallpaperFromLocalStorage() {
+  if (hasRegisteredWallpaperSelection()) return;
   console.log("Attempting to load wallpaper from localStorage...");
   console.log("settings defined:", typeof settings != "undefined");
   if (typeof settings == "undefined") {
@@ -3864,6 +3943,8 @@ function setThemeOption(theme) {
   }
   if (theme === "blur" || theme === "glass") DesktopManager.removeTheme("modern");
   else if (blurWasOn && theme !== "modern-blur") setTheme("modern");
+  if (typeof windowManager !== "undefined" && typeof windowManager.broadcastTheme === "function")
+    windowManager.broadcastTheme();
 }
 function toggleColorDebug(enabled) {
   document.body.classList.toggle("color-debug", enabled);
@@ -3918,9 +3999,83 @@ function setAccentColor(color) {
 }
 function loadSettings() {
   loadThemeSetting();
+  restoreWallpaperSetting();
   setColor(settings.get("color"));
   setAccentColor(settings.get("accentColor"));
   updateBlurState();
+}
+function updateWallpaperImageButton() {
+  if (!elements.wallpaperImageButton || !elements.wallpaperSelect) return;
+  elements.wallpaperImageButton.hidden = elements.wallpaperSelect.value !== "image";
+}
+function loadWallpaperOptions() {
+  if (!elements.wallpaperSelect) return;
+  var current = settings.get("wallpaper") || "";
+  elements.wallpaperSelect.innerHTML = "";
+  var noneOption = document.createElement("option");
+  noneOption.value = "";
+  noneOption.textContent = "None";
+  elements.wallpaperSelect.appendChild(noneOption);
+  if (typeof appManager != "undefined" && typeof appManager.forEachWallpaper == "function") {
+    appManager.forEachWallpaper(function(app, id) {
+      var option = document.createElement("option");
+      option.value = "registered:" + id;
+      option.textContent = app.title || id;
+      elements.wallpaperSelect.appendChild(option);
+    });
+  }
+  var imageOption = document.createElement("option");
+  imageOption.value = "image";
+  imageOption.textContent = "Image\u2026";
+  elements.wallpaperSelect.appendChild(imageOption);
+  elements.wallpaperSelect.value = current;
+  updateWallpaperImageButton();
+}
+function restoreWallpaperSetting() {
+  loadWallpaperOptions();
+  var wallpaper2 = settings.get("wallpaper");
+  if (typeof wallpaper2 != "string" || !wallpaper2) return;
+  if (wallpaper2 === "image") return;
+  if (wallpaper2.indexOf("registered:") === 0 && window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function") {
+    window.desktopManager.applyRegisteredWallpaper(wallpaper2.slice("registered:".length));
+  }
+}
+function setWallpaperOption(value) {
+  settings.set("wallpaper", value);
+  updateWallpaperImageButton();
+  if (value === "image") {
+    if (typeof loadWallpaperFromCache == "function") loadWallpaperFromCache();
+    return;
+  }
+  if (value.indexOf("registered:") === 0) {
+    var id = value.slice("registered:".length);
+    if (window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function")
+      window.desktopManager.applyRegisteredWallpaper(id);
+    return;
+  }
+  if (window.desktopManager) {
+    if (typeof window.desktopManager.restoreDefaultWallpaper == "function")
+      window.desktopManager.restoreDefaultWallpaper();
+    if (typeof window.desktopManager.clearWallpaperCache == "function")
+      window.desktopManager.clearWallpaperCache();
+  }
+}
+function applyWallpaperFile(files) {
+  if (!files || !files.length) return;
+  var file = files[0];
+  if (typeof file.type != "string" || !file.type.match(/^image\//)) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    if (!e.target) return;
+    var dataUrl = e.target.result;
+    if (typeof dataUrl != "string" || !window.desktopManager) return;
+    window.desktopManager.applyWallpaperImage(dataUrl, void 0, function() {
+      console.warn("Failed to apply wallpaper image");
+    });
+    saveWallpaperToCache(file, dataUrl);
+    settings.set("wallpaper", "image");
+  };
+  reader.readAsDataURL(file);
 }
 function loadThemeSetting() {
   var theme = settings.get("theme");
@@ -3972,7 +4127,10 @@ var elements = {
   noBlurFullscreen: null,
   installAppUrl: null,
   installAppButton: null,
-  installAppProxiedButton: null
+  installAppProxiedButton: null,
+  wallpaperSelect: null,
+  wallpaperInput: null,
+  wallpaperImageButton: null
 };
 function installAppFromUrl(useProxy) {
   var url = (elements.installAppUrl && elements.installAppUrl.value || "").trim();
@@ -4020,6 +4178,9 @@ function loadElements() {
   elements.installAppUrl = document.getElementById("install-app-url");
   elements.installAppButton = document.getElementById("install-app-button");
   elements.installAppProxiedButton = document.getElementById("install-app-proxied-button");
+  elements.wallpaperSelect = document.getElementById("wallpaper-select");
+  elements.wallpaperInput = document.getElementById("wallpaper-input");
+  elements.wallpaperImageButton = document.getElementById("wallpaper-image-button");
   var applist = document.getElementById("applist");
   var charmsButton = applist ? applist.appendChild(document.createElement("button")) : document.createElement("button");
   charmsButton.textContent = "Settings";
@@ -4053,6 +4214,15 @@ function loadElements() {
   };
   if (elements.installAppProxiedButton) elements.installAppProxiedButton.onclick = function() {
     installAppFromUrl(true);
+  };
+  if (elements.wallpaperSelect) elements.wallpaperSelect.onchange = function() {
+    setWallpaperOption(this.value);
+  };
+  if (elements.wallpaperInput) elements.wallpaperInput.onchange = function() {
+    applyWallpaperFile(this.files);
+  };
+  if (elements.wallpaperImageButton) elements.wallpaperImageButton.onclick = function() {
+    if (elements.wallpaperInput) elements.wallpaperInput.click();
   };
   if (elements.installAppUrl && elements.installAppUrl.form) {
     elements.installAppUrl.form.addEventListener("submit", function(event2) {
@@ -4342,8 +4512,8 @@ var applications = [
     title: "LVOS",
     id: "lvos",
     src: "index.html",
-    distSrc: "https://iemand005.github.io/LVOS",
-    altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
+    distSrc: "https://iemand005.github.io/LVOS/",
+    altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
   },
   {
     "title": "Speak",
@@ -4405,6 +4575,12 @@ var games = [
     title: "Planet Life",
     id: "planetlife",
     src: "https://www.planetlife.space/static/game/index.html"
+  },
+  {
+    title: "Horizon Background",
+    id: "horizon-bg",
+    src: "https://iemand005.github.io/HorizonBackground/",
+    wallpaper: true
   }
 ];
 if (typeof windowManager !== "undefined") {
@@ -4430,12 +4606,17 @@ function initApps() {
       if (windows.music) dockApp(windows.music);
     }
   }
+  finishAppInstall();
 }
 ;
-if (typeof appManager !== "undefined") {
-  appManager.addApps(applications, games);
-  appManager.loadApps();
+function finishAppInstall() {
+  if (typeof appManager !== "undefined") {
+    appManager.addApps(applications, games);
+    appManager.loadApps();
+  }
+  if (typeof restoreWallpaperSetting == "function") restoreWallpaperSetting();
 }
+finishAppInstall();
 window.addEventListener("load", initApps, false);
 var bindConsole = false;
 var ConsoleOutType = {

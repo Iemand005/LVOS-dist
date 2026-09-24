@@ -147,6 +147,7 @@ body:not(.blur) .window > article {
 	-webkit-user-drag: none;
 	-webkit-user-select: none;
 	user-select: none;
+	pointer-events: auto;
 }
 
 #wallpaper.legacy-wallpaper > img {
@@ -571,6 +572,7 @@ time span {
 	transition: transform 0.6s cubic-bezier(0.42, 0.4, 0.19, 1.23); */
 	will-change: transform;
 	white-space: pre;
+	display: inline-block;
 }
 
 @keyframes opensesame {
