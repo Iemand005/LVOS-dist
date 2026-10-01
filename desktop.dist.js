@@ -823,7 +823,7 @@ AppManager.prototype.setWallpaper = function(id) {
   var app = this.getApp(id);
   if (!app) return;
   wallpaperFrame.onerror = function() {
-    if (app?.distSrc) wallpaperFrame.src = app.distSrc;
+    if (app && app.distSrc) wallpaperFrame.src = app.distSrc;
   };
   wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
@@ -1674,6 +1674,13 @@ function Dialog(object, create) {
   this._popupPositionInterval = 0;
   this.dragging = false;
   this._appIcon = null;
+  var self2 = this;
+  this.activationHandler = function(ev) {
+    if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
+      return false;
+    windowManager.windowActivationEvent(ev, self2);
+    return true;
+  };
 }
 Dialog.prototype.getElementByTagOrClassName = function(name, parent) {
   var target = parent || this.target;
@@ -1736,58 +1743,10 @@ Dialog.prototype.initWithObject = function(object) {
   this.exchangeDialogMoveEvent = function(difference) {
     if (difference && self2.clickOffset) this.messageFrame("windowMove", self2.clickOffset.update(difference.x, difference.y));
   };
-  var activationHandler = function(ev) {
-    if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
-      return false;
-    windowManager.windowActivationEvent(ev, self2);
-    return true;
-  };
   var target = this.target;
-  if (target) {
+  if (target && this.activationHandler) {
     var createSizers = true;
-    var createTouchSizers = true;
-    if (!supportsPointer) createTouchSizers = false;
-    if (!this.fixed && createSizers) {
-      var createSizer = function(id) {
-        if (!target) return;
-        var sizerId = "sizer-" + id;
-        var sizer = self2.getElementByTagOrClassName(sizerId);
-        if (!sizer || !isElement(sizer)) sizer = document.createElement("div");
-        sizer.draggable = false;
-        sizer.id = id.toString();
-        sizer.classList.add(sizerId);
-        var pointerDown = function(ev) {
-          if (!activationHandler(ev)) return;
-          windowManager.dragAction.set(id);
-          cancelDomEvent(ev);
-        };
-        var pointerUp = function() {
-          windowManager.disableDialogDrag();
-        };
-        if (supportsPointer) {
-          sizer.onpointerdown = pointerDown;
-          sizer.onpointerup = pointerUp;
-          sizer.onpointercancel = pointerUp;
-        } else sizer.onmousedown = pointerDown;
-        target.appendChild(sizer);
-        if (createTouchSizers) {
-          var touchSizerId = "touch-sizer-" + id;
-          var touchSizer = self2.getElementByTagOrClassName(touchSizerId);
-          if (!touchSizer || !isElement(touchSizer)) touchSizer = document.createElement("div");
-          touchSizer.draggable = false;
-          touchSizer.id = "touch-" + id;
-          touchSizer.classList.add(touchSizerId);
-          touchSizer.classList.add("touch");
-          if (supportsPointer) {
-            touchSizer.onpointerdown = pointerDown;
-            touchSizer.onpointerup = pointerUp;
-            touchSizer.onpointercancel = pointerUp;
-          }
-          target.appendChild(touchSizer);
-        }
-      };
-      for (var i = 0; i < 8; i++) createSizer.call(this, i + 1);
-    }
+    if (this.resizable && createSizers) this._createSizers();
     target.addEventListener("dragstart", cancelDomEvent, false);
     target.addEventListener("selectstart", cancelDomEvent, false);
     var body = this.body;
@@ -1802,8 +1761,8 @@ Dialog.prototype.initWithObject = function(object) {
     var header = this.titleBar;
     if (header)
       header.addEventListener("dblclick", this.toggleMaximized.bind(this, void 0), false);
-    if (supportsPointer) target.addEventListener("pointerdown", activationHandler, false);
-    else target.addEventListener("mousedown", activationHandler, false);
+    if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
+    else target.addEventListener("mousedown", this.activationHandler, false);
     target.getElementsByTagName("button")[windowButtons.eject].addEventListener("click", function() {
       self2.createPopOut();
       self2.quit();
@@ -1826,19 +1785,50 @@ Dialog.prototype.initWithObject = function(object) {
     self2._loaded = true;
   });
 };
-Object.defineProperty(Dialog.prototype, "isOpen", {
-  get: function() {
-    return Boolean(this.target && this.target.classList.contains("open"));
-  },
-  set: function(open) {
-    this.toggleOpen(open);
-  }
-});
-Object.defineProperty(Dialog.prototype, "frame", {
-  get: function() {
-    return this.target && this.target.getElementsByTagName("iframe")[0] || null;
-  }
-});
+Dialog.prototype._createSizers = function(createTouchSizers) {
+  var self2 = this;
+  var target = this.target;
+  if (typeof createTouchSizers === "undefined") createTouchSizers = supportsPointer;
+  var createSizer = function(id) {
+    if (!target || !self2.activationHandler) return;
+    var sizerId = "sizer-" + id;
+    var sizer = self2.getElementByTagOrClassName(sizerId);
+    if (!sizer || !isElement(sizer)) sizer = document.createElement("div");
+    sizer.draggable = false;
+    sizer.id = id.toString();
+    sizer.classList.add(sizerId);
+    var pointerDown = function(ev) {
+      if (!self2.activationHandler || !self2.activationHandler(ev)) return;
+      windowManager.dragAction.set(id);
+      cancelDomEvent(ev);
+    };
+    var pointerUp = function() {
+      windowManager.disableDialogDrag();
+    };
+    if (supportsPointer) {
+      sizer.onpointerdown = pointerDown;
+      sizer.onpointerup = pointerUp;
+      sizer.onpointercancel = pointerUp;
+    } else sizer.onmousedown = pointerDown;
+    target.appendChild(sizer);
+    if (createTouchSizers) {
+      var touchSizerId = "touch-sizer-" + id;
+      var touchSizer = self2.getElementByTagOrClassName(touchSizerId);
+      if (!touchSizer || !isElement(touchSizer)) touchSizer = document.createElement("div");
+      touchSizer.draggable = false;
+      touchSizer.id = "touch-" + id;
+      touchSizer.classList.add(touchSizerId);
+      touchSizer.classList.add("touch");
+      if (supportsPointer) {
+        touchSizer.onpointerdown = pointerDown;
+        touchSizer.onpointerup = pointerUp;
+        touchSizer.onpointercancel = pointerUp;
+      }
+      target.appendChild(touchSizer);
+    }
+  };
+  for (var i = 0; i < 8; i++) createSizer.call(this, i + 1);
+};
 Dialog.prototype.reportState = function() {
   this.messageFrame("window-size", {});
   this.messageFrame("theme", { className: document.body.className });
@@ -1870,6 +1860,27 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   if (frame || !create || !this.body) return frame;
   return this.body.appendChild(document.createElement("iframe"));
 };
+Object.defineProperty(Dialog.prototype, "isOpen", {
+  get: function() {
+    return Boolean(this.target && this.target.classList.contains("open"));
+  },
+  set: function(open) {
+    this.toggleOpen(open);
+  }
+});
+Object.defineProperty(Dialog.prototype, "frame", {
+  get: function() {
+    return this.target && this.target.getElementsByTagName("iframe")[0] || null;
+  }
+});
+Object.defineProperty(Dialog.prototype, "resizable", {
+  get: function() {
+    return !this.application ? true : this.application.resizable !== false;
+  },
+  set: function(v) {
+    if (v) this._createSizers();
+  }
+});
 Object.defineProperty(Dialog.prototype, "src", {
   get: function() {
     return this._src || this.application && this.application.src;
@@ -4539,7 +4550,7 @@ var games = [
     title: "Minesweeper",
     id: "minesweeper",
     src: "./Games/Minesweeper/index.html",
-    fixed: true,
+    resizable: false,
     scroll: false
   },
   {
@@ -4897,7 +4908,10 @@ function init() {
     scripts.forEach(function(s) {
       var replacement = document.createElement("script");
       replacement.src = s.src;
-      s.replaceWith(replacement);
+      try {
+        s.replaceWith(replacement);
+      } catch (ex) {
+      }
     });
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;

@@ -671,7 +671,7 @@ AppManager.prototype.setWallpaper = function(id) {
   var app = this.getApp(id);
   if (!app) return;
   wallpaperFrame.onerror = function() {
-    if (app?.distSrc) wallpaperFrame.src = app.distSrc;
+    if (app && app.distSrc) wallpaperFrame.src = app.distSrc;
   };
   wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
@@ -1526,7 +1526,7 @@ var games = [
     title: "Minesweeper",
     id: "minesweeper",
     src: "./Games/Minesweeper/index.html",
-    fixed: true,
+    resizable: false,
     scroll: false
   },
   {
@@ -1800,7 +1800,10 @@ function init() {
     scripts.forEach(function(s) {
       var replacement = document.createElement("script");
       replacement.src = s.src;
-      s.replaceWith(replacement);
+      try {
+        s.replaceWith(replacement);
+      } catch (ex) {
+      }
     });
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
