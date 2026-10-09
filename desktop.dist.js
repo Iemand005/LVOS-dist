@@ -454,7 +454,7 @@ function Vector3D(x, y, z) {
   this.z = 0;
   if (typeof x == "number") {
     this.x = x;
-    if (y == null && z == null)
+    if (y === void 0 || z === void 0)
       this.y = x, this.z = x;
     else this.y = y, this.z = z;
   } else if (typeof x == "object" && x.x && x.y && x.z) {
@@ -882,12 +882,12 @@ var flags = {
   useDragOverlay: true,
   broadcastWindowMoves: true,
   _useTransform: useTransform,
+  useAnimations: true,
   get useTransform() {
     return this._useTransform;
   },
   set useTransform(value) {
     this._useTransform = value;
-    if (!windowManager) return;
     windowManager.forEachWindow(function(dialog) {
       dialog.useTransform = value;
     });
@@ -901,7 +901,7 @@ var flags = {
     if (value) this._useViewTransitionMaximize = false;
     this._compositorResize = value;
   },
-  _useViewTransitionMaximize: false,
+  _useViewTransitionMaximize: true,
   get useViewTransitionMaximize() {
     return this._useViewTransitionMaximize;
   },
@@ -932,11 +932,15 @@ function getFaviconUrl(url) {
   return "https://" + getDomain(url) + "/favicon.ico";
 }
 function getDomain(url) {
-  return url.replace(/^[a-z]+:\/\/+/i, "").split("/")[0].split("?")[0];
+  var regged = url.replace(/^[a-z]+:\/\/+/i, "").split("/")[0];
+  return regged && regged.split("?")[0];
 }
 function getSiteName(url) {
-  var parts = getDomain(url).split(".");
+  var domain = getDomain(url);
+  if (!domain) return null;
+  var parts = domain.split(".");
   var name = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  if (!name) return null;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 function isDialog(element) {
@@ -948,7 +952,7 @@ function isElement(object) {
 function getWindowChromeHeight(window2) {
   return window2.outerHeight - window2.innerHeight;
 }
-function translateElement(element, x, y, skew, scaleX, scaleY, rotation) {
+function transformElementOld(element, x, y, skew, scaleX, scaleY, rotation) {
   var transform = "translate(" + Math.floor(x) + "px," + Math.floor(y) + "px)";
   if (skew) transform += " skewX(" + skew + "deg)";
   if (scaleX === 1) scaleX = void 0;
@@ -961,6 +965,35 @@ function translateElement(element, x, y, skew, scaleX, scaleY, rotation) {
   if (rotation) transform += "rotate(" + rotation + "deg)";
   else {
     element.style.transform = transform;
+  }
+}
+function transformElement(element, t) {
+  var transform = "";
+  if (t.x && t.y) transform += "translate(" + toPixels(t.x) + "," + toPixels(t.y) + ")";
+  else if (t.x) transform += "translateX(" + toPixels(t.x) + ")";
+  else if (t.y) transform += "translatey(" + toPixels(t.y) + ")";
+  if (t.skewX) transform += " skewX(" + toDegrees(t.skewX) + ")";
+  if (t.scaleX === 1) t.scaleX = void 0;
+  if (t.scaleY === 1) t.scaleY = void 0;
+  if (t.scaleX && t.scaleY) transform += "scale(" + t.scaleX + "," + t.scaleY + ")";
+  else if (t.scaleX) transform += "scaleX(" + t.scaleX + ")";
+  else if (t.scaleY) transform += "scaleY(" + t.scaleY + ")";
+  if (t.rotate) transform += "rotate(" + toDegrees(t.rotate) + ")";
+  if (t.rotateX) transform += "rotateX(" + toDegrees(t.rotateX) + ")";
+  if (t.rotateY) transform += "rotateY(" + toDegrees(t.rotateY) + ")";
+  if (t.rotateZ) transform += "rotateZ(" + toDegrees(t.rotateZ) + ")";
+  element.style.transform = transform;
+}
+function insetElement(element, top, left, right, bottom) {
+  if ("inset" in element.style)
+    if (typeof left === "undefined") element.style.inset = toPixels(top);
+    else element.style.inset = toPixels(top) + " " + toPixels(right || 0) + " " + toPixels(bottom || 0) + " " + toPixels(left);
+  else {
+    if (typeof left === "undefined") left = top, right = top, bottom = top;
+    element.style.top = toPixels(top);
+    element.style.left = toPixels(left);
+    if (typeof right !== "undefined") element.style.right = toPixels(right);
+    if (typeof bottom !== "undefined") element.style.bottom = toPixels(bottom);
   }
 }
 function skewElement(element, skew) {
@@ -984,12 +1017,14 @@ function getRect(element, index) {
 function messageReceived(type, data, source) {
   if (source && windowManager) {
     var dialog = windowManager.windows[source];
+    if (!dialog) return;
     if (type === "window-size") dialog.resizeBody(data.width, data.height);
     switch (type) {
       case "launchOverlay":
         var overlay = bodyCrawler.getOverlay();
         if (!overlay) break;
         overlay.ontransitionend = function() {
+          if (!dialog) return;
           dialog.messageFrame("prepareToLaunchOverlay");
           if (dialog.frame) {
             var oriel = new URL(dialog.frame.src);
@@ -1052,6 +1087,9 @@ function getViewBoxPosition() {
 function toPixels(value) {
   return Math.round(value) + "px";
 }
+function toPercent(value) {
+  return Math.round(value * 100) + "%";
+}
 function toDegrees(value) {
   return Math.round(value) + "deg";
 }
@@ -1098,6 +1136,86 @@ function removeComments(element) {
   });
   return element;
 }
+function flipElement(element, onToggled, thisArg) {
+  var first = element.getBoundingClientRect();
+  var previousTransition = element.style.transition;
+  element.style.transition = "none";
+  if (onToggled) onToggled.call(thisArg || element);
+  var last = element.getBoundingClientRect();
+  var dx = first.left - last.left;
+  var dy = first.top - last.top;
+  var scaleX = last.width ? first.width / last.width : 1;
+  var scaleY = last.height ? first.height / last.height : 1;
+  element.style.transformOrigin = "top left";
+  element.style.translate = toPixels(dx) + " " + toPixels(dy);
+  element.style.scale = scaleX + " " + scaleY;
+  void element.offsetWidth;
+  element.style.transition = previousTransition;
+  element.classList.add("animating", "flipping");
+  element._flipFrame = window.requestAnimationFrame(function() {
+    element._flipFrame = 0;
+    element.style.translate = "0px 0px";
+    element.style.scale = "1";
+  });
+}
+function clearFlip(element) {
+  if (element._flipFrame) {
+    window.cancelAnimationFrame(element._flipFrame);
+    element._flipFrame = 0;
+  }
+  element.style.translate = "";
+  element.style.scale = "";
+  element.style.transformOrigin = "";
+  element.classList.remove("flipping");
+}
+function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, timeout, flip2) {
+  var boundContext = thisArg || element;
+  var callEnd = function() {
+    if (!state.active) return;
+    state.active = false;
+    if (element._animationState === state) element._animationState = null;
+    element.classList.remove("animating");
+    if (flip2) clearFlip(element);
+    if (onEnd) onEnd.call(boundContext);
+  };
+  var previous = element._animationState;
+  if (previous) {
+    if (previous.timer) clearTimeout(previous.timer);
+    if (previous.frame) window.cancelAnimationFrame(previous.frame);
+    if (previous.handler) element.removeEventListener(transitionEndEvent, previous.handler, false);
+    if (previous.flip) clearFlip(element);
+  }
+  var state = element._animationState = { timer: 0, frame: 0, handler: null, active: true, flip: !!flip2 };
+  if (!flags.useAnimations) {
+    if (onToggled) onToggled.call(boundContext);
+    callEnd();
+    return;
+  }
+  state.timer = timeout && setTimeout(callEnd, timeout);
+  if (supportsTransitions) {
+    if (flip2) {
+      flipElement(element, onToggled, boundContext);
+    } else element.classList.add("animating");
+    var animationHandler = function(event2) {
+      if (!onTransitionEnd) return;
+      if (typeof onTransitionEnd === "string") {
+        if (event2.propertyName !== onTransitionEnd) return;
+      } else if (!onTransitionEnd(event2.propertyName)) return;
+      console.log("Aborting animation over " + event2.propertyName + ". Took: ", event2.elapsedTime, "seconds. Reported by: ", event2.target);
+      element.removeEventListener(transitionEndEvent, animationHandler, false);
+      clearTimeout(state.timer);
+      callEnd();
+    };
+    state.handler = animationHandler;
+    element.addEventListener(transitionEndEvent, animationHandler, false);
+  }
+  if (!flip2 || !supportsTransitions) {
+    state.frame = window.requestAnimationFrame(function() {
+      state.frame = 0;
+      if (onToggled) onToggled.call(boundContext);
+    });
+  }
+}
 function WindowManager() {
   this._windows = {};
   this._windowStates = null;
@@ -1106,6 +1224,14 @@ function WindowManager() {
   this._isWindowUpdatesEnabled = false;
   this.isDragging = false;
   this.dragAction = new DragAction();
+  this.snapFullThreshold = 30;
+  this.snapSideThreshold = 30;
+  this.heightSnapReleaseThreshold = 10;
+  this.snapGapWidth = 0.5;
+  this.snapInsertGaps = true;
+  this._snapZone = "";
+  this.pointerPosition = { x: 0, y: 0 };
+  this._heightSnapReleased = false;
   this.activeDialog = null;
   this.topZ = 100;
   this.loaded = false;
@@ -1117,6 +1243,7 @@ function WindowManager() {
     console.warn("Local storage access denied.", ex);
   }
   this.ticking = false;
+  this._pendingDragEvent = null;
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
@@ -1145,18 +1272,28 @@ function WindowManager() {
         return;
       }
       cancelDomEvent(event2);
+      var isTouch = "pointerType" in event2 && event2.pointerType === "touch";
+      self2.setPointerPosition(event2.clientX, event2.clientY);
       if (flags.updateRateLimit) {
+        self2._pendingDragEvent = event2;
         if (self2.ticking) return;
-        window.requestAnimationFrame(function() {
-          windowManager.handleWindowDrag(event2.clientX, event2.clientY);
-          self2.ticking = false;
-        });
         self2.ticking = true;
-      } else windowManager.handleWindowDrag(event2.clientX, event2.clientY);
+        window.requestAnimationFrame(function() {
+          var pending = self2._pendingDragEvent;
+          self2._pendingDragEvent = null;
+          self2.ticking = false;
+          if (!pending) return;
+          var touch = "pointerType" in pending && pending.pointerType === "touch";
+          windowManager.handleWindowDrag(pending.clientX, pending.clientY, touch);
+        });
+      } else windowManager.handleWindowDrag(event2.clientX, event2.clientY, isTouch);
     } catch (ex) {
       console.error(ex);
     }
   };
+  this.windowSnap = new WindowSnap();
+  this.windowGroup = { windows: [] };
+  this._snapSpacer = null;
 }
 Object.defineProperty(WindowManager.prototype, "windows", {
   get: function() {
@@ -1296,7 +1433,7 @@ WindowManager.prototype.installApp = function(url, title, id, iconUrl) {
   var application = {
     src: url,
     id: id || "custom." + getDomain(url),
-    title: title || getSiteName(url)
+    title: title || getSiteName(url) || "unkle"
   };
   if (iconUrl) application.iconUrl = iconUrl;
   this.loadApp(application);
@@ -1340,7 +1477,7 @@ WindowManager.prototype.loadInstalledApps = function() {
 };
 WindowManager.prototype.installAppProxied = function(url, proxyUrl) {
   if (!proxyUrl) proxyUrl = "https://browz.netlify.app/browz-set-cookie/";
-  this.installApp(proxyUrl + url, getSiteName(url), "custom." + getDomain(url), getFaviconUrl(url));
+  this.installApp(proxyUrl + url, getSiteName(url) || "unkle", "custom." + getDomain(url), getFaviconUrl(url));
 };
 WindowManager.prototype.toggleDragging = function(enabled) {
   ClickOffset.toggleDragEventHandler(enabled, this.windowDragEvent, "grabbing");
@@ -1405,8 +1542,9 @@ WindowManager.prototype.initializeDialogs = function() {
       self2.loadApp(dialog);
   });
   this.loadState();
+  this.windowSnap.init();
 };
-WindowManager.prototype.windowActivationEvent = function(event2, dialog) {
+WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
   try {
     var node = event2 && (event2.target || event2.srcElement);
     var isInteractive = false;
@@ -1443,33 +1581,277 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog) {
   }
   if (flags.verboseLogs) console.log("Activating window", dialog);
   this.activeDialog = dialog;
+  this.isTouchDrag = event2 && "pointerType" in event2 && event2.pointerType === "touch";
   this.enableDialogDrag();
-  this.dragAction.set(0);
+  this.dragAction.set(id || 0);
   dialog.setClickOffset(event2.clientX, event2.clientY);
   dialog.activate();
+  if (this.isTouchDrag) this.windowSnap.moveToDialog(dialog, 0, this.dragAction.direction, false, this.isTouchDrag);
+  this._snapZone = "";
+  this._heightSnapReleased = false;
   return dialog;
 };
-WindowManager.prototype.handleWindowDrag = function(newX, hewY) {
+WindowManager.prototype.handleWindowDrag = function(newX, newY, isTouch) {
   var dialog = this.activeDialog;
   if (!dialog || !dialog.clickOffset) return;
-  var difference = { x: newX - dialog.clickOffset.clickX, y: hewY - dialog.clickOffset.clickY };
   if (dialog.maximized) {
     if (!flags.aeroSnap) return;
+    dialog.remapClickOffset(0, 0, this.snapWidth(), this.snapHeight());
     dialog.maximized = false;
-    dialog.clickOffset.clickX /= window.innerWidth / dialog.width;
+  } else if (dialog.snapped) {
+    var frame = dialog._snapFrame;
+    if (frame) dialog.remapClickOffset(frame.x, frame.y, frame.width, frame.height);
+    this.unsnapDialog(dialog);
+  }
+  var difference = { x: newX - dialog.clickOffset.clickX, y: newY - dialog.clickOffset.clickY };
+  if (dialog.heightSnapped) {
+    var gestureDirection = this.dragAction.direction;
+    if (gestureDirection === 0) {
+      if (difference.y > this.heightSnapReleaseThreshold) dialog.toggleHeightSnapped(false);
+    } else if (this.isVerticalResizeDirection(gestureDirection)) {
+      this.leaveHeightSnappedByResize(dialog);
+    }
   }
   dialog.stopAnimating();
   this.dragAction.execute(dialog, dialog.clickOffset, difference);
+  this.setPointerPosition(newX, newY);
+  var snapZone = this.getGestureSnapZone(dialog, this.dragAction.direction, newX, newY);
+  if (snapZone) {
+    if (snapZone !== this._snapZone) {
+      if (this._snapZone) this.windowSnap.hideBehind(dialog, !!isTouch);
+      this._snapZone = snapZone;
+      this.windowSnap.snap(snapZone, dialog);
+    }
+  } else if (this._snapZone) {
+    this._snapZone = "";
+    this.windowSnap.hideBehind(dialog, !!isTouch);
+  } else if (isTouch) {
+    this.windowSnap.moveToDialog(dialog, 20, this.dragAction.direction, true, true);
+  }
   if (dialog.moveEvents && dialog.exchangeDialogMoveEvent) dialog.exchangeDialogMoveEvent(difference);
+};
+WindowManager.prototype.getSnapZone = function(x, y) {
+  if (x <= this.snapSideThreshold) return "left";
+  if (x >= this.snapWidth() - this.snapSideThreshold) return "right";
+  if (y <= this.snapFullThreshold) return "maximize";
+  return "";
+};
+WindowManager.prototype.isVerticalResizeDirection = function(direction) {
+  return direction === 1 || direction === 3 || direction === 5 || direction === 6 || direction === 7 || direction === 8;
+};
+WindowManager.prototype.leaveHeightSnappedByResize = function(dialog) {
+  var drawnHeight = this.snapHeight();
+  if (dialog.target) setClass(dialog.target, "height-snapped", false);
+  dialog._snappingOut = false;
+  dialog._snappingOutState = null;
+  this._heightSnapReleased = true;
+  dialog._y = 0;
+  dialog._height = drawnHeight;
+  dialog.updatePosition();
+  dialog.updateHeight();
+  var offset = dialog.clickOffset;
+  if (offset) {
+    offset.height = dialog.height;
+    offset.startX = dialog.x;
+    offset.startY = dialog.y;
+  }
+};
+WindowManager.prototype.getGestureSnapZone = function(dialog, direction, x, y) {
+  if (!flags.aeroSnap || dialog.heightSnapped || this._heightSnapReleased) return "";
+  if (direction === 1 || direction === 3) {
+    var bounds = WindowManager.windowBounds;
+    var threshold = this.snapFullThreshold;
+    var atEdge = direction === 1 ? dialog.y <= bounds.top + threshold : dialog.y + dialog.height >= this.snapHeight() - threshold;
+    return atEdge ? "height" : "";
+  }
+  if (direction !== 0) return "";
+  return this.getSnapZone(x, y);
+};
+WindowManager.prototype.snapWidth = function() {
+  var section = document.getElementById("window-section");
+  return section ? section.clientWidth : window.innerWidth;
+};
+WindowManager.prototype.snapHeight = function() {
+  var section = document.getElementById("window-section");
+  return section ? section.clientHeight : window.innerHeight;
+};
+WindowManager.prototype.setPointerPosition = function(x, y) {
+  this.pointerPosition.x = x;
+  this.pointerPosition.y = y;
+};
+WindowManager.prototype.snapDialog = function(dialog, zone) {
+  if (zone === "height") {
+    this.unsnapDialog(dialog);
+    dialog.toggleHeightSnapped(true);
+    return;
+  }
+  if (zone === "maximize") {
+    this.unsnapDialog(dialog);
+    dialog.maximize();
+    return;
+  }
+  if (zone !== "left" && zone !== "right") return;
+  this.tileDialog(dialog, zone);
+};
+WindowManager.prototype.tileDialog = function(dialog, side) {
+  var group = (
+    /** @type {WindowGroup} */
+    this.windowGroup
+  );
+  var windows = (
+    /** @type {WindowTile[]} */
+    group.windows
+  );
+  var index = this.findSnapTile(dialog.id);
+  var tile = index === -1 ? { id: dialog.id, width: 0.5 } : windows[index];
+  if (!tile) return;
+  if (index !== -1) windows.splice(index, 1);
+  if (side === "left") windows.unshift(tile);
+  else windows.push(tile);
+  if (this.snapInsertGaps) this.fitSnapGaps(windows, side);
+  this.reflowSnapGroup();
+  dialog.toggleSnapped(true);
+};
+WindowManager.prototype.fitSnapGaps = function(tiles, side) {
+  for (var i = tiles.length - 1; i >= 0; i--) {
+    var tile = tiles[i];
+    if (tile && tile.gap) tiles.splice(i, 1);
+  }
+  if (tiles.length !== 1) return;
+  var firstTile = tiles[0];
+  if (!firstTile || !firstTile.id) return;
+  var dialog = this.windows[firstTile.id];
+  if (!side && dialog && dialog.target) {
+    var rect = dialog.target.getBoundingClientRect();
+    var area = document.getElementById("window-section");
+    var origin = area ? area.getBoundingClientRect() : rect;
+    side = rect.left - origin.left <= origin.width / 2 ? "left" : "right";
+  }
+  tiles.splice(side === "right" ? 0 : 1, 0, { gap: true, width: this.snapGapWidth });
+};
+WindowManager.prototype.findSnapTile = function(id) {
+  var windows = (
+    /** @type {WindowTile[]} */
+    /** @type {WindowGroup} */
+    this.windowGroup.windows
+  );
+  for (var i = 0; i < windows.length; i++) {
+    var dialog = windows[i];
+    if (dialog && dialog.id === id) return i;
+  }
+  return -1;
+};
+WindowManager.prototype.unsnapDialog = function(dialog) {
+  var group = (
+    /** @type {WindowGroup} */
+    this.windowGroup
+  );
+  var windows = (
+    /** @type {WindowTile[]} */
+    group.windows
+  );
+  var index = this.findSnapTile(dialog.id);
+  if (index === -1) return;
+  var survivorSide;
+  if (windows.length === 2 && this.snapInsertGaps) {
+    if (index === 0) {
+      survivorSide = "right";
+    } else if (index === 1) {
+      survivorSide = "left";
+    }
+  }
+  windows.splice(index, 1);
+  dialog.toggleSnapped(false);
+  if (this.snapInsertGaps) this.fitSnapGaps(windows, survivorSide);
+  this.reflowSnapGroup();
+};
+WindowManager.prototype.getSnapSpacer = function() {
+  if (!this._snapSpacer) {
+    this._snapSpacer = document.createElement("div");
+    this._snapSpacer.className = "snap-spacer";
+  }
+  return this._snapSpacer;
+};
+WindowManager.prototype.reflowSnapGroup = function() {
+  var group = (
+    /** @type {WindowGroup} */
+    this.windowGroup
+  );
+  var tiles = (
+    /** @type {WindowTile[]} */
+    group.windows
+  );
+  var section = document.getElementById("window-section");
+  for (var s = tiles.length - 1; s >= 0; s--) {
+    var stale = tiles[s];
+    var staleId = stale ? stale.id : "";
+    var staleWindow = staleId ? this.windows[staleId] : null;
+    if (stale && !stale.gap && (!staleWindow || !staleWindow.target || !staleWindow.target.parentNode)) tiles.splice(s, 1);
+  }
+  var members = {};
+  for (var m = 0; m < tiles.length; m++) {
+    var memberTile = tiles[m];
+    if (memberTile && memberTile.id) members[memberTile.id] = true;
+  }
+  for (var id in this.windows) {
+    var dialog = this.windows[id];
+    if (!dialog || !dialog.target || members[id]) continue;
+    dialog.target.style.removeProperty("flex");
+    dialog.target.style.removeProperty("order");
+  }
+  if (!section) return;
+  var areaWidth = this.snapWidth();
+  var areaHeight = this.snapHeight();
+  var remaining = 1;
+  var offset = 0;
+  var usedSpacer = null;
+  for (var k = 0; k < tiles.length; k++) {
+    var tile = tiles[k];
+    if (!tile) continue;
+    var isLast = k === tiles.length - 1;
+    var width = !this.snapInsertGaps && isLast ? remaining : tile.width || 0.5;
+    remaining -= width;
+    var member = tile.id ? this.windows[tile.id] : null;
+    var element = tile.gap ? this.getSnapSpacer() : member && member.target;
+    if (!element) continue;
+    if (element.parentNode !== section) section.appendChild(element);
+    element.style.order = String(k);
+    element.style.flex = width + " 1 0%";
+    if (tile.gap) usedSpacer = element;
+    if (member && !tile.gap) member._snapFrame = {
+      x: offset * areaWidth,
+      y: 0,
+      width: width * areaWidth,
+      height: areaHeight
+    };
+    offset += width;
+  }
+  var spacer = (
+    /** @type {HTMLElement | null} */
+    this._snapSpacer
+  );
+  if (spacer && usedSpacer !== spacer) {
+    spacer.style.removeProperty("order");
+    spacer.style.removeProperty("flex");
+    if (spacer.parentNode) spacer.parentNode.removeChild(spacer);
+  }
 };
 WindowManager.prototype.disableDialogDrag = function() {
   if (!this.isDragging) return;
+  var dragDirection = this.dragAction.direction;
   this.dragAction.set();
   this.toggleDragging(false);
   this.saveState();
   if (!this.activeDialog) return;
-  if (flags.aeroSnap && this.activeDialog.y <= 0)
-    this.activeDialog.maximize();
+  if (this.isTouchDrag) this.activeDialog.setDragScale(1, 1);
+  var snapZone = this.getGestureSnapZone(this.activeDialog, dragDirection, this.pointerPosition.x, this.pointerPosition.y);
+  if (snapZone) this.snapDialog(this.activeDialog, snapZone);
+  if (this.isTouchDrag) {
+    this.windowSnap.hideBehind(this.activeDialog);
+    this.isTouchDrag = false;
+  }
+  if (!this.activeDialog.maximized) this.windowSnap.hideBehind(this.activeDialog);
+  this._snapZone = "";
   if (!this.activeDialog.moveEvents) return;
   var func = this.activeDialog.exchangeDialogMouseUpEvent;
   if (func) func();
@@ -1526,6 +1908,131 @@ WindowManager.prototype.handleBroadcast = function(type, data, id) {
     dialog.loadState(data);
   } finally {
   }
+};
+WindowManager.prototype.getWindowOwningElement = function(el) {
+  var found = false;
+  var foundDialog = null;
+  this.forEachWindow(function(dialog) {
+    if (found) return;
+    if (dialog.body === el) {
+      found = true;
+      foundDialog = dialog;
+    }
+  });
+  return foundDialog;
+};
+WindowSnap.margin = 15;
+function WindowSnap() {
+  this.element = document.createElement("div");
+  this.element.id = "window-snap";
+  this._snapped = "";
+  this.element.classList.add("hidden");
+}
+Object.defineProperty(WindowSnap.prototype, "hidden", {
+  get: function() {
+    return this.element.classList.contains("hidden");
+  },
+  set: function(enable) {
+    if (enable) this.element.classList.add("hidden");
+    else this.element.classList.remove("hidden");
+  }
+});
+WindowSnap.prototype.init = function() {
+  (document.getElementById("window-section") || document.body).appendChild(this.element);
+};
+WindowSnap.prototype.moveToDialog = function(dialog, outset, direction, noAnimation, isTouch) {
+  outset = outset || 0;
+  this.hidden = !outset;
+  this._snapped = "";
+  if (!direction) outset = 0;
+  var sides = [
+    { top: true, right: true, bottom: true, left: true },
+    { top: true, right: false, bottom: false, left: false },
+    { top: false, right: true, bottom: false, left: false },
+    { top: false, right: false, bottom: true, left: false },
+    { top: false, right: false, bottom: false, left: true },
+    { top: true, right: false, bottom: false, left: true },
+    { top: true, right: true, bottom: false, left: false },
+    { top: false, right: true, bottom: true, left: false },
+    { top: false, right: false, bottom: true, left: true }
+  ];
+  var s = sides[direction || 0] || sides[0];
+  if (!s) return;
+  var top = dialog.top - (s.top ? outset : 0);
+  var left = dialog.left - (s.left ? outset : 0);
+  var right = dialog.right - (s.right ? outset : 0);
+  var bottom = dialog.bottom - (s.bottom ? outset : 0);
+  this.element.style.zIndex = dialog.z.toString();
+  this.hidden = false;
+  if (isTouch && !direction) dialog.setDragScale(0.9, 0.9);
+  if (!noAnimation) animateElement(this.element, function() {
+    this.applyInsetStyle(top, left, right, bottom);
+  }, function(name) {
+    return name === "inset";
+  }, void 0, this, 200);
+  else this.applyInsetStyle(top, left, right, bottom);
+};
+WindowSnap.prototype.applyInsetStyle = function(top, left, right, bottom) {
+  insetElement(this.element, top, left, right, bottom);
+};
+WindowSnap.prototype.setInset = function(inset) {
+  insetElement(this.element, inset);
+};
+WindowSnap.prototype.areaWidth = function() {
+  var section = document.getElementById("window-section");
+  return section ? section.clientWidth : window.innerWidth;
+};
+WindowSnap.prototype.setHalfInset = function(side) {
+  var half = Math.round(this.areaWidth() / 2);
+  var inset = WindowSnap.margin;
+  insetElement(this.element, inset, side === "left" ? inset : half + inset, side === "left" ? half + inset : inset, inset);
+};
+WindowSnap.prototype.setHeightInset = function(dialog) {
+  if (!dialog) return;
+  var inset = WindowSnap.margin;
+  var right = this.areaWidth() - dialog.x - dialog.width - inset;
+  insetElement(
+    this.element,
+    inset,
+    Math.max(inset, dialog.left - inset),
+    Math.max(inset, right),
+    inset
+  );
+};
+WindowSnap.prototype.snap = function(type, dialog) {
+  if (type === this._snapped) return;
+  this._snapped = type;
+  this.hidden = false;
+  if (dialog) this.element.style.zIndex = dialog.z.toString();
+  animateElement(this.element, function() {
+    console.log("snapping", type);
+    switch (type) {
+      case "maximize":
+        this.setInset(WindowSnap.margin);
+        break;
+      case "left":
+      case "right":
+        this.setHalfInset(type);
+        break;
+      case "height":
+        this.setHeightInset(dialog);
+        break;
+    }
+  }, function(name) {
+    return name === "inset";
+  }, function() {
+  }, this);
+};
+WindowSnap.prototype.hideBehind = function(dialog, keepScale) {
+  if (!keepScale) dialog.setDragScale(1, 1);
+  if (this.hidden) return;
+  animateElement(this.element, function() {
+    this.moveToDialog(dialog, 0, void 0, true);
+  }, function(name) {
+    return name === "inset";
+  }, function() {
+    this.hidden = true;
+  }, this, 120);
 };
 function ClickOffset() {
   this.clickX = 0;
@@ -1611,6 +2118,47 @@ ClickOffset.toggleDragEventHandler = function(enable, handler, cursor) {
 ClickOffset.prototype.toggleDragEventHandler = function(enable, cursor) {
   if (this.dragHandler) ClickOffset.toggleDragEventHandler(enable, this.dragHandler, cursor);
 };
+function Transformable(target) {
+  this.target = target;
+  this._transform = {};
+  this._perspective = 100;
+}
+Object.defineProperty(Transformable.prototype, "perspective", {
+  get: function() {
+    return this._perspective;
+  },
+  set: function(value) {
+    var parent = this.target.parentElement;
+    if (parent) parent.style.perspective = toPixels(this._perspective = value);
+  }
+});
+Transformable.prototype.update = function(animate) {
+  if (animate) animateElement(this.target, function() {
+    transformElement(this.target, this._transform);
+  }, "transform", function() {
+  }, this, 1e3);
+  else transformElement(this.target, this._transform);
+};
+Transformable.prototype.move = function(x, y, animate) {
+  this._transform.x = x;
+  this._transform.y = y;
+  this.update(animate);
+};
+Transformable.prototype.scale = function(x, y, update, animate) {
+  this._transform.scaleX = x || 1;
+  this._transform.scaleY = y || 1;
+  if (update) this.update(animate);
+};
+Transformable.prototype.rotate = function(x, y, z, animate) {
+  if (y === void 0 && z === void 0)
+    this._transform.rotate = x;
+  else {
+    this._transform.rotateX = x;
+    this._transform.rotateY = y;
+    this._transform.rotateZ = z;
+  }
+  this.update(animate);
+};
 function Dialog(object, create) {
   this._x = 0;
   this._y = 0;
@@ -1641,6 +2189,10 @@ function Dialog(object, create) {
   this._scaleX = 0;
   this._scaleY = 0;
   this._rotation = 0;
+  this._transform = null;
+  this._contentTransform = null;
+  this.dragScaleDuration = 280;
+  this._dragScaleAnimating = false;
   this._maximizing = false;
   this.maximizeAnimations = 0;
   this.fixed = false;
@@ -1675,10 +2227,10 @@ function Dialog(object, create) {
   this.dragging = false;
   this._appIcon = null;
   var self2 = this;
-  this.activationHandler = function(ev) {
+  this.activationHandler = function(ev, id2) {
     if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
-    windowManager.windowActivationEvent(ev, self2);
+    windowManager.windowActivationEvent(ev, self2, id2);
     return true;
   };
 }
@@ -1745,6 +2297,7 @@ Dialog.prototype.initWithObject = function(object) {
   };
   var target = this.target;
   if (target && this.activationHandler) {
+    var buttons = target.getElementsByTagName("button");
     var createSizers = true;
     if (this.resizable && createSizers) this._createSizers();
     target.addEventListener("dragstart", cancelDomEvent, false);
@@ -1755,7 +2308,7 @@ Dialog.prototype.initWithObject = function(object) {
         self2.verifyEjectCapability();
       } catch (exception) {
         console.warn("Failed to verify eject capability" + exception);
-        if (target) target.getElementsByTagName("button")[0].style.display = "none";
+        if (buttons[0]) buttons[0].style.display = "none";
       }
     }, false);
     var header = this.titleBar;
@@ -1763,13 +2316,15 @@ Dialog.prototype.initWithObject = function(object) {
       header.addEventListener("dblclick", this.toggleMaximized.bind(this, void 0), false);
     if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
     else target.addEventListener("mousedown", this.activationHandler, false);
-    target.getElementsByTagName("button")[windowButtons.eject].addEventListener("click", function() {
-      self2.createPopOut();
-      self2.quit();
-    }, false);
-    var buttons = target.getElementsByTagName("button");
-    buttons[windowButtons.close].addEventListener("click", this.close.bind(this), false);
-    buttons[windowButtons.full].addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
+    var ejectButton = buttons[windowButtons.eject];
+    if (ejectButton)
+      ejectButton.addEventListener("click", this.eject.bind(this), false);
+    var closeButton = buttons[windowButtons.close];
+    if (closeButton)
+      closeButton.addEventListener("click", this.close.bind(this), false);
+    var fullscreenButton = buttons[windowButtons.full];
+    if (fullscreenButton)
+      fullscreenButton.addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
     this.toggleOpen(false);
   }
   if (this.id) windowManager.windows[this.id] = this;
@@ -1798,8 +2353,9 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
     sizer.id = id.toString();
     sizer.classList.add(sizerId);
     var pointerDown = function(ev) {
-      if (!self2.activationHandler || !self2.activationHandler(ev)) return;
+      if (!self2.activationHandler || !self2.activationHandler(ev, id)) return;
       windowManager.dragAction.set(id);
+      if (windowManager.isTouchDrag) windowManager.windowSnap.moveToDialog(self2, 20, id);
       cancelDomEvent(ev);
     };
     var pointerUp = function() {
@@ -1832,7 +2388,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
 Dialog.prototype.reportState = function() {
   this.messageFrame("window-size", {});
   this.messageFrame("theme", { className: document.body.className });
-  if (windowManager) windowManager.broadcastTheme();
+  windowManager.broadcastTheme();
 };
 Dialog.prototype.toggleOpen = function(forceOpen, kill) {
   var target = this.target;
@@ -2086,7 +2642,7 @@ Object.defineProperty(Dialog.prototype, "top", {
     this._y = top / window.innerHeight;
     if (this.useTransform) {
       if (this.target) this.target.style.height = toPixels(height);
-      if (this.useTransform) this.updateTranslation();
+      this.updateTransform();
     } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
     this._isMinHeight = height === this.minHeight;
   }
@@ -2106,7 +2662,7 @@ Object.defineProperty(Dialog.prototype, "left", {
     this._x = left / window.innerWidth;
     if (this.useTransform) {
       if (this.target) this.target.style.width = toPixels(width);
-      if (this.useTransform) this.updateTranslation();
+      if (this.useTransform) this.updateTransform();
     } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
     this._isMinWidth = width === this.minWidth;
   }
@@ -2207,6 +2763,24 @@ Object.defineProperty(Dialog.prototype, "maximized", {
     this.toggleMaximized(maximized);
   }
 });
+Object.defineProperty(Dialog.prototype, "snapped", {
+  get: function() {
+    if (!this.target) return false;
+    return this.target.classList.contains("snapped");
+  },
+  set: function(snapped) {
+    this.toggleSnapped(snapped);
+  }
+});
+Object.defineProperty(Dialog.prototype, "heightSnapped", {
+  get: function() {
+    if (!this.target) return false;
+    return this.target.classList.contains("height-snapped");
+  },
+  set: function(snapped) {
+    this.toggleHeightSnapped(snapped);
+  }
+});
 Object.defineProperty(Dialog.prototype, "windowTarget", {
   get: function() {
     var target = this.target;
@@ -2225,7 +2799,7 @@ Dialog.prototype.setTitle = function(title) {
 };
 Object.defineProperty(Dialog.prototype, "id", {
   get: function() {
-    return this._id || this.target && this.target.getAttribute("id");
+    return this._id || this.target && this.target.id || "unk";
   },
   set: function(id) {
     this._id = id;
@@ -2239,7 +2813,29 @@ Object.defineProperty(Dialog.prototype, "content", {
     return this.getElementByTagOrClassName("content");
   }
 });
-Object.defineProperty(Dialog.prototype, "closeable", {
+Object.defineProperty(Dialog.prototype, "contentTransform", {
+  /** @type {()=>Transformable | null} */
+  get: function() {
+    if (this._contentTransform) return this._contentTransform;
+    var content = this.content;
+    if (!content) return null;
+    return this._contentTransform = new Transformable(content);
+  }
+});
+Object.defineProperty(Dialog.prototype, "transform", {
+  /** @type {()=>Transformable | null} */
+  get: function() {
+    if (this._transform) return this._transform;
+    var self2 = this;
+    (function() {
+    });
+    var target = this.target;
+    if (!target) return null;
+    this._transform = new Transformable(target);
+    return this._transform;
+  }
+});
+Object.defineProperty(Dialog.prototype, "killable", {
   get: function() {
     return this.application !== null;
   }
@@ -2338,9 +2934,7 @@ Dialog.prototype.setIcon = function(iconUrl, onError) {
     if (onError) onError();
     return;
   }
-  var headers = this.target.getElementsByTagName("header");
-  if (!headers.length) return;
-  var header = headers[0];
+  var header = this.titleBar;
   if (!header) return;
   this._appIcon = header.getElementsByTagName("img")[0] || null;
   if (!this._appIcon) return;
@@ -2359,25 +2953,43 @@ Dialog.prototype.setIcon = function(iconUrl, onError) {
 Dialog.prototype.setSkew = function(skew) {
   this._skew = skew;
   if (this.useTransform)
-    this.updateTranslation();
+    this.updateTransform();
   else if (this.target) skewElement(this.target, skew);
 };
-Dialog.prototype.setScale = function(scaleX, scaleY, update) {
-  this._scaleX = scaleX;
-  this._scaleY = scaleY;
-  if (update !== false) this.updateTranslation();
+Dialog.prototype.setScale = function(scaleX, scaleY, update, noAnimation) {
+  if (this.transform) this.transform.scale(scaleX, scaleY, update !== false, !noAnimation);
+};
+Dialog.prototype.setDragScale = function(scaleX, scaleY) {
+  var self2 = this;
+  var nextX = scaleX || 1;
+  var nextY = scaleY || 1;
+  if (nextX === this._scaleX && nextY === this._scaleY) return;
+  if (this._dragScaleAnimating) {
+    this.setScale(nextX, nextY, void 0, false);
+    return;
+  }
+  this._dragScaleAnimating = true;
+  this.animate(function() {
+    this.updateTransform();
+  }, function(name) {
+    return name === "transform";
+  }, function() {
+    self2._dragScaleAnimating = false;
+  }, this.dragScaleDuration);
+  this._scaleX = nextX;
+  this._scaleY = nextY;
 };
 Dialog.prototype.setScaleX = function(scaleX) {
   this._scaleX = scaleX;
-  this.updateTranslation();
+  this.updateTransform();
 };
 Dialog.prototype.setScaleY = function(scaleY) {
   this._scaleY = scaleY;
-  this.updateTranslation();
+  this.updateTransform();
 };
 Dialog.prototype.setRotation = function(rotation) {
   this._rotation = rotation;
-  this.updateTranslation();
+  this.updateTransform();
 };
 Dialog.prototype.focus = function() {
   windowManager.focusDialog(this);
@@ -2421,6 +3033,12 @@ Dialog.prototype.setClickOffset = function(x, y) {
   if (!this.clickOffset || !rect) return;
   return this.clickOffset.init(x, y, this.width || rect.width, this.height || rect.height, this.x, this.y);
 };
+Dialog.prototype.remapClickOffset = function(frameX, frameY, frameWidth, frameHeight) {
+  var offset = this.clickOffset;
+  if (!offset || frameWidth <= 0 || frameHeight <= 0) return;
+  offset.clickX = this.x + (offset.clickX - frameX) * (this.width / frameWidth);
+  offset.clickY = this.y + (offset.clickY - frameY) * (this.height / frameHeight);
+};
 Dialog.prototype.verifyEjectCapability = function() {
   return Boolean(this.href);
 };
@@ -2449,41 +3067,76 @@ Dialog.prototype.toggleButton = function(buttonId, enable) {
   return button.disabled = !enable;
 };
 Dialog.prototype.stopAnimating = function() {
-  if (!this.target) return;
-  this.target.classList.remove("animating");
-};
-Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd) {
-  var target = this.target;
-  if (!target) return;
-  var dialog = this;
-  if (supportsTransitions) {
-    target.classList.add("animating");
-    var animationHandler = function(event2) {
-      if (onTransitionEnd && !onTransitionEnd(event2.propertyName) || !target) return;
-      dialog.stopAnimating();
-      console.log("Aborting animation over " + event2.propertyName + ". Took: ", event2.elapsedTime, "seconds. Reported by: ", event2.target);
-      target.removeEventListener(transitionEndEvent, animationHandler, false);
-      if (onEnd) onEnd.call(dialog);
-    };
-    target.addEventListener(transitionEndEvent, animationHandler, false);
+  if (this._snappingOut) {
+    if (this.target && this.target._animationState !== this._snappingOutState) {
+      this._snappingOut = false;
+      this._snappingOutState = null;
+    }
+    return;
   }
-  window.requestAnimationFrame(function() {
-    if (onToggled) onToggled.call(dialog);
-  });
+  if (this._dragScaleAnimating) return;
+  if (this.target) this.target.classList.remove("animating");
 };
-Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled) {
+Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd, timeout, flip2) {
+  if (this.target) animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
+};
+Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled, timeout) {
   var self2 = this;
   var enabled = false;
   this.animate(function() {
-    if (self2.target && onToggled) onToggled.call(self2, enabled = setClass(self2.target, className, force));
+    if (self2.target) enabled = setClass(self2.target, className, force);
+    if (onToggled) onToggled.call(self2, enabled);
   }, onTransitionEnd, function() {
     if (onEnd) onEnd.call(self2, enabled);
-  });
+  }, timeout);
+};
+Dialog.prototype.toggleClassFlip = function(className, force, onTransitionEnd, onEnd, timeout) {
+  var self2 = this;
+  var enabled = false;
+  this.animate(function() {
+    if (self2.target) enabled = setClass(self2.target, className, force);
+  }, onTransitionEnd, function() {
+    if (onEnd) onEnd.call(self2, enabled);
+  }, timeout, true);
+};
+Dialog.prototype.toggleSnapped = function(enable) {
+  var target = this.target;
+  if (!target) return;
+  if (enable == null) enable = !target.classList.contains("snapped");
+  if (target.classList.contains("snapped") === enable) return;
+  this._snappingOut = !enable;
+  this._snappingOutState = null;
+  this.toggleClassFlip("snapped", enable, function(name) {
+    return name === "translate" || name === "scale";
+  }, function() {
+    this._snappingOut = false;
+    this._snappingOutState = null;
+  }, 1e3);
+  this._snappingOutState = target._animationState;
+};
+Dialog.prototype.toggleHeightSnapped = function(enable) {
+  var target = this.target;
+  if (!target) return;
+  if (enable == null) enable = !target.classList.contains("height-snapped");
+  if (target.classList.contains("height-snapped") === enable) return;
+  if (enable) this.move(this.x, 0);
+  this._snappingOut = !enable;
+  this._snappingOutState = null;
+  this.toggleClassAnimated("height-snapped", enable, function(name) {
+    return name === "height" || name === "transform";
+  }, function() {
+    this._snappingOut = false;
+    this._snappingOutState = null;
+  }, void 0, 1e3);
+  this._snappingOutState = /** @type {any} */
+  target._animationState;
 };
 Dialog.prototype.toggleMaximized = function(enable) {
   if (enable == null) enable = !this.maximized;
   if (this.maximized === enable) return;
   if (!this.target) return;
+  if (enable && this.snapped && windowManager) windowManager.unsnapDialog(this);
+  if (enable && this.heightSnapped) this.toggleHeightSnapped(false);
   var self2 = this;
   var content = this.content;
   this.setZ();
@@ -2505,7 +3158,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
     target2.classList.toggle("maximized", enabled);
     this.setScale(1, 1);
     if (!content) return;
-    translateElement(content, 0, 0, 0, 1, 1);
+    transformElementOld(content, 0, 0, 0, 1, 1);
     content.style.width = "";
     content.style.height = "";
     this.maximizeAnimations--;
@@ -2522,7 +3175,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
     var height = windowSection ? windowSection.clientHeight : window.innerHeight;
     var scaleX = window.innerWidth / startWidth;
     var scaleY = height / startHeight;
-    target2.style.transformOrigin = "top left";
+    target2.style.transformOrigin = enabled ? "top left" : "";
     target2.style.pointerEvents = "none";
     if (!enabled) {
       if (invertDurationOnShrink) timeOffsetMs = totalDuration - timeOffsetMs;
@@ -2538,7 +3191,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
         content.style.width = toPixels(targetWidth);
         content.style.height = toPixels(targetHeight);
         void content.offsetWidth;
-        translateElement(content, 0, 0, 0, 1 / scaleX, 1 / scaleY);
+        transformElementOld(content, 0, 0, 0, 1 / scaleX, 1 / scaleY);
       });
     }, timeOffsetMs);
   });
@@ -2590,12 +3243,14 @@ Dialog.prototype.messageFrame = function(type, message) {
   var frame = this.frame;
   if (frame) LVMessenger.broadcastToChild(type, frame, message);
 };
-Dialog.prototype.updateTranslation = function() {
-  if (this.useTransform && this.target) translateElement(this.target, this._maximizing ? 0 : this.x, this._maximizing ? 0 : this.y, this._skew, this._scaleX, this._scaleY, this._rotation);
+Dialog.prototype.updateTransform = function(animate) {
+  if (!(this.useTransform && this.transform)) return;
+  if (this._maximizing) this.transform.move(0, 0, animate);
+  else this.transform.move(this.x, this.y, animate);
 };
 Dialog.prototype.updatePosition = function() {
   if (!this.target) return;
-  if (this.useTransform) this.updateTranslation();
+  if (this.useTransform) this.updateTransform();
   else this.setInset(this.top, this.left, this.right, this.bottom);
   if (flags.useSkewAnimations) {
     var deltaX = this.x - this._previousX, deltaY = this.y - this._previousY;
@@ -2611,7 +3266,7 @@ Dialog.prototype.updatePosition = function() {
     if (!wallpaperP) return;
     var wallpaperImage = wallpaperP.children[0];
     if (!isElement(backdrop) || !wallpaperImage) return;
-    translateElement(backdrop, -this.x, -this.y);
+    transformElementOld(backdrop, -this.x, -this.y);
     var wallpaperWidth = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientWidth ? wallpaperImage.clientWidth : wallpaperP.clientWidth;
     var wallpaperHeight = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientHeight ? wallpaperImage.clientHeight : wallpaperP.clientHeight;
     backdrop.style.width = toPixels(wallpaperWidth);
@@ -2633,6 +3288,7 @@ Dialog.prototype.move = function(x, y, update, animate) {
   }
   if (typeof x === "undefined" || x === null) x = this.x;
   if (typeof y === "undefined" || y === null) y = this.y;
+  if (this.heightSnapped) y = this.y;
   var bounds = WindowManager.windowBounds;
   if (x < bounds.left) x = bounds.left;
   if (bounds.right !== Infinity && x > bounds.right - this.width) x = bounds.right - this.width;
@@ -2724,6 +3380,7 @@ Dialog.prototype.resize = function(width, height, direction) {
   if (this.fixed) return;
   if (typeof width === "undefined" || width === null) width = this.width;
   if (typeof height === "undefined" || height === null) height = this.height;
+  if (this.heightSnapped) height = this.height;
   var oldWidth = this.width, oldHeight = this.height;
   if (this._aspectRatioEnabled && this._aspectRatio) this._resizeWithAspect(width, height, direction);
   else this._resizeFree(width, height, direction);
@@ -2937,16 +3594,8 @@ Dialog.prototype.moveBody = function(x, y) {
   this.move(x + this._bodyOffset.x, y + this._bodyOffset.y);
 };
 Dialog.prototype.setInset = function(top, left, right, bottom) {
-  if (!this.target) return;
-  if ("inset" in this.target.style) this.target.style.inset = toPixels(top) + " " + toPixels(right) + " " + toPixels(bottom) + " " + toPixels(left);
-  else {
-    this.target.style.top = toPixels(top);
-    this.target.style.left = toPixels(left);
-    if (!this.useScale) {
-      this.target.style.right = toPixels(right);
-      this.target.style.bottom = toPixels(bottom);
-    }
-  }
+  if (this.useScale) right = void 0, bottom = void 0;
+  if (this.target) insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
   var frame = this.getOrCreateFrame(true);
@@ -2981,25 +3630,22 @@ Dialog.prototype.loadFrame = function() {
   var frame = this.getOrCreateFrame(true);
   if (frame) appManager.openAppInIFrame(this.application.id, frame);
 };
-Dialog.prototype.quit = function() {
-  this.close();
-};
 Dialog.prototype.launch = function() {
   if (!this.isOpen) this.initWithObject(this);
   if (this.mica) this.injectMica();
   this.open();
 };
 Dialog.prototype.relaunch = function() {
-  this.quit();
+  this.close();
   this.launch();
 };
 Dialog.prototype.kill = function() {
   var parent = this.target && this.target.parentElement;
-  if (parent && this.closeable && this.target) parent.removeChild(this.target);
+  if (parent && this.killable && this.target) parent.removeChild(this.target);
 };
 Dialog.prototype.eject = function() {
   this.createPopOut();
-  this.quit();
+  this.close();
 };
 Dialog.prototype.createPopOut = function() {
   var body = this.body;
@@ -3189,6 +3835,11 @@ Dialog.prototype.moveElementIntoPipById = function(id) {
     };
   });
 };
+Dialog.prototype.screenshot = function() {
+  var target = this.target;
+  if (!target) return;
+  if (screenShooter) screenShooter.screenshotElement(target);
+};
 function DragAction() {
   this.execute = function() {
   };
@@ -3224,7 +3875,8 @@ function DragAction() {
   this.resizeFunctions = resizeFunctions;
 }
 DragAction.prototype.set = function(direction) {
-  this.execute = this.resizeFunctions[direction || 0] || function() {
+  this.direction = direction || 0;
+  this.execute = this.resizeFunctions[this.direction] || function() {
   };
 };
 function DocumentCrawler(customDocument) {
@@ -3269,6 +3921,11 @@ windowManager.isWindowUpdatesEnabled = true;
 var bodyCrawler = new DocumentCrawler();
 window.__LVMessengerReceive = messageReceived;
 window.__LVMessenger = {};
+function genericTyped(type) {
+  return type;
+}
+const hey = genericTyped(document.createElement("button"));
+const meow = document.createElement("applet");
 "use strict";
 function Reflector(element) {
   this.element = element;
@@ -3372,14 +4029,14 @@ var onLoad = function() {
     clickOffset.dragHandler = function(ev) {
       clickOffset.update(ev.clientX - clickOffset.clickX, ev.clientY - clickOffset.clickY);
       var width = clickOffset.position.x, height = clickOffset.position.y;
-      translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
+      transformElementOld(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
       selector.style.width = toPixels(Math.abs(width));
       selector.style.height = toPixels(Math.abs(height));
     };
     tingeling.addEventListener(supportsPointer ? "pointerdown" : "mousedown", function(ev) {
       clickOffset.init(ev.clientX, ev.clientY);
       var width = clickOffset.position.x, height = clickOffset.position.y;
-      translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
+      transformElementOld(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
       selector.style.width = toPixels(Math.abs(width));
       selector.style.height = toPixels(Math.abs(height));
       selector.className = "selector";
@@ -3418,7 +4075,8 @@ ContextMenu.prototype.addItem = function(title, callback, icon) {
   if (!this.element) return;
 };
 var contextMenu = new ContextMenu();
-document.addEventListener("contextmenu", function(e) {
+var docontexthook = true;
+if (docontexthook) document.addEventListener("contextmenu", function(e) {
   e.preventDefault();
   console.log("Open contex tp ples");
   contextMenu.open(e.clientX, e.clientY);
@@ -3791,6 +4449,20 @@ function loadMetro() {
     metro.appendChild(metroFrame);
   }
 }
+var screenShooter = new ScreenShooter();
+var picker = new ElementPicker({
+  onSelect: function(el) {
+    window.screenShooter.screenshotElement(el);
+  },
+  onMove: function(el) {
+    if (el.nodeName === "ARTICLE") {
+      var dialog = windowManager.getWindowOwningElement(el);
+      if (dialog && dialog.target) this.highlight(dialog.target);
+    } else this.highlight(el);
+    return true;
+  }
+});
+picker.register();
 "use strict";
 var STORAGE_FILE = "app_storage.json";
 function formatCamelCase(text) {
@@ -4277,6 +4949,13 @@ var applications = [
     minHeight: 240,
     src: "./Applications/Calculator/calculator.html"
   },
+  {
+    title: "Color Tool",
+    id: "colortool",
+    minWidth: 180,
+    minHeight: 240,
+    src: "./Applications/ColorTool/colors.html"
+  },
   { title: "Example", id: "0", src: "./example.html" },
   {
     title: "Camera",
@@ -4527,9 +5206,19 @@ var applications = [
     altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
   },
   {
-    "title": "Speak",
+    title: "Speak",
     id: "speak",
     src: "Applications/Speak/speak.html"
+  },
+  {
+    title: "Tepartive.NET",
+    id: "tepartive",
+    src: "https://tepartive.net/"
+  },
+  {
+    title: "ColourTool",
+    id: "color-tool",
+    src: "Applications/ColorTool/colors.html"
   }
 ];
 var games = [

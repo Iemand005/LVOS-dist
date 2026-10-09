@@ -47,6 +47,13 @@ main {
 }
 
 .window {
+	/* Concrete, not auto: floating windows place themselves with a transform and clear
+	   left, so left would otherwise be auto and snapping could not interpolate it. auto
+	   is not animatable, so left jumped at the halfway point of the transition while
+	   transform eased, overshooting on snap and swinging left on unsnap. top is the
+	   same case, it just never showed because both ends resolve to 0 here. */
+	left: 0;
+	top: 0;
 	background-color: rgba(255, 255, 255, 255);
 	-o-transform-origin: bottom left;
 	-ms-transform-origin: bottom left;
@@ -361,6 +368,7 @@ article, .article {
 }
 
 .window.animating,
+content.animating,
 .window.animating > content,
 .window.animating > .backdrop-clip * {
 	-webkit-transition: all 280ms cubic-bezier(0.44, 0.41, 0, 1) !important;
@@ -403,6 +411,7 @@ body:not(.compositor-animations) .window.maximized:not(.scaled-max) {
 .window.maximized.use-scale {
 	width: 100% !important;
 	height: 100% !important;
+	position: relative;
 }
 
 .window.maximized > content {
@@ -411,6 +420,53 @@ body:not(.compositor-animations) .window.maximized:not(.scaled-max) {
 
 .window.maximized > .backdrop-clip * {
 	transform: translate(0px, 0px) !important;
+}
+
+/* Tiled into the window section's snap row. Switching to position: relative takes
+   the window out of the absolute positioning every floating window uses and makes it
+   an in-flow flex item of #window-section, sized by the share reflowSnapGroup writes
+   onto it inline. The window never leaves its parent, so its own width/height/position
+   state is left untouched and comes back intact when it leaves the group. */
+.window.snapped {
+	position: relative;
+	top: 0 !important;
+	left: 0 !important;
+	right: auto !important;
+	bottom: auto !important;
+	height: 100% !important;
+	width: auto !important;
+	border: none !important;
+	border-radius: 0 !important;
+	z-index: 9999 !important;
+	transform: none !important;
+}
+
+.window.snapped > content {
+	border: 0px solid transparent !important;
+}
+
+.window.snapped > .backdrop-clip * {
+	transform: translate(0px, 0px) !important;
+}
+
+/* The absolute <-> flex switch is FLIP-animated: the element is laid out at its new
+   frame, then slid and scaled back over the old one with the independent translate and
+   scale properties, which then ease to identity. Only those two run during the switch,
+   so the flex share is applied up front instead of double-animating the size. */
+.window.flipping.animating,
+.compositor-animations .window.flipping.animating {
+	transition-property: translate, scale !important;
+}
+
+
+/* Full-height snap: the vertical half of maximizing, without claiming the horizontal.
+   Only height and the top edge are taken, so width and x stay the window's own and it
+   can still be dragged sideways. _height is untouched underneath, which is what dropping
+   this class hands back. top is pinned to 0 to match the y the state pins the window to,
+   so the stored box and the drawn one start at the same edge. */
+.window.height-snapped {
+	top: 0 !important;
+	height: 100% !important;
 }
 
 .slow-animations *,
@@ -675,4 +731,26 @@ button:hover {
     height: auto;
     frame-sizing: content-height;
   }
+}
+
+/* The gap that holds a lone snapped window off the far edge: one empty flex item in
+   the window section that reserves whatever share reflowSnapGroup gives it. */
+.snap-spacer {
+	/* The share rides inline, exactly like a window's does; a gap only reserves space. */
+	flex: 0 1 auto;
+	min-width: 0;
+	min-height: 0;
+	pointer-events: none;
+}
+
+.snap-splitter {
+	flex: 0 0 4px;
+	background: transparent;
+	cursor: col-resize;
+	z-index: 10000;
+	pointer-events: auto;
+}
+
+.snap-splitter:hover {
+	background: rgba(255, 255, 255, 0.3);
 }

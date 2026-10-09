@@ -1253,6 +1253,13 @@ var applications = [
     minHeight: 240,
     src: "./Applications/Calculator/calculator.html"
   },
+  {
+    title: "Color Tool",
+    id: "colortool",
+    minWidth: 180,
+    minHeight: 240,
+    src: "./Applications/ColorTool/colors.html"
+  },
   { title: "Example", id: "0", src: "./example.html" },
   {
     title: "Camera",
@@ -1503,9 +1510,19 @@ var applications = [
     altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
   },
   {
-    "title": "Speak",
+    title: "Speak",
     id: "speak",
     src: "Applications/Speak/speak.html"
+  },
+  {
+    title: "Tepartive.NET",
+    id: "tepartive",
+    src: "https://tepartive.net/"
+  },
+  {
+    title: "ColourTool",
+    id: "color-tool",
+    src: "Applications/ColorTool/colors.html"
   }
 ];
 var games = [

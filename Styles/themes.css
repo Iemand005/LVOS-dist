@@ -223,9 +223,9 @@ button {
 	height: 40px;
 }
 
-.windows .window {
+/* .windows .window {
 	max-height: calc(100% - 40px);
-}
+} */
 
 .windows-95 .window {
 	max-height: calc(100% - 27px);
@@ -303,6 +303,20 @@ button {
 .windows-10 .window article,
 .windows-11 .window article {
 	background-color: rgb(240, 240, 240);
+}
+
+.windows-10 button,
+.windows-10 #launchpad button {
+	border-radius: 0;
+}
+
+.windows-10 #launchpad button {
+	border: none;
+	padding: 0;
+}
+
+.windows-10 #launchpad button:hover {
+	box-shadow: inset 0px 0px 0px 0.7mm #ffffff45;
 }
 
 .windows .window article > * {
