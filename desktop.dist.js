@@ -1486,7 +1486,7 @@ WindowManager.prototype.installAppProxied = function(url, proxyUrl) {
   if (!proxyUrl) proxyUrl = "https://browz.netlify.app/browz-set-cookie/";
   this.installApp(proxyUrl + url, getSiteName(url) || "unkle", "custom." + getDomain(url), getFaviconUrl(url));
 };
-WindowManager.prototype.dropApplication = function(application, x, y, offset) {
+WindowManager.prototype.dropApplication = function(application, x, y, offset, state) {
   if (!application || !application.id) return null;
   var dialog = this.windows[application.id];
   if (!dialog) {
@@ -1494,6 +1494,7 @@ WindowManager.prototype.dropApplication = function(application, x, y, offset) {
     dialog = this.windows[application.id];
   }
   if (!dialog) return null;
+  dialog.loadState(state || {});
   dialog.launch();
   dialog.setZ();
   if (typeof x === "number" && typeof y === "number") {
@@ -2472,7 +2473,9 @@ Dialog.prototype.initWithObject = function(object) {
         x: event2.clientX - (rect.left + rect.width / 2),
         y: event2.clientY - (rect.top + rect.height / 2)
       };
-      event2.dataTransfer.setData("application/json", JSON.stringify(dragState));
+      var data = JSON.stringify(dragState);
+      event2.dataTransfer.setData("application/json", data);
+      event2.dataTransfer.setData("text/plain", data);
     });
   }
   if (this.id) windowManager.windows[this.id] = this;
@@ -4266,17 +4269,65 @@ var onLoad = function() {
     if (!ev.dataTransfer) return;
     ev.dataTransfer.dropEffect = "copy";
     console.log("Kronkel");
-    var json = ev.dataTransfer.getData("application/json");
-    if (!json) return;
-    var data;
-    try {
-      data = JSON.parse(json);
-    } catch (exception) {
-      console.warn("Could not read the dropped window state.", exception);
+    var dt = ev.dataTransfer;
+    var json = dt.getData("application/json");
+    var plain = dt.getData("text/plain");
+    var uriList = dt.getData("text/uri-list") || "";
+    var droppedUrl = "";
+    if (uriList) {
+      var lines = uriList.replace(/\r\n/g, "\n").split("\n");
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line && line.charAt(0) !== "#") {
+          droppedUrl = line;
+          break;
+        }
+      }
+    }
+    if (!json && plain) {
+      var maybeJson = plain.trim();
+      if (maybeJson.charAt(0) === "{" || maybeJson.charAt(0) === "[") json = maybeJson;
+    }
+    var data = null;
+    if (json) {
+      try {
+        data = JSON.parse(json);
+      } catch (exception) {
+        data = null;
+      }
+    }
+    if (data && data.app && window.windowManager) {
+      window.windowManager.dropApplication(data.app, ev.clientX, ev.clientY, data.offset, data.state);
       return;
     }
-    if (!data || !data.app || !window.windowManager) return;
-    window.windowManager.dropApplication(data.app, ev.clientX, ev.clientY, data.offset);
+    if (!droppedUrl && plain && !/^\{|\[/.test(plain.trim())) {
+      droppedUrl = plain.trim();
+    }
+    if (!droppedUrl) return;
+    try {
+      var url = new URL(droppedUrl, location.href).href;
+    } catch (exception) {
+      console.warn("Could not interpret dropped content as a URL.", exception);
+      return;
+    }
+    if (!window.appManager || !window.windowManager) return;
+    var existing = null;
+    for (var id in window.appManager.apps) {
+      if (window.appManager.apps.hasOwnProperty(id)) {
+        var a = window.appManager.apps[id];
+        if (a && (a.src === url || a.distSrc === url)) {
+          existing = a;
+          break;
+        }
+      }
+    }
+    if (existing) {
+      window.windowManager.dropApplication(existing, ev.clientX, ev.clientY, null, null);
+      return;
+    }
+    var newApp = window.appManager.createApp(url, url, "dropped." + Date.now());
+    window.appManager.addApp(newApp);
+    window.windowManager.dropApplication(newApp, ev.clientX, ev.clientY, null, null);
   };
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./Scripts/sw.js")["then"](function(reg) {
     console.log("Service Worker registered!", reg);
