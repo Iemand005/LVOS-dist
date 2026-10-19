@@ -13,22 +13,168 @@
         * *
        * *
       \**/
-
-html,
-body {
+	  
+html {
 	margin: 0;
-	touch-action: none;
-	overscroll-behavior: none;
-	-webkit-user-drop: element;
+	scroll-behavior: smooth;
+	scroll-snap-type: y mandatory;
+	scrollbar-width: none;
+	view-timeline: --page-scroll y;
+
+	background: black;
 }
 
 body {
 	display: flex;
+	flex-direction: column;
+	margin: 0;
+	min-height: 200vh;
+	touch-action: auto;
+	overscroll-behavior: none;
+
+	view-timeline-name: --page-scroll;
+	view-timeline-axis: y;
+	view-timeline-inset: 100%;
+}
+
+body::before {
+	content: "";
+	display: block;
+	flex: 0 0 1px;
+	scroll-snap-align: start;
+}
+
+body::after {
+	content: "";
+	display: block;
+	flex: 0 0 1px;
+	margin-top: auto;
+	scroll-snap-align: end;
+}
+
+body::-webkit-scrollbar {
+	display: none;
 }
 
 body > header {
 	display: none;
 	height: 0;
+	overflow: hidden;
+}
+
+main {
+	position: fixed;
+}
+
+body .tab-scroller {
+	width: 200vw;
+	/* left: -50%; */
+
+	animation: shrinkage auto linear;
+	animation-timeline: --page-scroll;
+}
+
+body .tab-page {
+	flex: 0 0 50%;
+	pointer-events: none;
+
+	view-timeline-name: --page-view;
+	view-timeline-axis: inline;
+
+	perspective: 1000px;
+    perspective-origin: center;
+}
+
+body .tab-page > * {
+	animation:
+		tab-spacing auto linear both,
+		page-scale linear both;
+
+	animation-timeline:
+		--page-scroll,
+		--page-view;
+
+	overflow: hidden;
+}
+
+body.color-debug .tab-page {
+	background-color: cyan;
+}
+
+@keyframes shrinkage {
+	from {
+		scale: 1;
+		translate: 	0% 0;
+	}
+	to {
+		scale: 0.5;
+		translate: -25% 0;
+	}
+}
+
+@keyframes tab-spacing {
+	from {
+		border-radius: 0;
+		translate: 	0% 0;
+	}
+	to {
+		border-radius: 42px;
+		translate: 50% 0;
+	}
+}
+
+@keyframes page-scale {
+	33%, 100% {
+		scale: 0.8;
+		opacity: 0.7;
+	}
+
+	66% {
+		scale: 1;
+		opacity: 1;
+	}
+}
+
+@keyframes page-scale-cover {
+	33% {
+		transform: rotateY(-45deg) scale(0.8);
+		opacity: 0.7;
+	}
+
+	100% {
+		transform: rotateY(45deg) scale(0.8);
+		opacity: 0.7;
+	}
+
+	66% {
+		transform: rotateY(0deg) scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes page-scale-cube {
+	33% {
+		transform: rotateY(90deg) scale(0.8);
+		opacity: 0.7;
+	}
+
+	100% {
+		transform: rotateY(-90deg) scale(0.8);
+		opacity: 0.7;
+	}
+
+	66% {
+		transform: rotateY(0deg) scale(1);
+		opacity: 1;
+	}
+}
+
+:root {
+	--desktop-border-radius: 0px;
+}
+
+#window-section {
+	border-radius: var(--desktop-border-radius);
 	overflow: hidden;
 }
 
@@ -139,7 +285,7 @@ body:not(.blur) .window > article {
 }
 
 
-#wallpaper {
+#wallpaper, .wallpaper {
 	position: absolute;
 	width: 100%;
 	height: 100%;
@@ -156,6 +302,15 @@ body:not(.blur) .window > article {
 	-webkit-user-select: none;
 	user-select: none;
 	pointer-events: auto;
+
+	/* animation: shrink-wallpaper auto linear; */
+	animation-timeline: --page-scroll;
+}
+
+
+@keyframes shrink-wallpaper {
+	from { transform: scale(1); }
+	to { transform: scale(0.7); }
 }
 
 #wallpaper.legacy-wallpaper > img {
@@ -287,6 +442,12 @@ section#desktop[flipped] article#metrobody {
 	height: 100%;
 	width: 100%;
 
+	/* Positioned, not static: a floating window is absolutely positioned, so it is
+	   laid out against this section instead of a shared ancestor. That keeps each
+	   desktop's windows on that desktop as the scroller moves it, and lets the snap
+	   frames below be measured in this section's own coordinate space. */
+	position: relative;
+
 	/* The snap row. Floating windows are absolute, so they are out of flow and the
 	   flex layout ignores them; a snapped window switches to in-flow (see
 	   .window.snapped) and is laid out here beside the group's other members. No
@@ -302,6 +463,13 @@ section#desktop[flipped] article#metrobody {
 	position: absolute;
     width: 100%;
     height: 100%;
+
+	/* Every extra desktop is the same snap row as the first one. A snapped window is
+	   an in-flow flex item of the section that already holds it, so the snap layout
+	   happens inside the current desktop and the window is never moved to another. */
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
 }
 
 aside#charms {
