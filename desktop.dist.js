@@ -3874,12 +3874,9 @@ Dialog.prototype.openUrl = function(url) {
   var fallbackUrls = baseUrls.concat(this.application.altUrls);
   let index = 0;
   function tryNext() {
-    var url2 = fallbackUrls[index++];
-    if (!url2) {
-      tryNext();
-      return;
-    }
-    if (index >= fallbackUrls.length || !frame) return;
+    var url2;
+    while (index < fallbackUrls.length && !(url2 = fallbackUrls[index++])) ;
+    if (!url2 || !frame) return;
     frame.src = url2;
     self2._src = url2;
     clearTimeout(timeout);
@@ -4194,39 +4191,6 @@ function genericTyped(type) {
 }
 const hey = genericTyped(document.createElement("button"));
 const meow = document.createElement("applet");
-"use strict";
-function Reflector(element) {
-  this.element = element;
-  this.observer;
-  this.clones = [];
-}
-Reflector.prototype.reflect = function(target) {
-  try {
-    var reflection = target.cloneNode(true);
-    if (!isElement(reflection)) return null;
-    var refElement = reflection;
-    refElement.id += "reflection";
-    this.clones.push(refElement);
-    this.element.appendChild(refElement);
-    this.observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.type === "attributes" && mutation.target instanceof HTMLElement) {
-          var rect = target.getBoundingClientRect();
-          refElement.style.top = toPixels(rect.top - dock.offsetTop + dock.offsetHeight * 0);
-          refElement.style.left = toPixels(rect.left - dock.offsetLeft + dock.offsetWidth / 2);
-          refElement.style.width = toPixels(rect.width);
-          refElement.style.height = toPixels(rect.height);
-          refElement.style.zIndex = mutation.target.style.zIndex;
-        }
-      });
-    });
-    this.observer.observe(target, { attributes: true });
-    return refElement;
-  } catch (ex) {
-    console.warn(ex);
-  }
-  return null;
-};
 function ElementPicker(options) {
   options = options;
   this.active = false;
@@ -5085,8 +5049,6 @@ TabScroller.prototype.addTab = function(content, title) {
   }
   this.container.style.setProperty("--total-pages", this.tabs.length);
 };
-class DesktopElement extends HTMLElement {
-}
 class WindowElement extends HTMLDivElement {
   constructor() {
     super();
@@ -5097,17 +5059,15 @@ class WindowElement extends HTMLDivElement {
   }
   /** @param {boolean} [enable] Enable maximization */
   toggleMaximizedVT(enable) {
-    if (document.activeViewTransition)
-      document.activeViewTransition.skipTransition();
     this.style.viewTransitionName = "window-fullscreen";
-    const self2 = this;
-    if (document.startViewTransition) {
-      var transition = document.startViewTransition(() => self2.classList.toggle("maximized", enable));
+    if (document.activeViewTransition) document.activeViewTransition.skipTransition();
+    if ("startViewTransition" in document) {
+      var transition = document.startViewTransition(() => this.classList.toggle("maximized", enable));
       transition.ready.catch((ev) => console.warn("transition interrupted:", ev));
       const dialog = this.dialog;
       if (dialog) transition.finished.finally(() => {
         if (dialog.maximizeAnimations <= 1)
-          self2.style.viewTransitionName = "";
+          this.style.viewTransitionName = "";
         dialog.maximizeAnimations--;
       });
     } else this.classList.toggle("maximized", enable);
@@ -5145,18 +5105,18 @@ class OdometerDisplay extends HTMLTimeElement {
     this.innerHTML = "";
     this.tracks.length = 0;
     const height = this.clientHeight;
-    for (let i = 0; i < digits; i++) {
-      const digit = this.addDigit();
-      if (digit && height > 0) digit.lineHeight = height;
-    }
+    for (let i = 0; i < digits; i++)
+      if (height > 0) this.addDigit().lineHeight = height;
   }
   addDigit() {
     const track = document.createElement("span", { is: "odometer-track" });
-    if (!(track instanceof OdometerDigit)) return;
     track.textContent = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";
-    this.tracks.push(track);
+    if (track instanceof OdometerDigit) this.tracks.push(track);
     this.appendChild(track);
-    return track;
+    return (
+      /** @type {OdometerDigit} */
+      track
+    );
   }
   /**
    * @param {number} value
@@ -5167,9 +5127,7 @@ class OdometerDisplay extends HTMLTimeElement {
   }
   /** @param {number} value */
   set value(value) {
-    this.tracks.forEach((track, i) => {
-      track.value = this.getDigit(value, this.tracks.length - 1 - i);
-    });
+    this.tracks.forEach((track, i) => track.value = this.getDigit(value, this.tracks.length - 1 - i));
   }
 }
 class OdometerTime extends OdometerDisplay {
@@ -5178,9 +5136,8 @@ class OdometerTime extends OdometerDisplay {
   }
   connectedCallback() {
     this.setAttribute("is", "odometer-time");
-    if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim()) {
+    if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim())
       this.setAttribute("value", this.textContent.trim());
-    }
     this.buildTracks(this.currentGroupCount());
     this.update();
     this.style.overflow = "hidden";
@@ -5191,17 +5148,9 @@ class OdometerTime extends OdometerDisplay {
   set dateTime(value) {
     this.setAttribute("datetime", value);
   }
-  /** value wins if present; otherwise fall back to datetime */
-  usingValue() {
-    return this.hasAttribute("value");
-  }
-  currentGroupCount() {
-    if (this.usingValue()) {
-      const v = this.getAttribute("value") || "00:00:00";
-      return v.split(":").length;
-    }
-    return 3;
-  }
+  usingValue = () => this.hasAttribute("value");
+  currentGroupCount = () => this.usingValue() && this.getAttribute("value")?.split(":").length || 3;
+  // datetime mode always renders HH:MM:SS (3 segments, 2 colons)
   /** @param {number} groups */
   buildTracks(groups) {
     this.textContent = "";
@@ -5223,11 +5172,8 @@ class OdometerTime extends OdometerDisplay {
    */
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    if (name === "value") {
-      this.update();
-      return;
-    }
-    if (name === "datetime" && !this.usingValue()) {
+    if (name === "value") this.update();
+    else if (name === "datetime" && !this.usingValue()) {
       if (this.tracks.length !== 6) this.buildTracks(3);
       this.update();
     }
@@ -5244,10 +5190,7 @@ class OdometerTime extends OdometerDisplay {
         for (const ch of str) digits.push(parseInt(ch, 10));
       });
     } else {
-      const date = new Date(this.dateTime);
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
+      const date = new Date(this.dateTime), hours = date.getHours(), minutes = date.getMinutes(), seconds = date.getSeconds();
       digits = [
         Math.floor(hours / 10),
         hours % 10,
@@ -5257,36 +5200,23 @@ class OdometerTime extends OdometerDisplay {
         seconds % 10
       ];
     }
-    this.tracks.forEach((track, i) => {
-      if (digits[i] !== void 0) track.value = digits[i];
-    });
+    this.tracks.forEach((track, i) => digits[i] !== void 0 && (track.value = digits[i]));
   }
 }
-customElements.define("window-div", WindowElement, {
-  extends: "div"
-});
-customElements.define("odometer-track", OdometerDigit, {
-  extends: "span"
-});
-customElements.define("odometer-display", OdometerDisplay, {
-  extends: "time"
-});
-customElements.define("odometer-time", OdometerTime, {
-  extends: "time"
-});
+let customElems;
+const customs = customElems = {
+  "window-div": { constructor: WindowElement, extends: "div" },
+  "odometer-track": { constructor: OdometerDigit, extends: "span" },
+  "odometer-display": { constructor: OdometerDisplay, extends: "time" },
+  "odometer-time": { constructor: OdometerTime, extends: "time" }
+};
+Object.entries(customElems).forEach(([name, c]) => customElements.define(name, c.constructor, c));
 class Modern {
-  /**
-   * @param {HTMLElement} el
-   * @param {(pipWindow:Window)=>void} callback
-   */
+  /** @param {HTMLElement} el @param {(pipWindow: Window)=>void} callback */
   static toggleElementPip(el, callback) {
-    if (typeof window.documentPictureInPicture === "undefined") {
-      console.warn("Document Picture-in-Picture not supported in this browser.");
-      return;
-    }
-    var existing = window.documentPictureInPicture.window;
-    if (existing)
-      existing.close();
+    if (typeof window.documentPictureInPicture === "undefined")
+      return console.warn("Document Picture-in-Picture not supported in this browser.");
+    window.documentPictureInPicture.window?.close();
     var rect = el.getBoundingClientRect();
     var width = Math.round(rect.width) || 400;
     var height = Math.round(rect.height) || 300;
@@ -5295,11 +5225,7 @@ class Modern {
       var originalNextSibling = el.nextSibling;
       pipWindow.document.body.style.margin = "0";
       pipWindow.document.body.appendChild(el);
-      pipWindow.addEventListener("pagehide", () => {
-        if (!originalParent) return;
-        if (originalNextSibling) originalParent.insertBefore(el, originalNextSibling);
-        else originalParent.appendChild(el);
-      }, { once: true });
+      pipWindow.addEventListener("pagehide", () => originalParent && (originalNextSibling ? originalParent.insertBefore(el, originalNextSibling) : originalParent.appendChild(el)), { once: true });
       callback(pipWindow);
     });
   }
@@ -5530,18 +5456,7 @@ if (docontexthook) document.addEventListener("contextmenu", function(e) {
 }, false);
 var reflecitons = false;
 var dock = document.getElementById("dock");
-var reflectionr = document.getElementById("reflection");
-var reflector = reflectionr ? new Reflector(reflectionr) : null;
 var applistItems = document.getElementById("dockapplist");
-function toggleReflections(force) {
-  if (!reflector) return;
-  if (force == null) reflecitons = !reflecitons;
-  else reflecitons = Boolean(force);
-  if (reflecitons) windowManager.forEachWindow(function(dialog) {
-    if (dialog.target && reflector) reflector.reflect(dialog.target);
-  });
-  else if (typeof reflector.observer != "undefined") reflector.observer.disconnect();
-}
 window.addEventListener("keydown", function(event2) {
   switch (event2.key) {
     case "F11":
@@ -6281,7 +6196,6 @@ function toggleBlur(enabled) {
   else document.body.classList.toggle("blur", enabled);
 }
 var elements = {
-  desktop: null,
   charms: null,
   color: null,
   accent: null,
@@ -6331,7 +6245,6 @@ function installAppFromUrl(useProxy) {
   }
 }
 function loadElements() {
-  elements.desktop = document.getElementById("desktop");
   elements.charms = document.getElementById("charms");
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
@@ -7075,7 +6988,6 @@ function init() {
     });
     if (!isBlink) DesktopManager.removeTheme("glass");
     windowManager.initializeDialogs();
-    toggleReflections(false);
     LVMessenger.receive(messageReceived);
   }
   if (location.protocol === "file:") {

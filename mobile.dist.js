@@ -1100,7 +1100,6 @@ function toggleBlur(enabled) {
   else document.body.classList.toggle("blur", enabled);
 }
 var elements = {
-  desktop: null,
   charms: null,
   color: null,
   accent: null,
@@ -1150,7 +1149,6 @@ function installAppFromUrl(useProxy) {
   }
 }
 function loadElements() {
-  elements.desktop = document.getElementById("desktop");
   elements.charms = document.getElementById("charms");
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
@@ -1810,7 +1808,6 @@ function init() {
     });
     if (!isBlink) DesktopManager.removeTheme("glass");
     windowManager.initializeDialogs();
-    toggleReflections(false);
     LVMessenger.receive(messageReceived);
   }
   if (location.protocol === "file:") {
