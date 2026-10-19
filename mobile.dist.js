@@ -359,46 +359,13 @@ LVMessenger.registerThemeChangeHandler = function() {
   });
 };
 "use strict";
-var STORAGE_FILE = "app_storage.json";
 function formatCamelCase(text) {
   if (!text) return "";
   var result = text.replace(/([A-Z])/g, " $1");
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
-var supportsActiveX = typeof ActiveXObject != "undefined";
-function ActiveXStorage() {
-  if (!window.ActiveXObject) throw new Error("ActiveX not supported!");
-  this.fso = new window.ActiveXObject("Scripting.FileSystemObject");
-}
-ActiveXStorage.prototype.setItem = function(key, value) {
-  var data = {};
-  if (this.fso.FileExists(STORAGE_FILE)) {
-    try {
-      var readFile = this.fso.OpenTextFile(STORAGE_FILE, 1);
-      data = JSON.parse(readFile.ReadAll());
-      readFile.Close();
-    } catch (e) {
-      data = {};
-    }
-  }
-  data[key] = value;
-  var writeFile = this.fso.OpenTextFile(STORAGE_FILE, 2, true);
-  writeFile.Write(JSON.stringify(data));
-  writeFile.Close();
-};
-ActiveXStorage.prototype.getItem = function(key) {
-  if (!this.fso.FileExists(STORAGE_FILE)) return null;
-  try {
-    var readFile = this.fso.OpenTextFile(STORAGE_FILE, 1);
-    var data = JSON.parse(readFile.ReadAll());
-    readFile.Close();
-    return data[key] !== void 0 ? data[key] : null;
-  } catch (e) {
-    return null;
-  }
-};
 function SettingsHandler() {
-  this.storage = typeof localStorage != "undefined" && localStorage || supportsActiveX && new ActiveXStorage();
+  this.storage = typeof localStorage != "undefined" && localStorage || typeof ActiveXStorage != "undefined" && new ActiveXStorage();
 }
 SettingsHandler.prototype.get = function(key) {
   if (!this.storage) return null;
@@ -580,7 +547,6 @@ function loadSettings() {
   restoreWallpaperSetting();
   setColor(settings.get("color"));
   setAccentColor(settings.get("accentColor"));
-  updateBlurState();
 }
 function updateWallpaperImageButton() {
   if (!elements.wallpaperImageButton || !elements.wallpaperSelect) return;
@@ -683,12 +649,6 @@ function loadThemeSetting() {
     document.body.classList.toggle("squircles", squircles);
     if (elements.squircles) elements.squircles.checked = squircles;
   }
-}
-function updateBlurState() {
-}
-function toggleBlur(enabled) {
-  if (enabled == null) document.body.classList.toggle("blur");
-  else document.body.classList.toggle("blur", enabled);
 }
 var elements = {
   charms: null,

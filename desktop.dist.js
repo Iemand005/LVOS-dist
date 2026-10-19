@@ -462,7 +462,6 @@ var isLocal = location.protocol === "file:" || location.hostname === "localhost"
   supportsTransitions = "transition" in style || "WebkitTransition" in style || "MozTransition" in style || "OTransition" in style || "msTransition" in style;
   supportsTransform = "transform" in style || "webkitTransform" in style || "msTransform" in style || "mozTransform" in style || "OTransform" in style;
 })();
-if (supportsPointer) console.log("Supports pointer events!");
 var transitionEndEvent = "webkitTransition" in document.documentElement.style ? "webkitTransitionEnd" : "transitionend";
 if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
@@ -541,9 +540,6 @@ function getSiteName(url) {
   var name = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
   if (!name) return null;
   return name.charAt(0).toUpperCase() + name.slice(1);
-}
-function isDialog(element) {
-  return element && element.classList && element.classList.contains("window");
 }
 function isElement(object) {
   return object && "nodeType" in object;
@@ -632,8 +628,7 @@ function messageReceived(type, data, source) {
           }
           if (!overlay) return;
           overlay.ontransitionend = null;
-          overlay.requestFullscreen().then(function() {
-            console.log("Ok I did full screen boy");
+          overlay.requestFullscreen().catch(function() {
           });
           if (dialog.body) overlay.appendChild(dialog.body);
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -653,7 +648,6 @@ function messageReceived(type, data, source) {
         dialog.messageFrame("visualizers", windowManager.getVisualizerApps());
         break;
     }
-    console.log("Received message " + type);
   }
 }
 function swapMetroBody() {
@@ -701,15 +695,12 @@ function fromPixels(text) {
   return 0;
 }
 function handleStorageException(exception) {
-  console.error(exception);
-  console.warn("A problem occurred, window state saving has been disabled for this session! The stored window state will be reset in an attempt to recover from this issue.");
-  console.log("If you wish to save the window state before reset, copy this and put it somewhere else:", localStorage.windowState);
   localStorage.windowState = null;
   windowManager.canSave = false;
 }
 function getDialogTemplate() {
   var template = document.querySelector("template") || document.getElementById("window-template");
-  if (!template) return void console.warn("Couldn't find template!");
+  if (!template) return;
   var content = template;
   if (template instanceof HTMLTemplateElement) return template.content.children[0];
   return content.children ? content.children[0] : content.getElementsByClassName("window")[0];
@@ -797,7 +788,6 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       if (typeof onTransitionEnd === "string") {
         if (event2.propertyName !== onTransitionEnd) return;
       } else if (!onTransitionEnd(event2.propertyName)) return;
-      console.log("Aborting animation over " + event2.propertyName + ". Took: ", event2.elapsedTime, "seconds. Reported by: ", event2.target);
       element.removeEventListener(transitionEndEvent, animationHandler, false);
       clearTimeout(state.timer);
       callEnd();
@@ -852,7 +842,6 @@ function WindowManager() {
       return;
     }
     if (!data || typeof data !== "object" || typeof data.type !== "string") return;
-    if (flags.verboseLogs) console.log("Got a broadcast from another tab!", data);
     windowManager.handleBroadcast(data.type, data.data, data.id);
   };
   var self2 = this;
@@ -884,7 +873,6 @@ function WindowManager() {
         });
       } else windowManager.handleWindowDrag(event2.clientX, event2.clientY, isTouch);
     } catch (ex) {
-      console.error(ex);
     }
   };
   this.windowSnap = new WindowSnap();
@@ -903,7 +891,6 @@ Object.defineProperty(WindowManager.prototype, "windowStates", {
         if (string === null) return null;
         this._windowStates = JSON.parse(string);
       } catch (ex) {
-        if (ex instanceof Error) console.error(ex.message);
       }
     return this._windowStates;
   }
@@ -955,7 +942,6 @@ Object.defineProperty(WindowManager.prototype, "isWindowUpdatesEnabled", {
 WindowManager.prototype.saveState = function() {
   if (!this.loaded) return;
   if (window.top !== window.self) return;
-  if (flags.verboseLogs) console.log("Saving window state.");
   try {
     if (this.canSave && typeof localStorage !== "undefined")
       localStorage.setItem("windowState", JSON.stringify(this.state));
@@ -964,34 +950,21 @@ WindowManager.prototype.saveState = function() {
   }
 };
 WindowManager.prototype.loadState = function(dialog) {
-  console.log("Loading window state.");
-  if (!this.canSave) {
-    console.log("Storage access is disabled for this session!");
-    return;
-  }
+  if (!this.canSave) return;
   try {
     if (!localStorage) return;
     var windowStates = this.windowStates;
-    if (!windowStates) {
-      this.loaded = true;
-      return;
-    }
     this.loaded = true;
+    if (!windowStates) return;
     if (dialog && dialog.id) {
       dialog.loadState(windowStates[dialog.id]);
       this.updateTopZ(dialog.z);
     } else {
-      var fails = [];
       for (var id in windowStates) try {
         var window2 = this.windows[id];
-        if (window2 && windowStates[id])
-          window2.loadState(windowStates[id]);
+        if (window2 && windowStates[id]) window2.loadState(windowStates[id]);
       } catch (ex) {
-        fails.push(ex);
       }
-      fails.forEach(function(fail) {
-        console.error("Failed to load a window.", fail);
-      });
       this.updateTopZ();
     }
   } catch (exception) {
@@ -1057,7 +1030,6 @@ Object.defineProperty(WindowManager.prototype, "installedApps", {
       var apps = JSON.parse(string);
       return apps instanceof Array ? apps : [];
     } catch (exception) {
-      if (exception instanceof Error) console.error(exception.message);
       return [];
     }
   }
@@ -1210,12 +1182,10 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
       try {
         dialog.focus();
       } catch (ex) {
-        console.warn(ex);
       }
       return dialog;
     }
   } catch (ex) {
-    console.warn(ex);
   }
   cancelDomEvent(event2);
   if (window.desktopManager && window.desktopManager.isExpos\u00E9) {
@@ -1238,10 +1208,8 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
     try {
       event2.target.setPointerCapture(event2.pointerId);
     } catch (ex) {
-      console.warn(ex);
     }
   }
-  if (flags.verboseLogs) console.log("Activating window", dialog);
   this.activeDialog = dialog;
   this.isTouchDrag = event2 && "pointerType" in event2 && event2.pointerType === "touch";
   this.enableDialogDrag();
@@ -1756,7 +1724,6 @@ WindowSnap.prototype.snap = function(type, dialog) {
   this.hidden = false;
   if (dialog) this.element.style.zIndex = dialog.z.toString();
   animateElement(this.element, function() {
-    console.log("snapping", type);
     switch (type) {
       case "maximize":
         this.setInset(WindowSnap.margin);
@@ -1854,7 +1821,6 @@ ClickOffset.prototype.init = function(x, y, width, height, startX, startY) {
 ClickOffset.toggleDragEventHandler = function(enable, handler, cursor) {
   if (enable) document.addEventListener(supportsPointer ? "pointermove" : "mousemove", handler, false);
   else document.removeEventListener(supportsPointer ? "pointermove" : "mousemove", handler, false);
-  if (flags.verboseLogs) console.log(enable ? "Starting drag" : "Ending drag");
   if (!flags.useDragOverlay || !this._overlay) {
     windowManager.forEachWindow(function(dialog) {
       dialog.togglePointerEvents(!enable);
@@ -2006,7 +1972,6 @@ Dialog.prototype.initWithObject = function(object) {
   }
   if (!(object instanceof Dialog)) {
     if (isElement(object)) {
-      if (!isDialog(object)) console.warn("This is not a dialog element");
       this.target = object;
       if (this.target.parentElement && this.target.parentElement.nodeName === "TEMPLATE") return;
       this.close();
@@ -2061,7 +2026,6 @@ Dialog.prototype.initWithObject = function(object) {
       try {
         self2.verifyEjectCapability();
       } catch (exception) {
-        console.warn("Failed to verify eject capability" + exception);
         if (buttons[0]) buttons[0].style.display = "none";
       }
     }, false);
@@ -2803,11 +2767,9 @@ Dialog.prototype.setIcon = function(iconUrl, onError) {
   if (!this._appIcon) return;
   var self2 = this;
   this._appIcon.onload = function() {
-    console.log("App icon loaded!!");
     if (self2._appIcon) self2._appIcon.className = "loaded";
   };
   this._appIcon.onerror = function(e) {
-    console.warn("App icon error!", e);
     if (self2._appIcon) self2._appIcon.className = "";
     if (onError) onError();
   };
@@ -3537,14 +3499,12 @@ Dialog.prototype.createPopOut = function() {
     height = Math.round(height);
     if (outerX !== prevRect.x || outerY !== prevRect.y) {
       var x = outerX - window.screenX, y = outerY - window.screenY - windowChromeHeight + chromeHeight;
-      console.log("pos:", outerX, outerY);
       self2.moveBody(x, y);
       prevRect.x = outerX;
       prevRect.y = outerY;
     }
     if (width !== prevRect.width || height !== prevRect.height) {
       self2.resizeBody(width, height);
-      console.log("size:", width, width);
       prevRect.width = width;
       prevRect.height = height;
     }
@@ -3578,7 +3538,7 @@ Dialog.prototype.updateScale = function(useScale2) {
     target.style.bottom = "";
     this.toggleMinSizeConstraints(this.maximized);
   } else {
-    if (this.useTransform) return console.warn("Cannot disable scale if using transform");
+    if (this.useTransform) return;
     target.style.right = toPixels(this.right);
     target.style.bottom = toPixels(this.bottom);
   }
@@ -3592,7 +3552,6 @@ Dialog.prototype.toggleMinSizeConstraints = function(isMaximized) {
 };
 Dialog.prototype.injectMica = function() {
   try {
-    if (!this.useTransform) console.warn("Dude you still gotta fix the mica here for oh right but can you possible even do that??");
     if (!this.target) return false;
     var wallpaper2 = document.getElementById("wallpaper");
     if (!wallpaper2) return false;
@@ -3668,13 +3627,11 @@ Dialog.prototype.loadState = function(state) {
 Dialog.prototype.exportDialogBodyToMetro = function() {
 };
 Dialog.prototype.getElementById = function(id) {
-  console.log("Element ID to pull out of my guts: " + id);
   var doc = this.contentDocument;
   return doc && doc.getElementById(id);
 };
 Dialog.prototype.moveElementIntoPipById = function(id) {
   var targetElement = this.getElementById(id);
-  console.log("Ripped out element:", targetElement);
   if (targetElement && Modern) Modern.toggleElementPip(targetElement, function(window2) {
     window2.onresize = function() {
       if (!(targetElement instanceof HTMLCanvasElement)) return;
@@ -3749,17 +3706,9 @@ window.addEventListener(supportsPointer ? "pointermove" : "mousemove", ClickOffs
 window.addEventListener("unload", function() {
   windowManager.saveState();
 }, false);
-window.addEventListener("dragover", function(e) {
-  console.log(e);
-  cancelDomEvent(e);
-}, false);
+window.addEventListener("dragover", cancelDomEvent, false);
 window.addEventListener("drop", function(e) {
-  console.log(e);
   e.preventDefault();
-  if (!e.dataTransfer) return;
-  var files = e.dataTransfer.files;
-  if (files.length > 0)
-    console.log("File dropped anywhere in window:", files[0].name);
 }, false);
 var windowManager = new WindowManager();
 windowManager = windowManager;
@@ -4784,8 +4733,7 @@ class OdometerTime extends OdometerDisplay {
     this.tracks.forEach((track, i) => digits[i] !== void 0 && (track.value = digits[i]));
   }
 }
-let customElems;
-const customs = customElems = {
+const customElems = {
   "window-div": { constructor: WindowElement, extends: "div" },
   "odometer-track": { constructor: OdometerDigit, extends: "span" },
   "odometer-display": { constructor: OdometerDisplay, extends: "time" },
@@ -5337,46 +5285,13 @@ var picker = new ElementPicker({
 });
 picker.register();
 "use strict";
-var STORAGE_FILE = "app_storage.json";
 function formatCamelCase(text) {
   if (!text) return "";
   var result = text.replace(/([A-Z])/g, " $1");
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
-var supportsActiveX = typeof ActiveXObject != "undefined";
-function ActiveXStorage() {
-  if (!window.ActiveXObject) throw new Error("ActiveX not supported!");
-  this.fso = new window.ActiveXObject("Scripting.FileSystemObject");
-}
-ActiveXStorage.prototype.setItem = function(key, value) {
-  var data = {};
-  if (this.fso.FileExists(STORAGE_FILE)) {
-    try {
-      var readFile = this.fso.OpenTextFile(STORAGE_FILE, 1);
-      data = JSON.parse(readFile.ReadAll());
-      readFile.Close();
-    } catch (e) {
-      data = {};
-    }
-  }
-  data[key] = value;
-  var writeFile = this.fso.OpenTextFile(STORAGE_FILE, 2, true);
-  writeFile.Write(JSON.stringify(data));
-  writeFile.Close();
-};
-ActiveXStorage.prototype.getItem = function(key) {
-  if (!this.fso.FileExists(STORAGE_FILE)) return null;
-  try {
-    var readFile = this.fso.OpenTextFile(STORAGE_FILE, 1);
-    var data = JSON.parse(readFile.ReadAll());
-    readFile.Close();
-    return data[key] !== void 0 ? data[key] : null;
-  } catch (e) {
-    return null;
-  }
-};
 function SettingsHandler() {
-  this.storage = typeof localStorage != "undefined" && localStorage || supportsActiveX && new ActiveXStorage();
+  this.storage = typeof localStorage != "undefined" && localStorage || typeof ActiveXStorage != "undefined" && new ActiveXStorage();
 }
 SettingsHandler.prototype.get = function(key) {
   if (!this.storage) return null;
@@ -5558,7 +5473,6 @@ function loadSettings() {
   restoreWallpaperSetting();
   setColor(settings.get("color"));
   setAccentColor(settings.get("accentColor"));
-  updateBlurState();
 }
 function updateWallpaperImageButton() {
   if (!elements.wallpaperImageButton || !elements.wallpaperSelect) return;
@@ -5661,12 +5575,6 @@ function loadThemeSetting() {
     document.body.classList.toggle("squircles", squircles);
     if (elements.squircles) elements.squircles.checked = squircles;
   }
-}
-function updateBlurState() {
-}
-function toggleBlur(enabled) {
-  if (enabled == null) document.body.classList.toggle("blur");
-  else document.body.classList.toggle("blur", enabled);
 }
 var elements = {
   charms: null,
