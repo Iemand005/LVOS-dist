@@ -23,17 +23,40 @@
 	animation: none;
 }
 
+/* Only the root snapshots are pinned. The whole old screen cross-fading into the new
+   one double-exposes the desktop and reads as a flicker, and since both captures are
+   the same wallpaper we gain nothing from it. Pin the root and let the window's own
+   snapshots keep their default fade, so the window goes transparent while it morphs. */
+::view-transition-old(root) {
+	animation: none;
+	opacity: 0;
+}
+
+::view-transition-new(root) {
+	animation: none;
+	opacity: 1;
+}
+
 ::view-transition-group(window-fullscreen) {
 	animation-duration: 280ms;
 	animation-timing-function: cubic-bezier(0.44, 0.41, 0, 1);
 }
 
+/* Default: stretch the window snapshots to fill the morphing group box (Windows-style
+   resize morph). The old and new image are forced to the same dimensions as the box
+   as it changes aspect ratio. Add the `preserve-aspect` class to <body> to instead
+   keep each snapshot at its own aspect ratio (no stretching). */
 ::view-transition-old(window-fullscreen),
 ::view-transition-new(window-fullscreen) {
 	width: 100%;
 	height: 100%;
 	object-fit: fill;
-	/*animation: none;*/
+}
+
+html:has(body.preserve-aspect)::view-transition-old(window-fullscreen),
+html:has(body.preserve-aspect)::view-transition-new(window-fullscreen) {
+	width: auto;
+	height: auto;
 }
 
 html:has(body.slow-animations)::view-transition-group(*) {
@@ -77,8 +100,8 @@ html:has(body.slow-animations)::view-transition-group(*) {
 }
 
 .default-theme .window > content > article > iframe {
-	background-color: rgba(0, 0, 0, 0.267);
-	box-shadow: inset 0px 0px 10px black;
+	background-color: transparent;
+	box-shadow: none;
 }
 
 .default-theme .window content {
@@ -223,9 +246,9 @@ button {
 	height: 40px;
 }
 
-.windows .window {
+/* .windows .window {
 	max-height: calc(100% - 40px);
-}
+} */
 
 .windows-95 .window {
 	max-height: calc(100% - 27px);
@@ -303,6 +326,20 @@ button {
 .windows-10 .window article,
 .windows-11 .window article {
 	background-color: rgb(240, 240, 240);
+}
+
+.windows-10 button,
+.windows-10 #launchpad button {
+	border-radius: 0;
+}
+
+.windows-10 #launchpad button {
+	border: none;
+	padding: 0;
+}
+
+.windows-10 #launchpad button:hover {
+	box-shadow: inset 0px 0px 0px 0.7mm #ffffff45;
 }
 
 .windows .window article > * {
@@ -721,6 +758,10 @@ body.no-blur.modern.blur .window content {
     background-color: #ff5f57;
 }
 
+.google .window header {
+	background: linear-gradient(90deg,red,red 25%,#fbbc04,#34a853,#1967d2 75%);
+}
+
 .color-debug .window header,
 .color-debug .window article {
 	background-color: black;
@@ -822,6 +863,12 @@ body.no-blur.modern.blur .window content {
 
 	body.blur:not(.modern) .window > content {
 		z-index: 0;
+	}
+}
+
+@media (prefers-color-scheme: light) {
+	.windows #dockapplist, .windows-10 #launchpad {
+		background: rgba(209, 209, 209, 0.47);
 	}
 }
 

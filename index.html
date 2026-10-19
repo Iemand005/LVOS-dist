@@ -10,7 +10,7 @@
 	<meta name="keywords" content="VulpOS, virtual operating system, web OS, online OS, browser operating system, web desktop, Lasses Virtual Operating System, free web OS, web-based OS, online desktop environment">
 	<meta name="author" content="Lasse Lauwerys">
 	<meta name="robots" content="index, follow">
-	<meta name="color-scheme" content="light dark">
+	<!-- <meta name="color-scheme" content="light dark"> -->
 	<meta name="theme-color" content="#ff8000">
 	<link rel="canonical" href="https://iemand005.github.io/LVOS/">
 	<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
@@ -22,7 +22,14 @@
 	<link rel="stylesheet" href="./Styles/themes.css">
 	<link rel="stylesheet" href="./Styles/Mica.css">
 	<link rel="stylesheet" href="./Styles/launchpad.css">
+	<link rel="stylesheet" href="ScrollTabs/scroll-tabs.css">
 	<link rel="manifest" href="./manifest.json">
+
+	<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+	<link rel="shortcut icon" href="/favicon.ico" />
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+	<meta name="apple-mobile-web-app-title" content="VulpOS" />
 
 	
 	
@@ -34,7 +41,13 @@
 	
 	
 	
+	
+	
+	
+	
+	
 	 <!-- The script order is very important here! -->
+	
 	
 	
 	
@@ -100,7 +113,7 @@
 
 
 					<template><!-- Template of my semantic and minimal structure used to create floating dialogs. I used the information provided by Visual Studio Code to determine what tags fit the purpose best. I hope this makes it as semantically correct as possible while excluding excessive divs and other tags. -->
-						<div class="window" is="window-div">
+						<div class="window" draggable="true" is="window-div">
 							<content class=""><!-- Visual Sudio 2013 suggested me to use content instead here to make it semantic. This places the dialog inside the shadow DOM. I don't know if it's proper HTML 5 or HTML 4 but I used it so I'm keeping it the way it is for now. -->
 								<!-- I was forced to add this extra wrapping article to work around a bug in EdgeHTML 18 that causes the backdrop filter to shift by the amount of pixels the box-shadow blur size has minus the top and left value. I don't know if it's a known bug but the browser is no longer officially supported. I will be adding this tag anyways but it's not necessary for functionality of the application. -->
 								<header><!-- This header identifies the most near ancestor (dialog). In the header are the title and the navigation buttons. -->
@@ -145,13 +158,13 @@
 					<section>
 						<form action="" id="applist"></form>
 					</section>
+					<div id="dock-area">
+						<section id="dock">
+							<section id="reflection"></section>
+						</section>
+						<section id="dockapplist"></section>
+					</div>
 				</section>
-				<div id="dock-area">
-					<section id="dock">
-						<section id="reflection"></section>
-					</section>
-					<section id="dockapplist"></section>
-				</div>
 			</div>
             <section id="metro">
                 <!-- <iframe src="mobile.html" frameborder="0"></iframe> -->
@@ -197,7 +210,12 @@
                 <button type="button" id="install-app-proxied-button">Install proxied</button>
                 <label for="blurtoggle">Blur: <input type="checkbox" id="blurtoggle" value="toggleblur"></label>
                 <label for="reflectiontoggle">Reflections: <input type="checkbox" id="reflectiontoggle" value="togglereflections"></label>
-                <input type="file" name="wallpaper-input" id="wallpaper-input">
+                <label for="wallpaper-select">Wallpaper: </label>
+                <select name="wallpaper" id="wallpaper-select">
+                    <option value="">None</option>
+                </select>
+                <button type="button" id="wallpaper-image-button" hidden>Select image&hellip;</button>
+                <input type="file" name="wallpaper-input" id="wallpaper-input" accept="image/*" hidden>
                 <ul id="flag-settings"></ul>
             </form>
         </aside>

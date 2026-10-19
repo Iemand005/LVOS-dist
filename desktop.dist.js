@@ -454,7 +454,7 @@ function Vector3D(x, y, z) {
   this.z = 0;
   if (typeof x == "number") {
     this.x = x;
-    if (y == null && z == null)
+    if (y === void 0 || z === void 0)
       this.y = x, this.z = x;
     else this.y = y, this.z = z;
   } else if (typeof x == "object" && x.x && x.y && x.z) {
@@ -754,6 +754,14 @@ AppManager.prototype.forEachApp = function(callback) {
       if (app) callback(app, id);
     }
 };
+AppManager.prototype.forEachWallpaper = function(callback) {
+  if (typeof callback !== "function") return;
+  for (var id in this._wallpapers)
+    if (this._wallpapers.hasOwnProperty(id)) {
+      var app = this._wallpapers[id];
+      if (app) callback(app, id);
+    }
+};
 Object.defineProperty(AppManager.prototype, "apps", {
   get: function() {
     return this._apps;
@@ -815,7 +823,7 @@ AppManager.prototype.setWallpaper = function(id) {
   var app = this.getApp(id);
   if (!app) return;
   wallpaperFrame.onerror = function() {
-    if (app?.distSrc) wallpaperFrame.src = app.distSrc;
+    if (app && app.distSrc) wallpaperFrame.src = app.distSrc;
   };
   wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
@@ -869,17 +877,17 @@ if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
 var flags = {
   useSkewAnimations: false,
-  aeroSnap: false,
+  aeroSnap: true,
   updateRateLimit: isBlink,
   useDragOverlay: true,
   broadcastWindowMoves: true,
   _useTransform: useTransform,
+  useAnimations: true,
   get useTransform() {
     return this._useTransform;
   },
   set useTransform(value) {
     this._useTransform = value;
-    if (!windowManager) return;
     windowManager.forEachWindow(function(dialog) {
       dialog.useTransform = value;
     });
@@ -893,13 +901,21 @@ var flags = {
     if (value) this._useViewTransitionMaximize = false;
     this._compositorResize = value;
   },
-  _useViewTransitionMaximize: false,
+  _useViewTransitionMaximize: true,
   get useViewTransitionMaximize() {
     return this._useViewTransitionMaximize;
   },
   set useViewTransitionMaximize(value) {
     if (value) this.compositorResize = false;
     this._useViewTransitionMaximize = value;
+  },
+  _preserveMaximizeAspect: false,
+  get preserveMaximizeAspect() {
+    return this._preserveMaximizeAspect;
+  },
+  set preserveMaximizeAspect(value) {
+    document.body.classList.toggle("preserve-aspect", !!value);
+    this._preserveMaximizeAspect = value;
   },
   _useMica: false,
   get useMica() {
@@ -924,11 +940,15 @@ function getFaviconUrl(url) {
   return "https://" + getDomain(url) + "/favicon.ico";
 }
 function getDomain(url) {
-  return url.replace(/^[a-z]+:\/\/+/i, "").split("/")[0].split("?")[0];
+  var regged = url.replace(/^[a-z]+:\/\/+/i, "").split("/")[0];
+  return regged && regged.split("?")[0];
 }
 function getSiteName(url) {
-  var parts = getDomain(url).split(".");
+  var domain = getDomain(url);
+  if (!domain) return null;
+  var parts = domain.split(".");
   var name = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+  if (!name) return null;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 function isDialog(element) {
@@ -940,7 +960,7 @@ function isElement(object) {
 function getWindowChromeHeight(window2) {
   return window2.outerHeight - window2.innerHeight;
 }
-function translateElement(element, x, y, skew, scaleX, scaleY, rotation) {
+function transformElementOld(element, x, y, skew, scaleX, scaleY, rotation) {
   var transform = "translate(" + Math.floor(x) + "px," + Math.floor(y) + "px)";
   if (skew) transform += " skewX(" + skew + "deg)";
   if (scaleX === 1) scaleX = void 0;
@@ -953,6 +973,35 @@ function translateElement(element, x, y, skew, scaleX, scaleY, rotation) {
   if (rotation) transform += "rotate(" + rotation + "deg)";
   else {
     element.style.transform = transform;
+  }
+}
+function transformElement(element, t) {
+  var transform = "";
+  if (t.x && t.y) transform += "translate(" + toPixels(t.x) + "," + toPixels(t.y) + ")";
+  else if (t.x) transform += "translateX(" + toPixels(t.x) + ")";
+  else if (t.y) transform += "translatey(" + toPixels(t.y) + ")";
+  if (t.skewX) transform += " skewX(" + toDegrees(t.skewX) + ")";
+  if (t.scaleX === 1) t.scaleX = void 0;
+  if (t.scaleY === 1) t.scaleY = void 0;
+  if (t.scaleX && t.scaleY) transform += "scale(" + t.scaleX + "," + t.scaleY + ")";
+  else if (t.scaleX) transform += "scaleX(" + t.scaleX + ")";
+  else if (t.scaleY) transform += "scaleY(" + t.scaleY + ")";
+  if (t.rotate) transform += "rotate(" + toDegrees(t.rotate) + ")";
+  if (t.rotateX) transform += "rotateX(" + toDegrees(t.rotateX) + ")";
+  if (t.rotateY) transform += "rotateY(" + toDegrees(t.rotateY) + ")";
+  if (t.rotateZ) transform += "rotateZ(" + toDegrees(t.rotateZ) + ")";
+  element.style.transform = transform;
+}
+function insetElement(element, top, left, right, bottom) {
+  if ("inset" in element.style)
+    if (typeof left === "undefined") element.style.inset = toPixels(top);
+    else element.style.inset = toPixels(top) + " " + toPixels(right || 0) + " " + toPixels(bottom || 0) + " " + toPixels(left);
+  else {
+    if (typeof left === "undefined") left = top, right = top, bottom = top;
+    element.style.top = toPixels(top);
+    element.style.left = toPixels(left);
+    if (typeof right !== "undefined") element.style.right = toPixels(right);
+    if (typeof bottom !== "undefined") element.style.bottom = toPixels(bottom);
   }
 }
 function skewElement(element, skew) {
@@ -976,12 +1025,14 @@ function getRect(element, index) {
 function messageReceived(type, data, source) {
   if (source && windowManager) {
     var dialog = windowManager.windows[source];
+    if (!dialog) return;
     if (type === "window-size") dialog.resizeBody(data.width, data.height);
     switch (type) {
       case "launchOverlay":
         var overlay = bodyCrawler.getOverlay();
         if (!overlay) break;
         overlay.ontransitionend = function() {
+          if (!dialog) return;
           dialog.messageFrame("prepareToLaunchOverlay");
           if (dialog.frame) {
             var oriel = new URL(dialog.frame.src);
@@ -1044,6 +1095,9 @@ function getViewBoxPosition() {
 function toPixels(value) {
   return Math.round(value) + "px";
 }
+function toPercent(value) {
+  return Math.round(value * 100) + "%";
+}
 function toDegrees(value) {
   return Math.round(value) + "deg";
 }
@@ -1090,6 +1144,86 @@ function removeComments(element) {
   });
   return element;
 }
+function flipElement(element, onToggled, thisArg) {
+  var first = element.getBoundingClientRect();
+  var previousTransition = element.style.transition;
+  element.style.transition = "none";
+  if (onToggled) onToggled.call(thisArg || element);
+  var last = element.getBoundingClientRect();
+  var dx = first.left - last.left;
+  var dy = first.top - last.top;
+  var scaleX = last.width ? first.width / last.width : 1;
+  var scaleY = last.height ? first.height / last.height : 1;
+  element.style.transformOrigin = "top left";
+  element.style.translate = toPixels(dx) + " " + toPixels(dy);
+  element.style.scale = scaleX + " " + scaleY;
+  void element.offsetWidth;
+  element.style.transition = previousTransition;
+  element.classList.add("animating", "flipping");
+  element._flipFrame = window.requestAnimationFrame(function() {
+    element._flipFrame = 0;
+    element.style.translate = "0px 0px";
+    element.style.scale = "1";
+  });
+}
+function clearFlip(element) {
+  if (element._flipFrame) {
+    window.cancelAnimationFrame(element._flipFrame);
+    element._flipFrame = 0;
+  }
+  element.style.translate = "";
+  element.style.scale = "";
+  element.style.transformOrigin = "";
+  element.classList.remove("flipping");
+}
+function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, timeout, flip2) {
+  var boundContext = thisArg || element;
+  var callEnd = function() {
+    if (!state.active) return;
+    state.active = false;
+    if (element._animationState === state) element._animationState = null;
+    element.classList.remove("animating");
+    if (flip2) clearFlip(element);
+    if (onEnd) onEnd.call(boundContext);
+  };
+  var previous = element._animationState;
+  if (previous) {
+    if (previous.timer) clearTimeout(previous.timer);
+    if (previous.frame) window.cancelAnimationFrame(previous.frame);
+    if (previous.handler) element.removeEventListener(transitionEndEvent, previous.handler, false);
+    if (previous.flip) clearFlip(element);
+  }
+  var state = element._animationState = { timer: 0, frame: 0, handler: null, active: true, flip: !!flip2 };
+  if (!flags.useAnimations) {
+    if (onToggled) onToggled.call(boundContext);
+    callEnd();
+    return;
+  }
+  state.timer = timeout && setTimeout(callEnd, timeout);
+  if (supportsTransitions) {
+    if (flip2) {
+      flipElement(element, onToggled, boundContext);
+    } else element.classList.add("animating");
+    var animationHandler = function(event2) {
+      if (!onTransitionEnd) return;
+      if (typeof onTransitionEnd === "string") {
+        if (event2.propertyName !== onTransitionEnd) return;
+      } else if (!onTransitionEnd(event2.propertyName)) return;
+      console.log("Aborting animation over " + event2.propertyName + ". Took: ", event2.elapsedTime, "seconds. Reported by: ", event2.target);
+      element.removeEventListener(transitionEndEvent, animationHandler, false);
+      clearTimeout(state.timer);
+      callEnd();
+    };
+    state.handler = animationHandler;
+    element.addEventListener(transitionEndEvent, animationHandler, false);
+  }
+  if (!flip2 || !supportsTransitions) {
+    state.frame = window.requestAnimationFrame(function() {
+      state.frame = 0;
+      if (onToggled) onToggled.call(boundContext);
+    });
+  }
+}
 function WindowManager() {
   this._windows = {};
   this._windowStates = null;
@@ -1098,6 +1232,14 @@ function WindowManager() {
   this._isWindowUpdatesEnabled = false;
   this.isDragging = false;
   this.dragAction = new DragAction();
+  this.snapFullThreshold = 30;
+  this.snapSideThreshold = 30;
+  this.heightSnapReleaseThreshold = 10;
+  this.snapGapWidth = 0.5;
+  this.snapInsertGaps = true;
+  this._snapZone = "";
+  this.pointerPosition = { x: 0, y: 0 };
+  this._heightSnapReleased = false;
   this.activeDialog = null;
   this.topZ = 100;
   this.loaded = false;
@@ -1109,6 +1251,7 @@ function WindowManager() {
     console.warn("Local storage access denied.", ex);
   }
   this.ticking = false;
+  this._pendingDragEvent = null;
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
@@ -1137,18 +1280,27 @@ function WindowManager() {
         return;
       }
       cancelDomEvent(event2);
+      var isTouch = "pointerType" in event2 && event2.pointerType === "touch";
+      self2.setPointerPosition(event2.clientX, event2.clientY);
       if (flags.updateRateLimit) {
+        self2._pendingDragEvent = event2;
         if (self2.ticking) return;
-        window.requestAnimationFrame(function() {
-          windowManager.handleWindowDrag(event2.clientX, event2.clientY);
-          self2.ticking = false;
-        });
         self2.ticking = true;
-      } else windowManager.handleWindowDrag(event2.clientX, event2.clientY);
+        window.requestAnimationFrame(function() {
+          var pending = self2._pendingDragEvent;
+          self2._pendingDragEvent = null;
+          self2.ticking = false;
+          if (!pending) return;
+          var touch = "pointerType" in pending && pending.pointerType === "touch";
+          windowManager.handleWindowDrag(pending.clientX, pending.clientY, touch);
+        });
+      } else windowManager.handleWindowDrag(event2.clientX, event2.clientY, isTouch);
     } catch (ex) {
       console.error(ex);
     }
   };
+  this.windowSnap = new WindowSnap();
+  this.snapGroups = /* @__PURE__ */ new Map();
 }
 Object.defineProperty(WindowManager.prototype, "windows", {
   get: function() {
@@ -1259,8 +1411,10 @@ WindowManager.prototype.loadState = function(dialog) {
   }
 };
 WindowManager.prototype.forEachWindow = function(callback) {
-  for (var id in this.windows)
-    if (this.windows.hasOwnProperty(id)) callback(this.windows[id], id);
+  for (var id in this.windows) if (this.windows.hasOwnProperty(id)) {
+    var dialog = this.windows[id];
+    if (dialog) callback(dialog, id);
+  }
 };
 WindowManager.prototype.killAll = function() {
   this.forEachWindow(function(dialog) {
@@ -1274,8 +1428,10 @@ WindowManager.prototype.synchronizeStates = function() {
 };
 WindowManager.prototype.loadApp = function(app) {
   try {
-    this._windows[app.id] = new Dialog(app);
-    this._windows[app.id].mica = this.isMicaEnabled || false;
+    var dialog = new Dialog(app);
+    dialog.mica = this.isMicaEnabled || false;
+    this._windows[app.id] = dialog;
+    if (!(app instanceof HTMLElement)) appManager.addApp(app);
   } catch (ex) {
     console.warn("App load failed", ex);
   }
@@ -1284,7 +1440,7 @@ WindowManager.prototype.installApp = function(url, title, id, iconUrl) {
   var application = {
     src: url,
     id: id || "custom." + getDomain(url),
-    title: title || getSiteName(url)
+    title: title || getSiteName(url) || "unkle"
   };
   if (iconUrl) application.iconUrl = iconUrl;
   this.loadApp(application);
@@ -1328,7 +1484,43 @@ WindowManager.prototype.loadInstalledApps = function() {
 };
 WindowManager.prototype.installAppProxied = function(url, proxyUrl) {
   if (!proxyUrl) proxyUrl = "https://browz.netlify.app/browz-set-cookie/";
-  this.installApp(proxyUrl + url, getSiteName(url), "custom." + getDomain(url), getFaviconUrl(url));
+  this.installApp(proxyUrl + url, getSiteName(url) || "unkle", "custom." + getDomain(url), getFaviconUrl(url));
+};
+WindowManager.prototype.dropApplication = function(application, x, y, offset, state) {
+  if (!application || !application.id) return null;
+  var dialog = this.windows[application.id];
+  if (!dialog) {
+    this.loadApp(application);
+    dialog = this.windows[application.id];
+  }
+  if (!dialog) return null;
+  dialog.loadState(state || {});
+  dialog.launch();
+  dialog.setZ();
+  if (typeof x === "number" && typeof y === "number") {
+    var grabX = offset ? offset.x : 0;
+    var grabY = offset ? offset.y : 0;
+    dialog.moveToCenter(x - grabX, y - grabY);
+  }
+  if (dialog.target) {
+    try {
+      dialog.resize();
+      if (typeof dialog.update === "function") dialog.update();
+      if (typeof dialog.syncGeometry === "function") dialog.syncGeometry();
+      var rect = getRect(dialog.target);
+      if (rect) {
+        var bw = rect.width, bh = rect.height;
+        if (Math.abs(bw - dialog.width) > 1 || Math.abs(bh - dialog.height) > 1) {
+          dialog._width = bw;
+          dialog._height = bh;
+          if (typeof dialog.broadcastState === "function") dialog.broadcastState({ width: bw, height: bh });
+        }
+      }
+      dialog.resize();
+    } catch (exception) {
+    }
+  }
+  return dialog;
 };
 WindowManager.prototype.toggleDragging = function(enabled) {
   ClickOffset.toggleDragEventHandler(enabled, this.windowDragEvent, "grabbing");
@@ -1393,8 +1585,9 @@ WindowManager.prototype.initializeDialogs = function() {
       self2.loadApp(dialog);
   });
   this.loadState();
+  this.windowSnap.init();
 };
-WindowManager.prototype.windowActivationEvent = function(event2, dialog) {
+WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
   try {
     var node = event2 && (event2.target || event2.srcElement);
     var isInteractive = false;
@@ -1422,6 +1615,22 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog) {
     console.warn(ex);
   }
   cancelDomEvent(event2);
+  if (window.desktopManager && window.desktopManager.isExpos\u00E9) {
+    var root = document.querySelector("main");
+    if (root) {
+      var section = dialog.target && dialog.target.closest ? dialog.target.closest("#window-section, .window-section") : null;
+      var origin = -1;
+      if (section) {
+        for (var i = 0; i < window.desktopManager.desktops.length; i++)
+          if (window.desktopManager.desktops[i].target === section) {
+            origin = i;
+            break;
+          }
+      }
+      dialog._exposeOrigin = origin >= 0 ? { index: origin, x: dialog.x, y: dialog.y } : null;
+      dialog.detachToRootKeepingVisual(root);
+    }
+  } else dialog.clearExpos\u00E9Visual();
   if (supportsPointer && event2 && "pointerId" in event2 && event2.target instanceof HTMLElement && typeof event2.target.setPointerCapture === "function") {
     try {
       event2.target.setPointerCapture(event2.pointerId);
@@ -1431,33 +1640,349 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog) {
   }
   if (flags.verboseLogs) console.log("Activating window", dialog);
   this.activeDialog = dialog;
+  this.isTouchDrag = event2 && "pointerType" in event2 && event2.pointerType === "touch";
   this.enableDialogDrag();
-  this.dragAction.set(0);
+  this.dragAction.set(id || 0);
   dialog.setClickOffset(event2.clientX, event2.clientY);
   dialog.activate();
+  if (this.isTouchDrag) this.windowSnap.moveToDialog(dialog, 0, this.dragAction.direction, false, this.isTouchDrag);
+  this._snapZone = "";
+  this._heightSnapReleased = false;
   return dialog;
 };
-WindowManager.prototype.handleWindowDrag = function(newX, hewY) {
+WindowManager.prototype.handleWindowDrag = function(newX, newY, isTouch) {
   var dialog = this.activeDialog;
   if (!dialog || !dialog.clickOffset) return;
-  var difference = { x: newX - dialog.clickOffset.clickX, y: hewY - dialog.clickOffset.clickY };
   if (dialog.maximized) {
     if (!flags.aeroSnap) return;
+    var snapSection = this.getSnapContainer(dialog);
+    dialog.remapClickOffset(0, 0, this.snapWidth(snapSection), this.snapHeight(snapSection));
     dialog.maximized = false;
-    dialog.clickOffset.clickX /= window.innerWidth / dialog.width;
+  } else if (dialog.snapped) {
+    var frame = dialog._snapFrame;
+    if (frame) dialog.remapClickOffset(frame.x, frame.y, frame.width, frame.height);
+    this.unsnapDialog(dialog);
+  }
+  var difference = { x: newX - dialog.clickOffset.clickX, y: newY - dialog.clickOffset.clickY };
+  if (dialog.heightSnapped) {
+    var gestureDirection = this.dragAction.direction;
+    if (gestureDirection === 0) {
+      if (difference.y > this.heightSnapReleaseThreshold) dialog.toggleHeightSnapped(false);
+    } else if (this.isVerticalResizeDirection(gestureDirection)) {
+      this.leaveHeightSnappedByResize(dialog);
+    }
   }
   dialog.stopAnimating();
-  this.dragAction.execute(dialog, dialog.clickOffset, difference);
+  var dragScale = typeof dialog._exposeVisualScale === "number" && dialog._exposeVisualScale > 0 ? dialog._exposeVisualScale : 1;
+  if (typeof dialog._exposeVisualScale === "number" && !dialog._exposeGrab && dialog.clickOffset && dialog.content) {
+    var grabRect = dialog.content.getBoundingClientRect();
+    if (grabRect.width) dialog._exposeGrab = {
+      x: (dialog.clickOffset.clickX - grabRect.left) / dragScale,
+      y: (dialog.clickOffset.clickY - grabRect.top) / dragScale
+    };
+  }
+  this.dragAction.execute(dialog, dialog.clickOffset, dragScale === 1 ? difference : { x: difference.x / dragScale, y: difference.y / dragScale });
+  this.setPointerPosition(newX, newY);
+  var snap = !(window.desktopManager && window.desktopManager.isExpos\u00E9);
+  if (snap) {
+    var snapZone = this.getGestureSnapZone(dialog, this.dragAction.direction, newX, newY);
+    if (snapZone) {
+      if (snapZone !== this._snapZone) {
+        if (this._snapZone) this.windowSnap.hideBehind(dialog, !!isTouch);
+        this._snapZone = snapZone;
+        this.windowSnap.snap(snapZone, dialog);
+      }
+    } else if (this._snapZone) {
+      this._snapZone = "";
+      this.windowSnap.hideBehind(dialog, !!isTouch);
+    } else if (isTouch) {
+      this.windowSnap.moveToDialog(dialog, 20, this.dragAction.direction, true, true);
+    }
+  } else this.updateExpos\u00E9DragScale(dialog, newX, newY);
   if (dialog.moveEvents && dialog.exchangeDialogMoveEvent) dialog.exchangeDialogMoveEvent(difference);
+};
+WindowManager.prototype.updateExpos\u00E9DragScale = function(dialog, x, y) {
+  var desktopManager = window.desktopManager;
+  if (!desktopManager || typeof dialog._exposeVisualScale !== "number" || !dialog.target || !dialog.content) return;
+  var content = dialog.content;
+  var grab = dialog._exposeGrab;
+  if (!grab) return;
+  var index = desktopManager.getDesktopIndexAt(x, y);
+  var k = 1;
+  if (index >= 0) {
+    var desktopTarget = desktopManager.desktops[index].target;
+    var area = desktopTarget.getBoundingClientRect();
+    if (area.width && desktopTarget.offsetWidth) k = area.width / desktopTarget.offsetWidth;
+  }
+  if (!k) k = 1;
+  var current = dialog._exposeContentScale || 1;
+  if (Math.abs(k - current) >= 2e-3) {
+    dialog._exposeContentScale = k;
+    dialog._exposeVisualScale = k;
+    content.style.transition = "scale 280ms cubic-bezier(0.44, 0.41, 0, 1)";
+    content.style.scale = String(k);
+    if (dialog._exposeScaleTimer) clearTimeout(dialog._exposeScaleTimer);
+    dialog._exposeScaleTimer = setTimeout(function() {
+      dialog._exposeScaleTimer = 0;
+      content.style.transition = "";
+    }, 300);
+  }
+  var rendered = content.getBoundingClientRect();
+  var targetRect = dialog.target.getBoundingClientRect();
+  if (!rendered.width || !targetRect.width) return;
+  var renderedScale = dialog._exposeVisualWidth ? rendered.width / dialog._exposeVisualWidth : k;
+  if (!renderedScale) return;
+  content.style.transform = "translate(" + toPixels((x - grab.x * renderedScale - targetRect.left) / renderedScale) + "," + toPixels((y - grab.y * renderedScale - targetRect.top) / renderedScale) + ")";
+};
+WindowManager.prototype.getSnapZone = function(x, y, section) {
+  var area = section || this.getSnapContainer();
+  var rect = area ? area.getBoundingClientRect() : null;
+  var left = rect ? rect.left : 0;
+  var top = rect ? rect.top : 0;
+  var width = rect ? rect.width : this.snapWidth(area);
+  if (x <= left + this.snapSideThreshold) return "left";
+  if (x >= left + width - this.snapSideThreshold) return "right";
+  if (y <= top + this.snapFullThreshold) return "maximize";
+  return "";
+};
+WindowManager.prototype.isVerticalResizeDirection = function(direction) {
+  return direction === 1 || direction === 3 || direction === 5 || direction === 6 || direction === 7 || direction === 8;
+};
+WindowManager.prototype.leaveHeightSnappedByResize = function(dialog) {
+  var drawnHeight = this.snapHeight(this.getSnapContainer(dialog));
+  if (dialog.target) setClass(dialog.target, "height-snapped", false);
+  dialog._snappingOut = false;
+  dialog._snappingOutState = null;
+  this._heightSnapReleased = true;
+  dialog._y = 0;
+  dialog._height = drawnHeight;
+  dialog.updatePosition();
+  dialog.updateHeight();
+  var offset = dialog.clickOffset;
+  if (offset) {
+    offset.height = dialog.height;
+    offset.startX = dialog.x;
+    offset.startY = dialog.y;
+  }
+};
+WindowManager.prototype.getGestureSnapZone = function(dialog, direction, x, y) {
+  if (!flags.aeroSnap || dialog.heightSnapped || this._heightSnapReleased) return "";
+  var section = this.getSnapContainer(dialog);
+  if (direction === 1 || direction === 3) {
+    var bounds = WindowManager.windowBounds;
+    var threshold = this.snapFullThreshold;
+    var atEdge = direction === 1 ? dialog.y <= bounds.top + threshold : dialog.y + dialog.height >= this.snapHeight(section) - threshold;
+    return atEdge ? "height" : "";
+  }
+  if (direction !== 0) return "";
+  return this.getSnapZone(x, y, section);
+};
+WindowManager.prototype.getSnapContainer = function(dialog) {
+  var target = dialog && dialog.target;
+  if (target && target.closest) {
+    var section = (
+      /** @type {HTMLElement | null} */
+      target.closest("#window-section, .window-section")
+    );
+    if (section) return section;
+  }
+  return document.getElementById("window-section");
+};
+WindowManager.prototype.getSnapGroup = function(section) {
+  var group = this.snapGroups.get(section);
+  if (!group) {
+    group = { windows: [] };
+    this.snapGroups.set(section, group);
+  }
+  return group;
+};
+WindowManager.prototype.snapWidth = function(section) {
+  var area = section || this.getSnapContainer();
+  return area ? area.clientWidth : window.innerWidth;
+};
+WindowManager.prototype.snapHeight = function(section) {
+  var area = section || this.getSnapContainer();
+  return area ? area.clientHeight : window.innerHeight;
+};
+WindowManager.prototype.setPointerPosition = function(x, y) {
+  this.pointerPosition.x = x;
+  this.pointerPosition.y = y;
+};
+WindowManager.prototype.snapDialog = function(dialog, zone) {
+  if (zone === "height") {
+    this.unsnapDialog(dialog);
+    dialog.toggleHeightSnapped(true);
+    return;
+  }
+  if (zone === "maximize") {
+    this.unsnapDialog(dialog);
+    dialog.maximize();
+    return;
+  }
+  if (zone !== "left" && zone !== "right") return;
+  this.tileDialog(dialog, zone);
+};
+WindowManager.prototype.tileDialog = function(dialog, side) {
+  var section = this.getSnapContainer(dialog);
+  if (!section) return;
+  var group = this.getSnapGroup(section);
+  var windows = (
+    /** @type {WindowTile[]} */
+    group.windows
+  );
+  var index = this.findSnapTile(dialog.id, section);
+  var tile = index === -1 ? { id: dialog.id, width: 0.5 } : windows[index];
+  if (!tile) return;
+  if (index !== -1) windows.splice(index, 1);
+  if (side === "left") windows.unshift(tile);
+  else windows.push(tile);
+  if (this.snapInsertGaps) this.fitSnapGaps(section, windows, side);
+  this.reflowSnapGroup(section);
+  dialog.toggleSnapped(true);
+};
+WindowManager.prototype.fitSnapGaps = function(section, tiles, side) {
+  for (var i = tiles.length - 1; i >= 0; i--) {
+    var tile = tiles[i];
+    if (tile && tile.gap) tiles.splice(i, 1);
+  }
+  if (tiles.length !== 1) return;
+  var firstTile = tiles[0];
+  if (!firstTile || !firstTile.id) return;
+  var dialog = this.windows[firstTile.id];
+  if (!side && dialog && dialog.target) {
+    var rect = dialog.target.getBoundingClientRect();
+    var origin = section ? section.getBoundingClientRect() : rect;
+    side = rect.left - origin.left <= origin.width / 2 ? "left" : "right";
+  }
+  tiles.splice(side === "right" ? 0 : 1, 0, { gap: true, width: this.snapGapWidth });
+};
+WindowManager.prototype.findSnapTile = function(id, section) {
+  var windows = (
+    /** @type {WindowTile[]} */
+    this.getSnapGroup(section).windows
+  );
+  for (var i = 0; i < windows.length; i++) {
+    var dialog = windows[i];
+    if (dialog && dialog.id === id) return i;
+  }
+  return -1;
+};
+WindowManager.prototype.unsnapDialog = function(dialog) {
+  var section = this.getSnapContainer(dialog);
+  if (!section) return;
+  var group = this.getSnapGroup(section);
+  var windows = (
+    /** @type {WindowTile[]} */
+    group.windows
+  );
+  var index = this.findSnapTile(dialog.id, section);
+  if (index === -1) return;
+  var survivorSide;
+  if (windows.length === 2 && this.snapInsertGaps) {
+    if (index === 0) {
+      survivorSide = "right";
+    } else if (index === 1) {
+      survivorSide = "left";
+    }
+  }
+  windows.splice(index, 1);
+  dialog.toggleSnapped(false);
+  if (this.snapInsertGaps) this.fitSnapGaps(section, windows, survivorSide);
+  this.reflowSnapGroup(section);
+};
+WindowManager.prototype.getSnapSpacer = function(section) {
+  var group = this.getSnapGroup(section);
+  if (!group.spacer) {
+    group.spacer = document.createElement("div");
+    group.spacer.className = "snap-spacer";
+  }
+  return group.spacer;
+};
+WindowManager.prototype.reflowSnapGroup = function(section) {
+  if (!section) return;
+  var group = this.getSnapGroup(section);
+  var tiles = (
+    /** @type {WindowTile[]} */
+    group.windows
+  );
+  for (var s = tiles.length - 1; s >= 0; s--) {
+    var stale = tiles[s];
+    if (!stale || stale.gap) continue;
+    var staleWindow = stale.id ? this.windows[stale.id] : null;
+    if (!staleWindow || !staleWindow.target || !staleWindow.target.parentNode || this.getSnapContainer(staleWindow) !== section) tiles.splice(s, 1);
+  }
+  var members = {};
+  for (var m = 0; m < tiles.length; m++) {
+    var memberTile = tiles[m];
+    if (memberTile && memberTile.id) members[memberTile.id] = true;
+  }
+  for (var id in this.windows) {
+    var dialog = this.windows[id];
+    if (!dialog || !dialog.target || members[id]) continue;
+    if (this.getSnapContainer(dialog) !== section) continue;
+    dialog.target.style.removeProperty("flex");
+    dialog.target.style.removeProperty("order");
+  }
+  var areaWidth = this.snapWidth(section);
+  var areaHeight = this.snapHeight(section);
+  var remaining = 1;
+  var offset = 0;
+  var usedSpacer = null;
+  for (var k = 0; k < tiles.length; k++) {
+    var tile = tiles[k];
+    if (!tile) continue;
+    var isLast = k === tiles.length - 1;
+    var width = !this.snapInsertGaps && isLast ? remaining : tile.width || 0.5;
+    remaining -= width;
+    var member = tile.id ? this.windows[tile.id] : null;
+    var element = tile.gap ? this.getSnapSpacer(section) : member && member.target;
+    if (!element) continue;
+    if (element.parentNode !== section) section.appendChild(element);
+    element.style.order = String(k);
+    element.style.flex = width + " 1 0%";
+    if (tile.gap) usedSpacer = element;
+    if (member && !tile.gap) member._snapFrame = {
+      x: offset * areaWidth,
+      y: 0,
+      width: width * areaWidth,
+      height: areaHeight
+    };
+    offset += width;
+  }
+  var spacer = (
+    /** @type {HTMLElement | null} */
+    group.spacer
+  );
+  if (spacer && usedSpacer !== spacer) {
+    spacer.style.removeProperty("order");
+    spacer.style.removeProperty("flex");
+    if (spacer.parentNode) spacer.parentNode.removeChild(spacer);
+  }
 };
 WindowManager.prototype.disableDialogDrag = function() {
   if (!this.isDragging) return;
+  var dragDirection = this.dragAction.direction;
   this.dragAction.set();
   this.toggleDragging(false);
   this.saveState();
   if (!this.activeDialog) return;
-  if (flags.aeroSnap && this.activeDialog.y <= 0)
-    this.activeDialog.maximize();
+  if (this.isTouchDrag) this.activeDialog.setDragScale(1, 1);
+  var snap = !(window.desktopManager && window.desktopManager.isExpos\u00E9);
+  if (snap) {
+    var snapZone = this.getGestureSnapZone(this.activeDialog, dragDirection, this.pointerPosition.x, this.pointerPosition.y);
+    if (snapZone) this.snapDialog(this.activeDialog, snapZone);
+    if (this.isTouchDrag) {
+      this.windowSnap.hideBehind(this.activeDialog);
+      this.isTouchDrag = false;
+    }
+    if (!this.activeDialog.maximized) this.windowSnap.hideBehind(this.activeDialog);
+    this._snapZone = "";
+  } else if (window.desktopManager) {
+    var desktopIndex = window.desktopManager.getDesktopIndexAt(this.pointerPosition.x, this.pointerPosition.y);
+    if (desktopIndex >= 0) this.activeDialog.dropIntoDesktop(desktopIndex);
+    else this.activeDialog.flyBackToExpos\u00E9Origin();
+    this.isTouchDrag = false;
+  }
   if (!this.activeDialog.moveEvents) return;
   var func = this.activeDialog.exchangeDialogMouseUpEvent;
   if (func) func();
@@ -1481,7 +2006,20 @@ WindowManager.prototype.getWindowById = function(id) {
 WindowManager.prototype.broadcast = function(type, data, id) {
   LVMessenger.broadcast(this.channel, type, data, id);
 };
+WindowManager.prototype.broadcastTheme = function() {
+  if (!document.hasFocus()) return;
+  this.broadcast("theme", { className: document.body.className });
+};
 WindowManager.prototype.handleBroadcast = function(type, data, id) {
+  if (type === "theme") {
+    var className = data && data.className;
+    if (typeof className !== "string") return;
+    document.body.className = className;
+    this.forEachWindow(function(dialog2) {
+      dialog2.messageFrame("theme", { className });
+    });
+    return;
+  }
   if (type !== "dialog-state") {
     messageReceived(type, data, id);
     return;
@@ -1489,7 +2027,6 @@ WindowManager.prototype.handleBroadcast = function(type, data, id) {
   if (!data || !id) return;
   var dialog = this.getWindowById(id);
   if (!dialog) {
-    if (!appManager) return;
     var app = appManager.getApp(id);
     if (!app) return;
     this.loadApp(app);
@@ -1501,6 +2038,149 @@ WindowManager.prototype.handleBroadcast = function(type, data, id) {
     dialog.loadState(data);
   } finally {
   }
+};
+WindowManager.prototype.getWindowOwningElement = function(el) {
+  var found = false;
+  var foundDialog = null;
+  this.forEachWindow(function(dialog) {
+    if (found) return;
+    if (dialog.body === el) {
+      found = true;
+      foundDialog = dialog;
+    }
+  });
+  return foundDialog;
+};
+WindowSnap.margin = 15;
+function WindowSnap() {
+  this.element = document.createElement("div");
+  this.element.id = "window-snap";
+  this._snapped = "";
+  this._section = null;
+  this.element.classList.add("hidden");
+}
+Object.defineProperty(WindowSnap.prototype, "hidden", {
+  get: function() {
+    return this.element.classList.contains("hidden");
+  },
+  set: function(enable) {
+    if (enable) this.element.classList.add("hidden");
+    else this.element.classList.remove("hidden");
+  }
+});
+WindowSnap.prototype.init = function() {
+  var snapParent = windowManager && windowManager.getSnapContainer() || document.getElementById("window-section") || document.getElementById("desktop") || document.body;
+  this._section = snapParent;
+  snapParent.insertBefore(this.element, snapParent.firstChild);
+};
+WindowSnap.prototype.attachTo = function(dialog) {
+  if (!windowManager) return;
+  var section = windowManager.getSnapContainer(dialog);
+  if (!section) return;
+  this._section = section;
+  if (this.element.parentNode !== section || section.firstChild !== this.element)
+    section.insertBefore(this.element, section.firstChild);
+};
+WindowSnap.prototype.moveToDialog = function(dialog, outset, direction, noAnimation, isTouch, preserveSnapped) {
+  outset = outset || 0;
+  if (dialog) this.attachTo(dialog);
+  this.hidden = !outset;
+  if (!preserveSnapped) this._snapped = "";
+  if (!direction) outset = 0;
+  var sides = [
+    { top: true, right: true, bottom: true, left: true },
+    { top: true, right: false, bottom: false, left: false },
+    { top: false, right: true, bottom: false, left: false },
+    { top: false, right: false, bottom: true, left: false },
+    { top: false, right: false, bottom: false, left: true },
+    { top: true, right: false, bottom: false, left: true },
+    { top: true, right: true, bottom: false, left: false },
+    { top: false, right: true, bottom: true, left: false },
+    { top: false, right: false, bottom: true, left: true }
+  ];
+  var s = sides[direction || 0] || sides[0];
+  if (!s) return;
+  var top = dialog.top - (s.top ? outset : 0);
+  var left = dialog.left - (s.left ? outset : 0);
+  var right = dialog.right - (s.right ? outset : 0);
+  var bottom = dialog.bottom - (s.bottom ? outset : 0);
+  this.element.style.zIndex = dialog.z.toString();
+  this.hidden = false;
+  if (isTouch && !direction) dialog.setDragScale(0.9, 0.9);
+  if (!noAnimation) animateElement(this.element, function() {
+    this.applyInsetStyle(top, left, right, bottom);
+  }, function(name) {
+    return name === "inset";
+  }, void 0, this, 200);
+  else this.applyInsetStyle(top, left, right, bottom);
+};
+WindowSnap.prototype.applyInsetStyle = function(top, left, right, bottom) {
+  insetElement(this.element, top, left, right, bottom);
+};
+WindowSnap.prototype.setInset = function(inset) {
+  insetElement(this.element, inset);
+};
+WindowSnap.prototype.areaWidth = function() {
+  var section = this._section || windowManager && windowManager.getSnapContainer() || document.getElementById("window-section");
+  return section ? section.clientWidth : window.innerWidth;
+};
+WindowSnap.prototype.setHalfInset = function(side) {
+  var half = Math.round(this.areaWidth() / 2);
+  var inset = WindowSnap.margin;
+  insetElement(this.element, inset, side === "left" ? inset : half + inset, side === "left" ? half + inset : inset, inset);
+};
+WindowSnap.prototype.setHeightInset = function(dialog) {
+  if (!dialog) return;
+  var inset = WindowSnap.margin;
+  var right = this.areaWidth() - dialog.x - dialog.width - inset;
+  insetElement(
+    this.element,
+    inset,
+    Math.max(inset, dialog.left - inset),
+    Math.max(inset, right),
+    inset
+  );
+};
+WindowSnap.prototype.snap = function(type, dialog) {
+  if (type === this._snapped) return;
+  this._snapped = type;
+  if (dialog) this.attachTo(dialog);
+  if (dialog && this.hidden) {
+    this.element.classList.remove("animating");
+    this.moveToDialog(dialog, 0, void 0, true, false, true);
+    void this.element.offsetWidth;
+  }
+  this.hidden = false;
+  if (dialog) this.element.style.zIndex = dialog.z.toString();
+  animateElement(this.element, function() {
+    console.log("snapping", type);
+    switch (type) {
+      case "maximize":
+        this.setInset(WindowSnap.margin);
+        break;
+      case "left":
+      case "right":
+        this.setHalfInset(type);
+        break;
+      case "height":
+        this.setHeightInset(dialog);
+        break;
+    }
+  }, function(name) {
+    return name === "inset";
+  }, function() {
+  }, this);
+};
+WindowSnap.prototype.hideBehind = function(dialog, keepScale) {
+  if (!keepScale) dialog.setDragScale(1, 1);
+  if (this.hidden) return;
+  animateElement(this.element, function() {
+    this.moveToDialog(dialog, 0, void 0, true);
+  }, function(name) {
+    return name === "inset";
+  }, function() {
+    this.hidden = true;
+  }, this, 120);
 };
 function ClickOffset() {
   this.clickX = 0;
@@ -1586,6 +2266,47 @@ ClickOffset.toggleDragEventHandler = function(enable, handler, cursor) {
 ClickOffset.prototype.toggleDragEventHandler = function(enable, cursor) {
   if (this.dragHandler) ClickOffset.toggleDragEventHandler(enable, this.dragHandler, cursor);
 };
+function Transformable(target) {
+  this.target = target;
+  this._transform = {};
+  this._perspective = 100;
+}
+Object.defineProperty(Transformable.prototype, "perspective", {
+  get: function() {
+    return this._perspective;
+  },
+  set: function(value) {
+    var parent = this.target.parentElement;
+    if (parent) parent.style.perspective = toPixels(this._perspective = value);
+  }
+});
+Transformable.prototype.update = function(animate) {
+  if (animate) animateElement(this.target, function() {
+    transformElement(this.target, this._transform);
+  }, "transform", function() {
+  }, this, 1e3);
+  else transformElement(this.target, this._transform);
+};
+Transformable.prototype.move = function(x, y, animate) {
+  this._transform.x = x;
+  this._transform.y = y;
+  this.update(animate);
+};
+Transformable.prototype.scale = function(x, y, update, animate) {
+  this._transform.scaleX = x || 1;
+  this._transform.scaleY = y || 1;
+  if (update) this.update(animate);
+};
+Transformable.prototype.rotate = function(x, y, z, animate) {
+  if (y === void 0 && z === void 0)
+    this._transform.rotate = x;
+  else {
+    this._transform.rotateX = x;
+    this._transform.rotateY = y;
+    this._transform.rotateZ = z;
+  }
+  this.update(animate);
+};
 function Dialog(object, create) {
   this._x = 0;
   this._y = 0;
@@ -1616,6 +2337,10 @@ function Dialog(object, create) {
   this._scaleX = 0;
   this._scaleY = 0;
   this._rotation = 0;
+  this._transform = null;
+  this._contentTransform = null;
+  this.dragScaleDuration = 280;
+  this._dragScaleAnimating = false;
   this._maximizing = false;
   this.maximizeAnimations = 0;
   this.fixed = false;
@@ -1649,6 +2374,17 @@ function Dialog(object, create) {
   this._popupPositionInterval = 0;
   this.dragging = false;
   this._appIcon = null;
+  var self2 = this;
+  this.activationHandler = function(ev, id2) {
+    if (ev.ctrlKey) {
+      ev.stopImmediatePropagation();
+      return;
+    }
+    if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
+      return false;
+    windowManager.windowActivationEvent(ev, self2, id2);
+    return true;
+  };
 }
 Dialog.prototype.getElementByTagOrClassName = function(name, parent) {
   var target = parent || this.target;
@@ -1711,59 +2447,11 @@ Dialog.prototype.initWithObject = function(object) {
   this.exchangeDialogMoveEvent = function(difference) {
     if (difference && self2.clickOffset) this.messageFrame("windowMove", self2.clickOffset.update(difference.x, difference.y));
   };
-  var activationHandler = function(ev) {
-    if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
-      return false;
-    windowManager.windowActivationEvent(ev, self2);
-    return true;
-  };
   var target = this.target;
-  if (target) {
+  if (target && this.activationHandler) {
+    var buttons = target.getElementsByTagName("button");
     var createSizers = true;
-    var createTouchSizers = true;
-    if (!supportsPointer) createTouchSizers = false;
-    if (!this.fixed && createSizers) {
-      var createSizer = function(id) {
-        if (!target) return;
-        var sizerId = "sizer-" + id;
-        var sizer = self2.getElementByTagOrClassName(sizerId);
-        if (!sizer || !isElement(sizer)) sizer = document.createElement("div");
-        sizer.draggable = false;
-        sizer.id = id.toString();
-        sizer.classList.add(sizerId);
-        var pointerDown = function(ev) {
-          if (!activationHandler(ev)) return;
-          windowManager.dragAction.set(id);
-          cancelDomEvent(ev);
-        };
-        var pointerUp = function() {
-          windowManager.disableDialogDrag();
-        };
-        if (supportsPointer) {
-          sizer.onpointerdown = pointerDown;
-          sizer.onpointerup = pointerUp;
-          sizer.onpointercancel = pointerUp;
-        } else sizer.onmousedown = pointerDown;
-        target.appendChild(sizer);
-        if (createTouchSizers) {
-          var touchSizerId = "touch-sizer-" + id;
-          var touchSizer = self2.getElementByTagOrClassName(touchSizerId);
-          if (!touchSizer || !isElement(touchSizer)) touchSizer = document.createElement("div");
-          touchSizer.draggable = false;
-          touchSizer.id = "touch-" + id;
-          touchSizer.classList.add(touchSizerId);
-          touchSizer.classList.add("touch");
-          if (supportsPointer) {
-            touchSizer.onpointerdown = pointerDown;
-            touchSizer.onpointerup = pointerUp;
-            touchSizer.onpointercancel = pointerUp;
-          }
-          target.appendChild(touchSizer);
-        }
-      };
-      for (var i = 0; i < 8; i++) createSizer.call(this, i + 1);
-    }
-    target.addEventListener("dragstart", cancelDomEvent, false);
+    if (this.resizable && createSizers) this._createSizers();
     target.addEventListener("selectstart", cancelDomEvent, false);
     var body = this.body;
     if (body) body.addEventListener("load", function() {
@@ -1771,22 +2459,47 @@ Dialog.prototype.initWithObject = function(object) {
         self2.verifyEjectCapability();
       } catch (exception) {
         console.warn("Failed to verify eject capability" + exception);
-        if (target) target.getElementsByTagName("button")[0].style.display = "none";
+        if (buttons[0]) buttons[0].style.display = "none";
       }
     }, false);
     var header = this.titleBar;
     if (header)
       header.addEventListener("dblclick", this.toggleMaximized.bind(this, void 0), false);
-    if (supportsPointer) target.addEventListener("pointerdown", activationHandler, false);
-    else target.addEventListener("mousedown", activationHandler, false);
-    target.getElementsByTagName("button")[windowButtons.eject].addEventListener("click", function() {
-      self2.createPopOut();
-      self2.quit();
-    }, false);
-    var buttons = target.getElementsByTagName("button");
-    buttons[windowButtons.close].addEventListener("click", this.close.bind(this), false);
-    buttons[windowButtons.full].addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
+    if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
+    else target.addEventListener("mousedown", this.activationHandler, false);
+    var ejectButton = buttons[windowButtons.eject];
+    if (ejectButton)
+      ejectButton.addEventListener("click", this.eject.bind(this), false);
+    var closeButton = buttons[windowButtons.close];
+    if (closeButton)
+      closeButton.addEventListener("click", this.close.bind(this), false);
+    var fullscreenButton = buttons[windowButtons.full];
+    if (fullscreenButton)
+      fullscreenButton.addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
     this.toggleOpen(false);
+    target.addEventListener("dragstart", function(event2) {
+      if (!event2.ctrlKey || !event2.dataTransfer || !self2.application) {
+        event2.preventDefault();
+        return;
+      }
+      var dragState = {
+        state: self2.getState(),
+        app: self2.application
+      };
+      var rect = getRect(self2.target);
+      if (rect) dragState.offset = {
+        x: event2.clientX - (rect.left + rect.width / 2),
+        y: event2.clientY - (rect.top + rect.height / 2)
+      };
+      var data = JSON.stringify(dragState);
+      event2.dataTransfer.setData("application/json", data);
+      event2.dataTransfer.setData("text/plain", self2.src || self2.title || self2.id);
+      if (self2.src) event2.dataTransfer.setData("text/uri-list", self2.src);
+      event2.dataTransfer.setData(
+        "text/html",
+        data
+      );
+    });
   }
   if (this.id) windowManager.windows[this.id] = this;
   this.updateUseTransform(this.useTransform);
@@ -1801,22 +2514,141 @@ Dialog.prototype.initWithObject = function(object) {
     self2._loaded = true;
   });
 };
-Object.defineProperty(Dialog.prototype, "isOpen", {
-  get: function() {
-    return Boolean(this.target && this.target.classList.contains("open"));
-  },
-  set: function(open) {
-    this.toggleOpen(open);
+Dialog.prototype.setParentElement = function(element) {
+  var target = this.target;
+  if (!target || !element) return;
+  if (target.parentNode === element) return;
+  if (typeof element.moveBefore === "function" && target.isConnected) try {
+    return element.moveBefore(target, null);
+  } catch (ex) {
+    console.warn("Not eligible for a move (e.g. a shadow root): use the compatible path.", ex);
   }
-});
-Object.defineProperty(Dialog.prototype, "frame", {
-  get: function() {
-    return this.target && this.target.getElementsByTagName("iframe")[0] || null;
+  element.appendChild(target);
+};
+Dialog.prototype.moveToDesktop = function(i) {
+  if (this.snapped && windowManager) windowManager.unsnapDialog(this);
+  if (window.desktopManager) {
+    var desktop = window.desktopManager.desktops[i];
+    if (desktop) desktop.insertWindow(this);
   }
-});
+};
+Dialog.prototype.detachToRootKeepingVisual = function(root) {
+  var target = this.target;
+  if (!target || !root) return;
+  var before = target.getBoundingClientRect();
+  this.setParentElement(root);
+  var after = target.getBoundingClientRect();
+  if (!before.width || !after.width) return;
+  var scale = before.width / after.width;
+  var content = this.content;
+  if (!content || !scale) return;
+  content.style.transformOrigin = "0 0";
+  content.style.scale = String(scale);
+  var measured = content.getBoundingClientRect();
+  content.style.transform = "translate(" + toPixels((before.left - measured.left) / scale) + "," + toPixels((before.top - measured.top) / scale) + ")";
+  this._exposeVisualScale = scale;
+  this._exposeContentScale = scale;
+  this._exposeVisualWidth = after.width;
+};
+Dialog.prototype.clearExpos\u00E9Visual = function() {
+  this._exposeOrigin = null;
+  if (typeof this._exposeVisualScale !== "number") return;
+  var content = this.content;
+  if (content) {
+    content.style.transform = "";
+    content.style.transformOrigin = "";
+    content.style.scale = "";
+    content.style.transition = "";
+  }
+  if (this._exposeScaleTimer) {
+    clearTimeout(this._exposeScaleTimer);
+    this._exposeScaleTimer = 0;
+  }
+  this._exposeVisualScale = void 0;
+  this._exposeVisualWidth = void 0;
+  this._exposeContentScale = void 0;
+  this._exposeGrab = null;
+};
+Dialog.prototype.dropIntoDesktop = function(i) {
+  var visualLeft = null, visualTop = null, unscaledWidth = this._exposeVisualWidth;
+  if (this.content) {
+    var rendered = this.content.getBoundingClientRect();
+    if (rendered.width) {
+      visualLeft = rendered.left;
+      visualTop = rendered.top;
+    }
+  }
+  this.moveToDesktop(i);
+  this.clearExpos\u00E9Visual();
+  if (visualLeft === null || !this.target || !unscaledWidth) return;
+  var placed = this.target.getBoundingClientRect();
+  if (!placed.width) return;
+  var desktopScale = placed.width / unscaledWidth;
+  if (!desktopScale) return;
+  this.move(
+    this.x + (visualLeft - placed.left) / desktopScale,
+    this.y + (visualTop - placed.top) / desktopScale
+  );
+};
+Dialog.prototype.flyBackToExpos\u00E9Origin = function() {
+  var origin = this._exposeOrigin;
+  this.clearExpos\u00E9Visual();
+  if (!origin || !window.desktopManager) return;
+  var desktop = window.desktopManager.desktops[origin.index];
+  if (!desktop) return;
+  desktop.insertWindow(this);
+  this.move(origin.x, origin.y, false);
+  this.animate(this.updatePosition);
+};
+Dialog.prototype._createSizers = function(createTouchSizers) {
+  var self2 = this;
+  var target = this.target;
+  if (typeof createTouchSizers === "undefined") createTouchSizers = supportsPointer;
+  var createSizer = function(id) {
+    if (!target || !self2.activationHandler) return;
+    var sizerId = "sizer-" + id;
+    var sizer = self2.getElementByTagOrClassName(sizerId);
+    if (!sizer || !isElement(sizer)) sizer = document.createElement("div");
+    sizer.draggable = false;
+    sizer.id = id.toString();
+    sizer.classList.add(sizerId);
+    var pointerDown = function(ev) {
+      if (!self2.activationHandler || !self2.activationHandler(ev, id)) return;
+      windowManager.dragAction.set(id);
+      if (windowManager.isTouchDrag) windowManager.windowSnap.moveToDialog(self2, 20, id);
+      cancelDomEvent(ev);
+    };
+    var pointerUp = function() {
+      windowManager.disableDialogDrag();
+    };
+    if (supportsPointer) {
+      sizer.onpointerdown = pointerDown;
+      sizer.onpointerup = pointerUp;
+      sizer.onpointercancel = pointerUp;
+    } else sizer.onmousedown = pointerDown;
+    target.appendChild(sizer);
+    if (createTouchSizers) {
+      var touchSizerId = "touch-sizer-" + id;
+      var touchSizer = self2.getElementByTagOrClassName(touchSizerId);
+      if (!touchSizer || !isElement(touchSizer)) touchSizer = document.createElement("div");
+      touchSizer.draggable = false;
+      touchSizer.id = "touch-" + id;
+      touchSizer.classList.add(touchSizerId);
+      touchSizer.classList.add("touch");
+      if (supportsPointer) {
+        touchSizer.onpointerdown = pointerDown;
+        touchSizer.onpointerup = pointerUp;
+        touchSizer.onpointercancel = pointerUp;
+      }
+      target.appendChild(touchSizer);
+    }
+  };
+  for (var i = 0; i < 8; i++) createSizer.call(this, i + 1);
+};
 Dialog.prototype.reportState = function() {
   this.messageFrame("window-size", {});
   this.messageFrame("theme", { className: document.body.className });
+  windowManager.broadcastTheme();
 };
 Dialog.prototype.toggleOpen = function(forceOpen, kill) {
   var target = this.target;
@@ -1844,6 +2676,27 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   if (frame || !create || !this.body) return frame;
   return this.body.appendChild(document.createElement("iframe"));
 };
+Object.defineProperty(Dialog.prototype, "isOpen", {
+  get: function() {
+    return Boolean(this.target && this.target.classList.contains("open"));
+  },
+  set: function(open) {
+    this.toggleOpen(open);
+  }
+});
+Object.defineProperty(Dialog.prototype, "frame", {
+  get: function() {
+    return this.target && this.target.getElementsByTagName("iframe")[0] || null;
+  }
+});
+Object.defineProperty(Dialog.prototype, "resizable", {
+  get: function() {
+    return !this.application ? true : this.application.resizable !== false;
+  },
+  set: function(v) {
+    if (v) this._createSizers();
+  }
+});
 Object.defineProperty(Dialog.prototype, "src", {
   get: function() {
     return this._src || this.application && this.application.src;
@@ -2049,7 +2902,7 @@ Object.defineProperty(Dialog.prototype, "top", {
     this._y = top / window.innerHeight;
     if (this.useTransform) {
       if (this.target) this.target.style.height = toPixels(height);
-      if (this.useTransform) this.updateTranslation();
+      this.updateTransform();
     } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
     this._isMinHeight = height === this.minHeight;
   }
@@ -2069,7 +2922,7 @@ Object.defineProperty(Dialog.prototype, "left", {
     this._x = left / window.innerWidth;
     if (this.useTransform) {
       if (this.target) this.target.style.width = toPixels(width);
-      if (this.useTransform) this.updateTranslation();
+      if (this.useTransform) this.updateTransform();
     } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
     this._isMinWidth = width === this.minWidth;
   }
@@ -2170,6 +3023,24 @@ Object.defineProperty(Dialog.prototype, "maximized", {
     this.toggleMaximized(maximized);
   }
 });
+Object.defineProperty(Dialog.prototype, "snapped", {
+  get: function() {
+    if (!this.target) return false;
+    return this.target.classList.contains("snapped");
+  },
+  set: function(snapped) {
+    this.toggleSnapped(snapped);
+  }
+});
+Object.defineProperty(Dialog.prototype, "heightSnapped", {
+  get: function() {
+    if (!this.target) return false;
+    return this.target.classList.contains("height-snapped");
+  },
+  set: function(snapped) {
+    this.toggleHeightSnapped(snapped);
+  }
+});
 Object.defineProperty(Dialog.prototype, "windowTarget", {
   get: function() {
     var target = this.target;
@@ -2188,7 +3059,7 @@ Dialog.prototype.setTitle = function(title) {
 };
 Object.defineProperty(Dialog.prototype, "id", {
   get: function() {
-    return this._id || this.target && this.target.getAttribute("id");
+    return this._id || this.target && this.target.id || "unk";
   },
   set: function(id) {
     this._id = id;
@@ -2202,7 +3073,29 @@ Object.defineProperty(Dialog.prototype, "content", {
     return this.getElementByTagOrClassName("content");
   }
 });
-Object.defineProperty(Dialog.prototype, "closeable", {
+Object.defineProperty(Dialog.prototype, "contentTransform", {
+  /** @type {()=>Transformable | null} */
+  get: function() {
+    if (this._contentTransform) return this._contentTransform;
+    var content = this.content;
+    if (!content) return null;
+    return this._contentTransform = new Transformable(content);
+  }
+});
+Object.defineProperty(Dialog.prototype, "transform", {
+  /** @type {()=>Transformable | null} */
+  get: function() {
+    if (this._transform) return this._transform;
+    var self2 = this;
+    (function() {
+    });
+    var target = this.target;
+    if (!target) return null;
+    this._transform = new Transformable(target);
+    return this._transform;
+  }
+});
+Object.defineProperty(Dialog.prototype, "killable", {
   get: function() {
     return this.application !== null;
   }
@@ -2301,9 +3194,7 @@ Dialog.prototype.setIcon = function(iconUrl, onError) {
     if (onError) onError();
     return;
   }
-  var headers = this.target.getElementsByTagName("header");
-  if (!headers.length) return;
-  var header = headers[0];
+  var header = this.titleBar;
   if (!header) return;
   this._appIcon = header.getElementsByTagName("img")[0] || null;
   if (!this._appIcon) return;
@@ -2322,25 +3213,43 @@ Dialog.prototype.setIcon = function(iconUrl, onError) {
 Dialog.prototype.setSkew = function(skew) {
   this._skew = skew;
   if (this.useTransform)
-    this.updateTranslation();
+    this.updateTransform();
   else if (this.target) skewElement(this.target, skew);
 };
-Dialog.prototype.setScale = function(scaleX, scaleY, update) {
-  this._scaleX = scaleX;
-  this._scaleY = scaleY;
-  if (update !== false) this.updateTranslation();
+Dialog.prototype.setScale = function(scaleX, scaleY, update, noAnimation) {
+  if (this.transform) this.transform.scale(scaleX, scaleY, update !== false, !noAnimation);
+};
+Dialog.prototype.setDragScale = function(scaleX, scaleY) {
+  var self2 = this;
+  var nextX = scaleX || 1;
+  var nextY = scaleY || 1;
+  if (nextX === this._scaleX && nextY === this._scaleY) return;
+  if (this._dragScaleAnimating) {
+    this.setScale(nextX, nextY, void 0, false);
+    return;
+  }
+  this._dragScaleAnimating = true;
+  this.animate(function() {
+    this.updateTransform();
+  }, function(name) {
+    return name === "transform";
+  }, function() {
+    self2._dragScaleAnimating = false;
+  }, this.dragScaleDuration);
+  this._scaleX = nextX;
+  this._scaleY = nextY;
 };
 Dialog.prototype.setScaleX = function(scaleX) {
   this._scaleX = scaleX;
-  this.updateTranslation();
+  this.updateTransform();
 };
 Dialog.prototype.setScaleY = function(scaleY) {
   this._scaleY = scaleY;
-  this.updateTranslation();
+  this.updateTransform();
 };
 Dialog.prototype.setRotation = function(rotation) {
   this._rotation = rotation;
-  this.updateTranslation();
+  this.updateTransform();
 };
 Dialog.prototype.focus = function() {
   windowManager.focusDialog(this);
@@ -2384,6 +3293,12 @@ Dialog.prototype.setClickOffset = function(x, y) {
   if (!this.clickOffset || !rect) return;
   return this.clickOffset.init(x, y, this.width || rect.width, this.height || rect.height, this.x, this.y);
 };
+Dialog.prototype.remapClickOffset = function(frameX, frameY, frameWidth, frameHeight) {
+  var offset = this.clickOffset;
+  if (!offset || frameWidth <= 0 || frameHeight <= 0) return;
+  offset.clickX = this.x + (offset.clickX - frameX) * (this.width / frameWidth);
+  offset.clickY = this.y + (offset.clickY - frameY) * (this.height / frameHeight);
+};
 Dialog.prototype.verifyEjectCapability = function() {
   return Boolean(this.href);
 };
@@ -2412,41 +3327,76 @@ Dialog.prototype.toggleButton = function(buttonId, enable) {
   return button.disabled = !enable;
 };
 Dialog.prototype.stopAnimating = function() {
-  if (!this.target) return;
-  this.target.classList.remove("animating");
-};
-Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd) {
-  var target = this.target;
-  if (!target) return;
-  var dialog = this;
-  if (supportsTransitions) {
-    target.classList.add("animating");
-    var animationHandler = function(event2) {
-      if (onTransitionEnd && !onTransitionEnd(event2.propertyName) || !target) return;
-      dialog.stopAnimating();
-      console.log("Aborting animation over " + event2.propertyName + ". Took: ", event2.elapsedTime, "seconds. Reported by: ", event2.target);
-      target.removeEventListener(transitionEndEvent, animationHandler, false);
-      if (onEnd) onEnd.call(dialog);
-    };
-    target.addEventListener(transitionEndEvent, animationHandler, false);
+  if (this._snappingOut) {
+    if (this.target && this.target._animationState !== this._snappingOutState) {
+      this._snappingOut = false;
+      this._snappingOutState = null;
+    }
+    return;
   }
-  window.requestAnimationFrame(function() {
-    if (onToggled) onToggled.call(dialog);
-  });
+  if (this._dragScaleAnimating) return;
+  if (this.target) this.target.classList.remove("animating");
 };
-Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled) {
+Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd, timeout, flip2) {
+  if (this.target) animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
+};
+Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled, timeout) {
   var self2 = this;
   var enabled = false;
   this.animate(function() {
-    if (self2.target && onToggled) onToggled.call(self2, enabled = setClass(self2.target, className, force));
+    if (self2.target) enabled = setClass(self2.target, className, force);
+    if (onToggled) onToggled.call(self2, enabled);
   }, onTransitionEnd, function() {
     if (onEnd) onEnd.call(self2, enabled);
-  });
+  }, timeout);
+};
+Dialog.prototype.toggleClassFlip = function(className, force, onTransitionEnd, onEnd, timeout) {
+  var self2 = this;
+  var enabled = false;
+  this.animate(function() {
+    if (self2.target) enabled = setClass(self2.target, className, force);
+  }, onTransitionEnd, function() {
+    if (onEnd) onEnd.call(self2, enabled);
+  }, timeout, true);
+};
+Dialog.prototype.toggleSnapped = function(enable) {
+  var target = this.target;
+  if (!target) return;
+  if (enable == null) enable = !target.classList.contains("snapped");
+  if (target.classList.contains("snapped") === enable) return;
+  this._snappingOut = !enable;
+  this._snappingOutState = null;
+  this.toggleClassFlip("snapped", enable, function(name) {
+    return name === "translate" || name === "scale";
+  }, function() {
+    this._snappingOut = false;
+    this._snappingOutState = null;
+  }, 1e3);
+  this._snappingOutState = target._animationState;
+};
+Dialog.prototype.toggleHeightSnapped = function(enable) {
+  var target = this.target;
+  if (!target) return;
+  if (enable == null) enable = !target.classList.contains("height-snapped");
+  if (target.classList.contains("height-snapped") === enable) return;
+  if (enable) this.move(this.x, 0);
+  this._snappingOut = !enable;
+  this._snappingOutState = null;
+  this.toggleClassAnimated("height-snapped", enable, function(name) {
+    return name === "height" || name === "transform";
+  }, function() {
+    this._snappingOut = false;
+    this._snappingOutState = null;
+  }, void 0, 1e3);
+  this._snappingOutState = /** @type {any} */
+  target._animationState;
 };
 Dialog.prototype.toggleMaximized = function(enable) {
   if (enable == null) enable = !this.maximized;
   if (this.maximized === enable) return;
   if (!this.target) return;
+  if (enable && this.snapped && windowManager) windowManager.unsnapDialog(this);
+  if (enable && this.heightSnapped) this.toggleHeightSnapped(false);
   var self2 = this;
   var content = this.content;
   this.setZ();
@@ -2468,7 +3418,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
     target2.classList.toggle("maximized", enabled);
     this.setScale(1, 1);
     if (!content) return;
-    translateElement(content, 0, 0, 0, 1, 1);
+    transformElementOld(content, 0, 0, 0, 1, 1);
     content.style.width = "";
     content.style.height = "";
     this.maximizeAnimations--;
@@ -2481,11 +3431,11 @@ Dialog.prototype.toggleMaximized = function(enable) {
     this._maximizing = enabled;
     var startWidth = this.width;
     var startHeight = this.height;
-    var windowSection = document.getElementById("window-section");
+    var windowSection = windowManager.getSnapContainer(this);
     var height = windowSection ? windowSection.clientHeight : window.innerHeight;
     var scaleX = window.innerWidth / startWidth;
     var scaleY = height / startHeight;
-    target2.style.transformOrigin = "top left";
+    target2.style.transformOrigin = enabled ? "top left" : "";
     target2.style.pointerEvents = "none";
     if (!enabled) {
       if (invertDurationOnShrink) timeOffsetMs = totalDuration - timeOffsetMs;
@@ -2501,7 +3451,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
         content.style.width = toPixels(targetWidth);
         content.style.height = toPixels(targetHeight);
         void content.offsetWidth;
-        translateElement(content, 0, 0, 0, 1 / scaleX, 1 / scaleY);
+        transformElementOld(content, 0, 0, 0, 1 / scaleX, 1 / scaleY);
       });
     }, timeOffsetMs);
   });
@@ -2553,12 +3503,14 @@ Dialog.prototype.messageFrame = function(type, message) {
   var frame = this.frame;
   if (frame) LVMessenger.broadcastToChild(type, frame, message);
 };
-Dialog.prototype.updateTranslation = function() {
-  if (this.useTransform && this.target) translateElement(this.target, this._maximizing ? 0 : this.x, this._maximizing ? 0 : this.y, this._skew, this._scaleX, this._scaleY, this._rotation);
+Dialog.prototype.updateTransform = function(animate) {
+  if (!(this.useTransform && this.transform)) return;
+  if (this._maximizing) this.transform.move(0, 0, animate);
+  else this.transform.move(this.x, this.y, animate);
 };
 Dialog.prototype.updatePosition = function() {
   if (!this.target) return;
-  if (this.useTransform) this.updateTranslation();
+  if (this.useTransform) this.updateTransform();
   else this.setInset(this.top, this.left, this.right, this.bottom);
   if (flags.useSkewAnimations) {
     var deltaX = this.x - this._previousX, deltaY = this.y - this._previousY;
@@ -2574,7 +3526,7 @@ Dialog.prototype.updatePosition = function() {
     if (!wallpaperP) return;
     var wallpaperImage = wallpaperP.children[0];
     if (!isElement(backdrop) || !wallpaperImage) return;
-    translateElement(backdrop, -this.x, -this.y);
+    transformElementOld(backdrop, -this.x, -this.y);
     var wallpaperWidth = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientWidth ? wallpaperImage.clientWidth : wallpaperP.clientWidth;
     var wallpaperHeight = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientHeight ? wallpaperImage.clientHeight : wallpaperP.clientHeight;
     backdrop.style.width = toPixels(wallpaperWidth);
@@ -2596,11 +3548,14 @@ Dialog.prototype.move = function(x, y, update, animate) {
   }
   if (typeof x === "undefined" || x === null) x = this.x;
   if (typeof y === "undefined" || y === null) y = this.y;
-  var bounds = WindowManager.windowBounds;
-  if (x < bounds.left) x = bounds.left;
-  if (bounds.right !== Infinity && x > bounds.right - this.width) x = bounds.right - this.width;
-  if (y < bounds.top) y = bounds.top;
-  if (bounds.bottom !== Infinity && y > bounds.bottom - this.height) y = bounds.bottom - this.height;
+  if (this.heightSnapped) y = this.y;
+  if (typeof this._exposeVisualScale !== "number") {
+    var bounds = WindowManager.windowBounds;
+    if (x < bounds.left) x = bounds.left;
+    if (bounds.right !== Infinity && x > bounds.right - this.width) x = bounds.right - this.width;
+    if (y < bounds.top) y = bounds.top;
+    if (bounds.bottom !== Infinity && y > bounds.bottom - this.height) y = bounds.bottom - this.height;
+  }
   var windowWidth = window.innerWidth;
   var windowHeight = window.innerHeight;
   var previousX = this._x, previousY = this._y;
@@ -2687,6 +3642,7 @@ Dialog.prototype.resize = function(width, height, direction) {
   if (this.fixed) return;
   if (typeof width === "undefined" || width === null) width = this.width;
   if (typeof height === "undefined" || height === null) height = this.height;
+  if (this.heightSnapped) height = this.height;
   var oldWidth = this.width, oldHeight = this.height;
   if (this._aspectRatioEnabled && this._aspectRatio) this._resizeWithAspect(width, height, direction);
   else this._resizeFree(width, height, direction);
@@ -2900,16 +3856,8 @@ Dialog.prototype.moveBody = function(x, y) {
   this.move(x + this._bodyOffset.x, y + this._bodyOffset.y);
 };
 Dialog.prototype.setInset = function(top, left, right, bottom) {
-  if (!this.target) return;
-  if ("inset" in this.target.style) this.target.style.inset = toPixels(top) + " " + toPixels(right) + " " + toPixels(bottom) + " " + toPixels(left);
-  else {
-    this.target.style.top = toPixels(top);
-    this.target.style.left = toPixels(left);
-    if (!this.useScale) {
-      this.target.style.right = toPixels(right);
-      this.target.style.bottom = toPixels(bottom);
-    }
-  }
+  if (this.useScale) right = void 0, bottom = void 0;
+  if (this.target) insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
   var frame = this.getOrCreateFrame(true);
@@ -2927,7 +3875,11 @@ Dialog.prototype.openUrl = function(url) {
   let index = 0;
   function tryNext() {
     var url2 = fallbackUrls[index++];
-    if (index >= fallbackUrls.length || !frame || !url2) return;
+    if (!url2) {
+      tryNext();
+      return;
+    }
+    if (index >= fallbackUrls.length || !frame) return;
     frame.src = url2;
     self2._src = url2;
     clearTimeout(timeout);
@@ -2944,25 +3896,22 @@ Dialog.prototype.loadFrame = function() {
   var frame = this.getOrCreateFrame(true);
   if (frame) appManager.openAppInIFrame(this.application.id, frame);
 };
-Dialog.prototype.quit = function() {
-  this.close();
-};
 Dialog.prototype.launch = function() {
   if (!this.isOpen) this.initWithObject(this);
   if (this.mica) this.injectMica();
   this.open();
 };
 Dialog.prototype.relaunch = function() {
-  this.quit();
+  this.close();
   this.launch();
 };
 Dialog.prototype.kill = function() {
   var parent = this.target && this.target.parentElement;
-  if (parent && this.closeable && this.target) parent.removeChild(this.target);
+  if (parent && this.killable && this.target) parent.removeChild(this.target);
 };
 Dialog.prototype.eject = function() {
   this.createPopOut();
-  this.quit();
+  this.close();
 };
 Dialog.prototype.createPopOut = function() {
   var body = this.body;
@@ -3152,6 +4101,11 @@ Dialog.prototype.moveElementIntoPipById = function(id) {
     };
   });
 };
+Dialog.prototype.screenshot = function() {
+  var target = this.target;
+  if (!target) return;
+  if (screenShooter) screenShooter.screenshotElement(target);
+};
 function DragAction() {
   this.execute = function() {
   };
@@ -3187,7 +4141,8 @@ function DragAction() {
   this.resizeFunctions = resizeFunctions;
 }
 DragAction.prototype.set = function(direction) {
-  this.execute = this.resizeFunctions[direction || 0] || function() {
+  this.direction = direction || 0;
+  this.execute = this.resizeFunctions[this.direction] || function() {
   };
 };
 function DocumentCrawler(customDocument) {
@@ -3217,9 +4172,11 @@ window.addEventListener("unload", function() {
   windowManager.saveState();
 }, false);
 window.addEventListener("dragover", function(e) {
+  console.log(e);
   cancelDomEvent(e);
 }, false);
 window.addEventListener("drop", function(e) {
+  console.log(e);
   e.preventDefault();
   if (!e.dataTransfer) return;
   var files = e.dataTransfer.files;
@@ -3232,6 +4189,11 @@ windowManager.isWindowUpdatesEnabled = true;
 var bodyCrawler = new DocumentCrawler();
 window.__LVMessengerReceive = messageReceived;
 window.__LVMessenger = {};
+function genericTyped(type) {
+  return type;
+}
+const hey = genericTyped(document.createElement("button"));
+const meow = document.createElement("applet");
 "use strict";
 function Reflector(element) {
   this.element = element;
@@ -3285,6 +4247,7 @@ function stopVibrations() {
 var eventPrevent = function(event2) {
   event2.preventDefault();
 };
+var scrollTabs = null;
 var onLoad = function() {
   var desktop = document.getElementById("desktop");
   if (desktop) desktop.addEventListener("mousedown", function() {
@@ -3312,15 +4275,97 @@ var onLoad = function() {
       clock.dateTime = date.toISOString();
       if (!("tracks" in clock))
         clock.innerHTML = date.toLocaleTimeString();
+      setTimeout(updateClock, 1e3 - Date.now() % 1e3);
     };
     updateClock();
-    setInterval(updateClock, 1e3);
     appButtons.appendChild(clock);
   }
   document.body.ondragover = window.ondragover = function(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "copy";
+    console.log("DADARAGGY");
+  };
+  document.body.ondrop = function(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (!ev.dataTransfer) return;
+    ev.dataTransfer.dropEffect = "copy";
+    console.log("Kronkel");
+    var dt = ev.dataTransfer;
+    var json = dt.getData("application/json");
+    var plain = dt.getData("text/plain");
+    var uriList = dt.getData("text/uri-list") || "";
+    var html = dt.getData("text/html") || "";
+    var droppedUrl = "";
+    if (uriList) {
+      var lines = uriList.replace(/\r\n/g, "\n").split("\n");
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line && line.charAt(0) !== "#") {
+          droppedUrl = line;
+          break;
+        }
+      }
+    }
+    if (!json && plain) {
+      var maybeJson = plain.trim();
+      if (maybeJson.charAt(0) === "{" || maybeJson.charAt(0) === "[") json = maybeJson;
+    }
+    var data = null;
+    if (html) {
+      try {
+        var parser = new DOMParser();
+        var newDoc = parser.parseFromString(html, "text/html");
+        var text = newDoc.body && newDoc.body.textContent ? newDoc.body.textContent : html;
+        var trimmed = text.trim();
+        if (trimmed) {
+          data = JSON.parse(trimmed);
+          if (data) json = trimmed;
+        }
+      } catch (exception) {
+        data = null;
+      }
+    }
+    if (!data && json) {
+      try {
+        data = JSON.parse(json);
+      } catch (exception) {
+        data = null;
+      }
+    }
+    if (data && data.app && window.windowManager) {
+      window.windowManager.dropApplication(data.app, ev.clientX, ev.clientY, data.offset, data.state);
+      return;
+    }
+    if (!droppedUrl && plain && !/^\{|\[/.test(plain.trim())) {
+      droppedUrl = plain.trim();
+    }
+    if (!droppedUrl) return;
+    try {
+      var url = new URL(droppedUrl, location.href).href;
+    } catch (exception) {
+      console.warn("Could not interpret dropped content as a URL.", exception);
+      return;
+    }
+    if (!window.appManager || !window.windowManager) return;
+    var existing = null;
+    for (var id in window.appManager.apps) {
+      if (window.appManager.apps.hasOwnProperty(id)) {
+        var a = window.appManager.apps[id];
+        if (a && (a.src === url || a.distSrc === url)) {
+          existing = a;
+          break;
+        }
+      }
+    }
+    if (existing) {
+      window.windowManager.dropApplication(existing, ev.clientX, ev.clientY, null, null);
+      return;
+    }
+    var newApp = window.appManager.createApp(url, url, "dropped." + Date.now());
+    window.appManager.addApp(newApp);
+    window.windowManager.dropApplication(newApp, ev.clientX, ev.clientY, null, null);
   };
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./Scripts/sw.js")["then"](function(reg) {
     console.log("Service Worker registered!", reg);
@@ -3335,14 +4380,14 @@ var onLoad = function() {
     clickOffset.dragHandler = function(ev) {
       clickOffset.update(ev.clientX - clickOffset.clickX, ev.clientY - clickOffset.clickY);
       var width = clickOffset.position.x, height = clickOffset.position.y;
-      translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
+      transformElementOld(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
       selector.style.width = toPixels(Math.abs(width));
       selector.style.height = toPixels(Math.abs(height));
     };
     tingeling.addEventListener(supportsPointer ? "pointerdown" : "mousedown", function(ev) {
       clickOffset.init(ev.clientX, ev.clientY);
       var width = clickOffset.position.x, height = clickOffset.position.y;
-      translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
+      transformElementOld(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
       selector.style.width = toPixels(Math.abs(width));
       selector.style.height = toPixels(Math.abs(height));
       selector.className = "selector";
@@ -3358,7 +4403,26 @@ var onLoad = function() {
   document.onselectstart = function() {
     return false;
   };
+  if (window.desktopManager) window.desktopManager.init();
 };
+function createDesktop() {
+  var windowSection = document.createElement("section");
+  windowSection.className = "window-section";
+  var wallpaper2 = document.getElementById("wallpaper")?.cloneNode(true);
+  windowSection.appendChild(wallpaper2);
+  var dockArea = document.getElementById("dock-area")?.cloneNode(true);
+  windowSection.appendChild(dockArea);
+  return windowSection;
+}
+function Desktop(name, desktopElement) {
+  this.name = name;
+  this.target = desktopElement || createDesktop();
+}
+Desktop.prototype.insertWindow = function(dialog) {
+  dialog.setParentElement(this.target);
+};
+function addDesktop() {
+}
 window.addEventListener("load", onLoad, false);
 function ContextMenu() {
   this.element = document.getElementById("context-menu");
@@ -3381,7 +4445,8 @@ ContextMenu.prototype.addItem = function(title, callback, icon) {
   if (!this.element) return;
 };
 var contextMenu = new ContextMenu();
-document.addEventListener("contextmenu", function(e) {
+var docontexthook = true;
+if (docontexthook) document.addEventListener("contextmenu", function(e) {
   e.preventDefault();
   console.log("Open contex tp ples");
   contextMenu.open(e.clientX, e.clientY);
@@ -3425,7 +4490,45 @@ window.addEventListener("keydown", function(event2) {
 }, false);
 function DesktopManager() {
   this.wallpaperImage = null;
+  this.desktops = [];
+  this.scrollTabs = null;
 }
+Object.defineProperty(DesktopManager.prototype, "isExpos\xE9", {
+  get: function() {
+    return Boolean(document.scrollingElement && document.scrollingElement.scrollTop);
+  }
+});
+DesktopManager.prototype.getDesktopIndexAt = function(x, y) {
+  for (var i = 0; i < this.desktops.length; i++) {
+    var desktop = this.desktops[i];
+    var element = desktop.target;
+    if (!element || !element.getBoundingClientRect) continue;
+    var rect = element.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return i;
+  }
+  return -1;
+};
+DesktopManager.prototype.init = function() {
+  this.scrollTabs = new TabScroller(document.querySelector("main"));
+  this.addDesktop("Main", document.getElementById("window-section") || void 0);
+  this.addDesktop();
+  this.addDesktop();
+};
+DesktopManager.prototype.addDesktop = function(name, desktopElement) {
+  if (!this.scrollTabs) return;
+  var desktop = new Desktop(name || "Desktop " + (this.desktops.length + 1), desktopElement);
+  this.scrollTabs.addTab(desktop.target);
+  this.desktops.push(desktop);
+  this.addOrMoveDesktopGap();
+};
+DesktopManager.prototype.addOrMoveDesktopGap = function() {
+  if (!this.scrollTabs) return;
+  if (!this.gapDesktop) {
+    this.gapDesktop = document.createElement("div");
+    this.gapDesktop.className = "tab-page";
+  }
+  this.scrollTabs.element.appendChild(this.gapDesktop);
+};
 function setTheme(theme) {
   document.body.classList.add(theme);
   window.windowManager.synchronizeStates();
@@ -3476,16 +4579,63 @@ DesktopManager.prototype.applyWallpaperImage = function(url, blurredUrl, onError
   }
   if (blurredUrl) this.wallpaperImage.setAttribute("blurred-src", blurredUrl);
 };
+DesktopManager.prototype.ensureWallpaperFrame = function() {
+  var wallpaper2 = DesktopManager.getWallpaper();
+  if (!wallpaper2) return null;
+  var frame = document.getElementById("wallpaper-frame");
+  if (frame instanceof HTMLIFrameElement) return frame;
+  frame = document.createElement("iframe");
+  frame.id = "wallpaper-frame";
+  frame.frameBorder = "0";
+  wallpaper2.appendChild(frame);
+  return frame;
+};
+DesktopManager.prototype.clearWallpaperContent = function() {
+  var wallpaper2 = DesktopManager.getWallpaper();
+  if (!wallpaper2) return;
+  this.wallpaperImage = null;
+  while (wallpaper2.firstChild) wallpaper2.removeChild(wallpaper2.firstChild);
+  wallpaper2.classList.remove("legacy-wallpaper");
+  wallpaper2.classList.remove("legacy-wallpaper-image");
+  wallpaper2.removeAttribute("data-blurred-src");
+  wallpaper2.style.backgroundImage = "";
+};
+DesktopManager.prototype.applyRegisteredWallpaper = function(id) {
+  this.clearWallpaperContent();
+  var frame = this.ensureWallpaperFrame();
+  if (!frame) return;
+  if (typeof appManager != "undefined" && typeof appManager.setWallpaper == "function")
+    appManager.setWallpaper(id);
+  else frame.src = "https://iemand005.github.io/FrostedColours/";
+};
+DesktopManager.prototype.restoreDefaultWallpaper = function() {
+  var defaultId = "colors";
+  if (typeof appManager != "undefined" && appManager._wallpaper)
+    defaultId = appManager._wallpaper.id;
+  this.applyRegisteredWallpaper(defaultId);
+};
+DesktopManager.prototype.clearWallpaperCache = function() {
+  try {
+    if (typeof settings != "undefined" && settings.set) settings.set("wallpaperImage", null);
+  } catch (ex) {
+  }
+  try {
+    window.localStorage.removeItem("wallpaperImage");
+  } catch (ex) {
+  }
+  initWallpaperDB(function(db) {
+    var transaction = db.transaction(["wallpapers"], "readwrite");
+    var store = transaction.objectStore("wallpapers");
+    store.delete("current");
+  }, function() {
+  });
+};
 DesktopManager.prototype.toggleOverlay = function(enable) {
   var overlay = bodyCrawler.getOverlay();
   if (!overlay) return;
   overlay.classList.toggle("open", enable);
 };
 window.desktopManager = new DesktopManager();
-window.desktopManager.applyWallpaperImage(
-  "file:///C:/Users/Lasse/Downloads/daniil-silantev-Rl7SZ19fgRQ-unsplash.jpg",
-  "file:///C:/Users/Lasse/Downloads/fox-blur.jpg"
-);
 window.ondrag = document.ondrag = function(ev) {
   ev.preventDefault();
   ev.stopPropagation();
@@ -3575,6 +4725,11 @@ function saveWallpaperToCache(blob, dataUrl) {
     localStorageFabblack(dataUrl);
   });
 }
+function hasRegisteredWallpaperSelection() {
+  if (typeof settings == "undefined" || !settings || typeof settings.get != "function") return false;
+  var selection = settings.get("wallpaper");
+  return typeof selection == "string" && selection.indexOf("registered:") === 0;
+}
 function loadWallpaperFromCache() {
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readonly");
@@ -3582,7 +4737,7 @@ function loadWallpaperFromCache() {
     var request = store.get("current");
     request.onsuccess = function() {
       var result = request.result;
-      if (result && result.blob && window.desktopManager) {
+      if (result && result.blob && window.desktopManager && !hasRegisteredWallpaperSelection()) {
         var objectUrl = URL.createObjectURL(result.blob);
         console.log("Loading cached wallpaper from IndexedDB");
         window.desktopManager.applyWallpaperImage(objectUrl);
@@ -3598,6 +4753,7 @@ function loadWallpaperFromCache() {
   });
 }
 function loadWallpaperFromLocalStorage() {
+  if (hasRegisteredWallpaperSelection()) return;
   console.log("Attempting to load wallpaper from localStorage...");
   console.log("settings defined:", typeof settings != "undefined");
   if (typeof settings == "undefined") {
@@ -3701,6 +4857,20 @@ function loadMetro() {
     metro.appendChild(metroFrame);
   }
 }
+var screenShooter = new ScreenShooter();
+var picker = new ElementPicker({
+  onSelect: function(el) {
+    window.screenShooter.screenshotElement(el);
+  },
+  onMove: function(el) {
+    if (el.nodeName === "ARTICLE") {
+      var dialog = windowManager.getWindowOwningElement(el);
+      if (dialog && dialog.target) this.highlight(dialog.target);
+    } else this.highlight(el);
+    return true;
+  }
+});
+picker.register();
 "use strict";
 var STORAGE_FILE = "app_storage.json";
 function formatCamelCase(text) {
@@ -3864,6 +5034,8 @@ function setThemeOption(theme) {
   }
   if (theme === "blur" || theme === "glass") DesktopManager.removeTheme("modern");
   else if (blurWasOn && theme !== "modern-blur") setTheme("modern");
+  if (typeof windowManager !== "undefined" && typeof windowManager.broadcastTheme === "function")
+    windowManager.broadcastTheme();
 }
 function toggleColorDebug(enabled) {
   document.body.classList.toggle("color-debug", enabled);
@@ -3918,9 +5090,83 @@ function setAccentColor(color) {
 }
 function loadSettings() {
   loadThemeSetting();
+  restoreWallpaperSetting();
   setColor(settings.get("color"));
   setAccentColor(settings.get("accentColor"));
   updateBlurState();
+}
+function updateWallpaperImageButton() {
+  if (!elements.wallpaperImageButton || !elements.wallpaperSelect) return;
+  elements.wallpaperImageButton.hidden = elements.wallpaperSelect.value !== "image";
+}
+function loadWallpaperOptions() {
+  if (!elements.wallpaperSelect) return;
+  var current = settings.get("wallpaper") || "";
+  elements.wallpaperSelect.innerHTML = "";
+  var noneOption = document.createElement("option");
+  noneOption.value = "";
+  noneOption.textContent = "None";
+  elements.wallpaperSelect.appendChild(noneOption);
+  if (typeof appManager != "undefined" && typeof appManager.forEachWallpaper == "function") {
+    appManager.forEachWallpaper(function(app, id) {
+      var option = document.createElement("option");
+      option.value = "registered:" + id;
+      option.textContent = app.title || id;
+      elements.wallpaperSelect.appendChild(option);
+    });
+  }
+  var imageOption = document.createElement("option");
+  imageOption.value = "image";
+  imageOption.textContent = "Image\u2026";
+  elements.wallpaperSelect.appendChild(imageOption);
+  elements.wallpaperSelect.value = current;
+  updateWallpaperImageButton();
+}
+function restoreWallpaperSetting() {
+  loadWallpaperOptions();
+  var wallpaper2 = settings.get("wallpaper");
+  if (typeof wallpaper2 != "string" || !wallpaper2) return;
+  if (wallpaper2 === "image") return;
+  if (wallpaper2.indexOf("registered:") === 0 && window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function") {
+    window.desktopManager.applyRegisteredWallpaper(wallpaper2.slice("registered:".length));
+  }
+}
+function setWallpaperOption(value) {
+  settings.set("wallpaper", value);
+  updateWallpaperImageButton();
+  if (value === "image") {
+    if (typeof loadWallpaperFromCache == "function") loadWallpaperFromCache();
+    return;
+  }
+  if (value.indexOf("registered:") === 0) {
+    var id = value.slice("registered:".length);
+    if (window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function")
+      window.desktopManager.applyRegisteredWallpaper(id);
+    return;
+  }
+  if (window.desktopManager) {
+    if (typeof window.desktopManager.restoreDefaultWallpaper == "function")
+      window.desktopManager.restoreDefaultWallpaper();
+    if (typeof window.desktopManager.clearWallpaperCache == "function")
+      window.desktopManager.clearWallpaperCache();
+  }
+}
+function applyWallpaperFile(files) {
+  if (!files || !files.length) return;
+  var file = files[0];
+  if (typeof file.type != "string" || !file.type.match(/^image\//)) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    if (!e.target) return;
+    var dataUrl = e.target.result;
+    if (typeof dataUrl != "string" || !window.desktopManager) return;
+    window.desktopManager.applyWallpaperImage(dataUrl, void 0, function() {
+      console.warn("Failed to apply wallpaper image");
+    });
+    saveWallpaperToCache(file, dataUrl);
+    settings.set("wallpaper", "image");
+  };
+  reader.readAsDataURL(file);
 }
 function loadThemeSetting() {
   var theme = settings.get("theme");
@@ -3972,7 +5218,10 @@ var elements = {
   noBlurFullscreen: null,
   installAppUrl: null,
   installAppButton: null,
-  installAppProxiedButton: null
+  installAppProxiedButton: null,
+  wallpaperSelect: null,
+  wallpaperInput: null,
+  wallpaperImageButton: null
 };
 function installAppFromUrl(useProxy) {
   var url = (elements.installAppUrl && elements.installAppUrl.value || "").trim();
@@ -4020,6 +5269,9 @@ function loadElements() {
   elements.installAppUrl = document.getElementById("install-app-url");
   elements.installAppButton = document.getElementById("install-app-button");
   elements.installAppProxiedButton = document.getElementById("install-app-proxied-button");
+  elements.wallpaperSelect = document.getElementById("wallpaper-select");
+  elements.wallpaperInput = document.getElementById("wallpaper-input");
+  elements.wallpaperImageButton = document.getElementById("wallpaper-image-button");
   var applist = document.getElementById("applist");
   var charmsButton = applist ? applist.appendChild(document.createElement("button")) : document.createElement("button");
   charmsButton.textContent = "Settings";
@@ -4053,6 +5305,15 @@ function loadElements() {
   };
   if (elements.installAppProxiedButton) elements.installAppProxiedButton.onclick = function() {
     installAppFromUrl(true);
+  };
+  if (elements.wallpaperSelect) elements.wallpaperSelect.onchange = function() {
+    setWallpaperOption(this.value);
+  };
+  if (elements.wallpaperInput) elements.wallpaperInput.onchange = function() {
+    applyWallpaperFile(this.files);
+  };
+  if (elements.wallpaperImageButton) elements.wallpaperImageButton.onclick = function() {
+    if (elements.wallpaperInput) elements.wallpaperInput.click();
   };
   if (elements.installAppUrl && elements.installAppUrl.form) {
     elements.installAppUrl.form.addEventListener("submit", function(event2) {
@@ -4095,6 +5356,13 @@ var applications = [
     minWidth: 180,
     minHeight: 240,
     src: "./Applications/Calculator/calculator.html"
+  },
+  {
+    title: "Color Tool",
+    id: "colortool",
+    minWidth: 180,
+    minHeight: 240,
+    src: "./Applications/ColorTool/colors.html"
   },
   { title: "Example", id: "0", src: "./example.html" },
   {
@@ -4278,8 +5546,9 @@ var applications = [
   },
   {
     title: "Monaco",
-    id: "foxyz.monaco",
-    src: "./Applications/Monaco/monaco.html"
+    id: "monaco",
+    src: "./Applications/Monaco/monaco.html",
+    iconUrl: "https://code.visualstudio.com/favicon.ico"
   },
   {
     title: "Furzona Lite",
@@ -4342,13 +5611,23 @@ var applications = [
     title: "LVOS",
     id: "lvos",
     src: "index.html",
-    distSrc: "https://iemand005.github.io/LVOS",
-    altUrls: ["https://iemand005.github.io/LVOS-dist", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
+    distSrc: "https://iemand005.github.io/LVOS/",
+    altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
   },
   {
-    "title": "Speak",
+    title: "Speak",
     id: "speak",
     src: "Applications/Speak/speak.html"
+  },
+  {
+    title: "Tepartive.NET",
+    id: "tepartive",
+    src: "https://tepartive.net/"
+  },
+  {
+    title: "ColourTool",
+    id: "color-tool",
+    src: "Applications/ColorTool/colors.html"
   }
 ];
 var games = [
@@ -4369,7 +5648,7 @@ var games = [
     title: "Minesweeper",
     id: "minesweeper",
     src: "./Games/Minesweeper/index.html",
-    fixed: true,
+    resizable: false,
     scroll: false
   },
   {
@@ -4405,6 +5684,12 @@ var games = [
     title: "Planet Life",
     id: "planetlife",
     src: "https://www.planetlife.space/static/game/index.html"
+  },
+  {
+    title: "Horizon Background",
+    id: "horizon-bg",
+    src: "https://iemand005.github.io/HorizonBackground/",
+    wallpaper: true
   }
 ];
 if (typeof windowManager !== "undefined") {
@@ -4430,12 +5715,17 @@ function initApps() {
       if (windows.music) dockApp(windows.music);
     }
   }
+  finishAppInstall();
 }
 ;
-if (typeof appManager !== "undefined") {
-  appManager.addApps(applications, games);
-  appManager.loadApps();
+function finishAppInstall() {
+  if (typeof appManager !== "undefined") {
+    appManager.addApps(applications, games);
+    appManager.loadApps();
+  }
+  if (typeof restoreWallpaperSetting == "function") restoreWallpaperSetting();
 }
+finishAppInstall();
 window.addEventListener("load", initApps, false);
 var bindConsole = false;
 var ConsoleOutType = {
@@ -4716,7 +6006,10 @@ function init() {
     scripts.forEach(function(s) {
       var replacement = document.createElement("script");
       replacement.src = s.src;
-      s.replaceWith(replacement);
+      try {
+        s.replaceWith(replacement);
+      } catch (ex) {
+      }
     });
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
