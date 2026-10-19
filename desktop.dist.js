@@ -245,9 +245,9 @@ if (typeof Array.from != "function") {
     function resolve(newValue) {
       try {
         if (newValue && (typeof newValue == "object" || typeof newValue == "function")) {
-          var then = newValue.then;
-          if (typeof then == "function") {
-            then.call(newValue, resolve, reject);
+          var then2 = newValue.then;
+          if (typeof then2 == "function") {
+            then2.call(newValue, resolve, reject);
             return;
           }
         }
@@ -4227,6 +4227,816 @@ Reflector.prototype.reflect = function(target) {
   }
   return null;
 };
+function ElementPicker(options) {
+  options = options;
+  this.active = false;
+  this.onSelect = options.onSelect || function(el) {
+    console.log("Selected:", el);
+  };
+  this.box = null;
+  this.statusEl = null;
+  this.hovered = null;
+  this.prevOutline = "";
+  var self2 = this;
+  this.onMove = function(e) {
+    var el = e.target;
+    if (!(el instanceof HTMLElement)) return;
+    if (options.onMove && options.onMove.call(self2, el)) return;
+    this.highlight(el);
+  };
+  this.boundMove = this.onMove.bind(this);
+  this.boundClick = this.onClick.bind(this);
+  this.boundKey = this.onKey.bind(this);
+}
+ElementPicker.prototype.register = function() {
+  var self2 = this;
+  document.addEventListener("keydown", function(e) {
+    if (e.shiftKey && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      self2.active ? self2.stop() : self2.start();
+    }
+  });
+};
+ElementPicker.prototype.start = function() {
+  this.active = true;
+  this.createBox();
+  document.body.style.cursor = "crosshair";
+  document.addEventListener("mousemove", this.boundMove, true);
+  document.addEventListener("click", this.boundClick, true);
+  document.addEventListener("keydown", this.boundKey, true);
+  this.status("Pick mode: click an element (Esc to cancel)");
+  document.body.classList.add("picking");
+};
+ElementPicker.prototype.stop = function() {
+  this.active = false;
+  document.body.style.cursor = "";
+  if (this.box) this.box.style.display = "none";
+  document.removeEventListener("mousemove", this.boundMove, true);
+  document.removeEventListener("click", this.boundClick, true);
+  document.removeEventListener("keydown", this.boundKey, true);
+  this.status("");
+  document.body.classList.remove("picking");
+};
+ElementPicker.prototype.highlight = function(el) {
+  if (el === this.hovered) return;
+  this.unhighlight();
+  this.hovered = el;
+  this.prevOutline = el.style.outline;
+  el.style.outline = "3px solid #2f81f7";
+};
+ElementPicker.prototype.unhighlight = function(skipRemove) {
+  if (!this.hovered) return;
+  this.hovered.style.outline = this.prevOutline;
+  if (skipRemove) return;
+  this.hovered = null;
+  this.prevOutline = "";
+};
+ElementPicker.prototype.drawRectAround = function(el) {
+  if (!this.box) return;
+  var r = el.getBoundingClientRect();
+  var s = this.box.style;
+  s.display = "block";
+  s.left = r.left + "px";
+  s.top = r.top + "px";
+  s.width = r.width + "px";
+  s.height = r.height + "px";
+};
+ElementPicker.prototype.onClick = function(e) {
+  if (!e.isTrusted) return;
+  e.preventDefault();
+  e.stopPropagation();
+  this.stop();
+  this.unhighlight(true);
+  if (this.hovered) this.onSelect(this.hovered);
+  this.unhighlight();
+};
+ElementPicker.prototype.onKey = function(e) {
+  if (e.key === "Escape") this.stop();
+};
+ElementPicker.prototype.createBox = function() {
+  if (this.box) return;
+  this.box = document.createElement("div");
+  Object.assign(this.box.style, {
+    position: "fixed",
+    pointerEvents: "none",
+    zIndex: 2147483646,
+    border: "2px solid #2f81f7",
+    background: "rgba(47,129,247,0.15)",
+    display: "none"
+  });
+  document.body.appendChild(this.box);
+};
+ElementPicker.prototype.status = function(msg) {
+  if (!this.statusEl) {
+    this.statusEl = document.createElement("div");
+    Object.assign(this.statusEl.style, {
+      position: "fixed",
+      bottom: "12px",
+      right: "12px",
+      background: "#222",
+      color: "#fff",
+      padding: "6px 12px",
+      borderRadius: "6px",
+      font: "13px system-ui, sans-serif",
+      zIndex: 2147483647,
+      display: "none"
+    });
+    document.body.appendChild(this.statusEl);
+  }
+  this.statusEl.textContent = msg;
+  this.statusEl.style.display = msg ? "block" : "none";
+};
+function GraphicsBase(element, context) {
+  var canvas = null;
+  if (element instanceof HTMLCanvasElement) canvas = element;
+  else if (typeof element === "string") {
+    var c = document.getElementById(element);
+    if (c instanceof HTMLCanvasElement) canvas = c;
+  } else canvas = document.createElement("canvas");
+  if (!canvas) throw new Error("Object does not resolve to a canvas!");
+  this.canvas = canvas;
+  var self2 = this;
+  this.canvas.onresize = function() {
+    self2.resize();
+  };
+  this.ctx = context ? canvas.getContext(context) : null;
+}
+Object.defineProperty(GraphicsBase.prototype, "width", {
+  get: function() {
+    return this.canvas.width;
+  },
+  set: function(width) {
+    if (typeof width === "number")
+      this.canvas.width = width;
+  }
+});
+Object.defineProperty(GraphicsBase.prototype, "height", {
+  get: function() {
+    return this.canvas.height;
+  },
+  set: function(height) {
+    if (typeof height === "number")
+      this.canvas.height = height;
+  }
+});
+GraphicsBase.prototype.resize = function(width, height) {
+  if (typeof width === "undefined" || typeof height === "undefined") {
+    const rect = this.canvas.getBoundingClientRect();
+    width = rect.width;
+    height = rect.height;
+  }
+  const dpr = window.devicePixelRatio || 1;
+  this.width = width * dpr;
+  this.height = height * dpr;
+  return dpr;
+};
+GraphicsBase.prototype.downloadImage = function(data, filename) {
+  var a = document.createElement("a");
+  a.href = data;
+  a.download = filename || "untitled.jpeg";
+  document.body.appendChild(a);
+  a.click();
+};
+GraphicsBase.prototype.getDataUrl = function(type, quality) {
+  return this.canvas.toDataURL("image/" + (type || "png"), quality || 1);
+};
+GraphicsBase.prototype.downloadCanvas = function(filename) {
+  this.downloadImage(this.getDataUrl(), filename);
+};
+function Graphics3D(canvas, context) {
+  GraphicsBase.call(this, canvas, context);
+  if (context === "2d") return;
+  this.gl = context === "webgl2" && this.canvas.getContext("webgl2") || this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
+  if (!this.gl) throw new Error("WebGL not supported!");
+  this.gl.clearColor(0, 0, 0, 0);
+  this.buffers = {
+    position: [],
+    indices: [],
+    color: []
+  };
+  this.renderTarget = null;
+  this.blitProgram = null;
+  this.blitBuffer = null;
+  this.blitAttribLocation = -1;
+  this.blitTextureLocation = null;
+  this.hasDepthBuffer = false;
+  this.onrender = function() {
+  };
+}
+Graphics3D.prototype = Object.create(GraphicsBase.prototype);
+Graphics3D.prototype.constructor = Graphics3D;
+var mat4 = {
+  create: function() {
+    return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  },
+  multiply: function(out, a, b) {
+    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    var b00 = b[0], b01 = b[1], b02 = b[2], b03 = b[3];
+    var b10 = b[4], b11 = b[5], b12 = b[6], b13 = b[7];
+    var b20 = b[8], b21 = b[9], b22 = b[10], b23 = b[11];
+    var b30 = b[12], b31 = b[13], b32 = b[14], b33 = b[15];
+    out[0] = a00 * b00 + a10 * b01 + a20 * b02 + a30 * b03;
+    out[1] = a01 * b00 + a11 * b01 + a21 * b02 + a31 * b03;
+    out[2] = a02 * b00 + a12 * b01 + a22 * b02 + a32 * b03;
+    out[3] = a03 * b00 + a13 * b01 + a23 * b02 + a33 * b03;
+    out[4] = a00 * b10 + a10 * b11 + a20 * b12 + a30 * b13;
+    out[5] = a01 * b10 + a11 * b11 + a21 * b12 + a31 * b13;
+    out[6] = a02 * b10 + a12 * b11 + a22 * b12 + a32 * b13;
+    out[7] = a03 * b10 + a13 * b11 + a23 * b12 + a33 * b13;
+    out[8] = a00 * b20 + a10 * b21 + a20 * b22 + a30 * b23;
+    out[9] = a01 * b20 + a11 * b21 + a21 * b22 + a31 * b23;
+    out[10] = a02 * b20 + a12 * b21 + a22 * b22 + a32 * b23;
+    out[11] = a03 * b20 + a13 * b21 + a23 * b22 + a33 * b23;
+    out[12] = a00 * b30 + a10 * b31 + a20 * b32 + a30 * b33;
+    out[13] = a01 * b30 + a11 * b31 + a21 * b32 + a31 * b33;
+    out[14] = a02 * b30 + a12 * b31 + a22 * b32 + a32 * b33;
+    out[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
+    return out;
+  },
+  perspective: function(out, fovy, aspect, near, far) {
+    var f = 1 / Math.tan(fovy / 2);
+    out[0] = f / aspect;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = f;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[11] = -1;
+    out[12] = 0;
+    out[13] = 0;
+    out[15] = 0;
+    if (far == null || far === Infinity) {
+      out[10] = -1;
+      out[14] = -2 * near;
+    } else {
+      var nf = 1 / (near - far);
+      out[10] = (far + near) * nf;
+      out[14] = 2 * far * near * nf;
+    }
+    return out;
+  },
+  translate: function(out, a, v) {
+    var x = v[0], y = v[1], z = v[2];
+    if (a === out) {
+      out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
+      out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
+      out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
+      out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
+      return out;
+    }
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = a[2];
+    out[3] = a[3];
+    out[4] = a[4];
+    out[5] = a[5];
+    out[6] = a[6];
+    out[7] = a[7];
+    out[8] = a[8];
+    out[9] = a[9];
+    out[10] = a[10];
+    out[11] = a[11];
+    out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
+    out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
+    out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
+    out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
+    return out;
+  },
+  rotate: function(out, a, rad, axis) {
+    var x = axis[0], y = axis[1], z = axis[2];
+    var len = Math.sqrt(x * x + y * y + z * z);
+    if (!len) return null;
+    x /= len;
+    y /= len;
+    z /= len;
+    var s = Math.sin(rad);
+    var c = Math.cos(rad);
+    var t = 1 - c;
+    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    var b00 = x * x * t + c;
+    var b01 = y * x * t + z * s;
+    var b02 = z * x * t - y * s;
+    var b10 = x * y * t - z * s;
+    var b11 = y * y * t + c;
+    var b12 = z * y * t + x * s;
+    var b20 = x * z * t + y * s;
+    var b21 = y * z * t - x * s;
+    var b22 = z * z * t + c;
+    out[0] = a00 * b00 + a10 * b01 + a20 * b02;
+    out[1] = a01 * b00 + a11 * b01 + a21 * b02;
+    out[2] = a02 * b00 + a12 * b01 + a22 * b02;
+    out[3] = a03 * b00 + a13 * b01 + a23 * b02;
+    out[4] = a00 * b10 + a10 * b11 + a20 * b12;
+    out[5] = a01 * b10 + a11 * b11 + a21 * b12;
+    out[6] = a02 * b10 + a12 * b11 + a22 * b12;
+    out[7] = a03 * b10 + a13 * b11 + a23 * b12;
+    out[8] = a00 * b20 + a10 * b21 + a20 * b22;
+    out[9] = a01 * b20 + a11 * b21 + a21 * b22;
+    out[10] = a02 * b20 + a12 * b21 + a22 * b22;
+    out[11] = a03 * b20 + a13 * b21 + a23 * b22;
+    out[12] = a30;
+    out[13] = a31;
+    out[14] = a32;
+    out[15] = a33;
+    return out;
+  }
+};
+function Vector3D(x, y, z) {
+  this.x = 0;
+  this.y = 0;
+  this.z = 0;
+  if (typeof x === "number") {
+    this.x = x;
+    if (y === void 0 || z === void 0)
+      this.y = x, this.z = x;
+    else this.y = y, this.z = z;
+  } else if (typeof x == "object" && x.x && x.y && x.z) {
+    this.x = x.x, this.y = x.y, this.z = x.z;
+  }
+}
+Vector3D.prototype.div = function(amount) {
+  this.x /= amount, this.y /= amount, this.z /= amount;
+  return this;
+};
+Vector3D.prototype.normalize = function() {
+  return this.div(this.x + this.y + this.z);
+};
+Graphics3D.prototype.clear = function() {
+  var mask = this.gl.COLOR_BUFFER_BIT;
+  if (this.hasDepthBuffer) mask |= this.gl.DEPTH_BUFFER_BIT;
+  this.gl.clear(mask);
+};
+Graphics3D.prototype.setClearColor = function(red, green, blue, alpha) {
+  this.gl.clearColor(red, green, blue, alpha);
+};
+Graphics3D.prototype.setRenderTarget = function(renderTarget) {
+  this.renderTarget = renderTarget;
+};
+Graphics3D.prototype.initBlitResources = function() {
+  if (this.blitProgram) return;
+  const gl = this.gl;
+  const vsSource = "attribute vec2 aPosition; varying vec2 vUv; void main() { vUv = aPosition * 0.5 + 0.5; gl_Position = vec4(aPosition, 0.0, 1.0); }";
+  const fsSource = "precision mediump float; uniform sampler2D uTexture; varying vec2 vUv; void main() { gl_FragColor = texture2D(uTexture, vUv); }";
+  const vertexShader = this.loadShader(gl.VERTEX_SHADER, vsSource);
+  const fragmentShader = this.loadShader(gl.FRAGMENT_SHADER, fsSource);
+  if (!vertexShader || !fragmentShader) return console.warn("Failed to load shaders");
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    alert(
+      "Unable to initialize the blit shader program: " + gl.getProgramInfoLog(program)
+    );
+    return;
+  }
+  this.blitProgram = program;
+  this.blitAttribLocation = gl.getAttribLocation(program, "aPosition");
+  this.blitTextureLocation = gl.getUniformLocation(program, "uTexture");
+  this.blitBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.blitBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+};
+Graphics3D.prototype.presentRenderTarget = function() {
+  const gl = this.gl;
+  if (!this.renderTarget || !gl) return;
+  if (!this.blitProgram) this.initBlitResources();
+  if (!this.blitProgram || this.blitAttribLocation === -1) return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(this.blitProgram);
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.blitBuffer);
+  gl.vertexAttribPointer(this.blitAttribLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(this.blitAttribLocation);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, this.renderTarget.colorTexture);
+  gl.uniform1i(this.blitTextureLocation, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+};
+Graphics3D.prototype.loadShader = function(type, source) {
+  const shader = this.gl.createShader(type);
+  if (!shader) return null;
+  this.gl.shaderSource(shader, source);
+  this.gl.compileShader(shader);
+  if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+    alert(
+      "An error occurred compiling the shaders: " + this.gl.getShaderInfoLog(shader)
+    );
+    this.gl.deleteShader(shader);
+    return null;
+  }
+  return shader;
+};
+Graphics3D.prototype.initShaderProgram = function(vsSource, fsSource) {
+  const vertexShader = this.loadShader(this.gl.VERTEX_SHADER, vsSource);
+  const fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, fsSource);
+  if (!vertexShader || !fragmentShader) return;
+  const shaderProgram = this.gl.createProgram();
+  this.gl.attachShader(shaderProgram, vertexShader);
+  this.gl.attachShader(shaderProgram, fragmentShader);
+  this.gl.linkProgram(shaderProgram);
+  if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
+    alert(
+      "Unable to initialize the shader program: " + this.gl.getProgramInfoLog(shaderProgram)
+    );
+    return null;
+  }
+  return shaderProgram;
+};
+Graphics3D.prototype.loadShaders = function(vsSource, fsSource) {
+  const gl = this.gl;
+  this.shaderProgram = this.initShaderProgram(vsSource, fsSource);
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  const positions = [1, 1, -1, 1, 1, -1, -1, -1];
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+  this.programInfo = {
+    program: this.shaderProgram,
+    attribLocations: {
+      vertexPosition: this.gl.getAttribLocation(
+        this.shaderProgram,
+        "aVertexPosition"
+      ),
+      vertexColor: this.gl.getAttribLocation(this.shaderProgram, "aVertexColor")
+    },
+    uniformLocations: {
+      projectionMatrix: this.gl.getUniformLocation(
+        this.shaderProgram,
+        "uProjectionMatrix"
+      ),
+      modelViewMatrix: this.gl.getUniformLocation(
+        this.shaderProgram,
+        "uModelViewMatrix"
+      )
+    }
+  };
+};
+let deltaTime = 0;
+let then = 0;
+function Camera() {
+  this.rotation = new Vector3D();
+}
+Graphics3D.prototype.drawScene = function(programInfo, deltaTime2, camera) {
+  const gl = this.gl;
+  if (this.renderTarget) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderTarget.framebuffer);
+    gl.viewport(0, 0, this.renderTarget.width, this.renderTarget.height);
+  } else {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  }
+  gl.clearDepth(1);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clearDepth(1);
+  const fov = 45;
+  const fieldOfView = fov * Math.PI / 180;
+  const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+  const zNear = 0.1;
+  const zFar = 100;
+  const projectionMatrix = mat4.create();
+  mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+  const modelViewMatrix = mat4.create();
+  mat4.translate(
+    modelViewMatrix,
+    // destination matrix
+    modelViewMatrix,
+    // matrix to translate
+    [-0, 0, -6]
+  );
+  mat4.rotate(
+    modelViewMatrix,
+    // destination matrix
+    modelViewMatrix,
+    // matrix to rotate
+    camera.rotation.z,
+    // amount to rotate in radians
+    [0, 0, 1]
+  );
+  mat4.rotate(
+    modelViewMatrix,
+    // destination matrix
+    modelViewMatrix,
+    // matrix to rotate
+    camera.rotation.y,
+    // amount to rotate in radians
+    [0, 1, 0]
+  );
+  mat4.rotate(
+    modelViewMatrix,
+    // destination matrix
+    modelViewMatrix,
+    // matrix to rotate
+    camera.rotation.x,
+    // amount to rotate in radians
+    [1, 0, 0]
+  );
+  {
+    const numComponents2 = 3;
+    const type2 = gl.FLOAT;
+    const normalize2 = false;
+    const stride2 = 0;
+    const offset2 = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
+    gl.vertexAttribPointer(
+      this.programInfo.attribLocations.vertexPosition,
+      numComponents2,
+      type2,
+      normalize2,
+      stride2,
+      offset2
+    );
+    gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+  }
+  const numComponents = 4;
+  const type = gl.FLOAT;
+  const normalize = false;
+  const stride = 0;
+  const offset = 0;
+  if (this.programInfo.attribLocations.vertexColor !== -1) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.color);
+    gl.vertexAttribPointer(
+      this.programInfo.attribLocations.vertexColor,
+      numComponents,
+      type,
+      normalize,
+      stride,
+      offset
+    );
+    gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexColor);
+  }
+  gl.useProgram(this.programInfo.program);
+  gl.uniformMatrix4fv(
+    this.programInfo.uniformLocations.projectionMatrix,
+    false,
+    projectionMatrix
+  );
+  gl.uniformMatrix4fv(
+    this.programInfo.uniformLocations.modelViewMatrix,
+    false,
+    modelViewMatrix
+  );
+  {
+    const vertexCount = 36;
+    const type2 = gl.UNSIGNED_SHORT;
+    const offset2 = 0;
+    gl.drawElements(gl.TRIANGLES, vertexCount, type2, offset2);
+  }
+  if (this.renderTarget && typeof uploadDepthFrame === "function" && typeof stereogramState !== "undefined" && stereogramState.depthSource === "generated") {
+    const pixels = new Uint8Array(
+      this.renderTarget.width * this.renderTarget.height * 4
+    );
+    gl.readPixels(
+      0,
+      0,
+      this.renderTarget.width,
+      this.renderTarget.height,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels
+    );
+    uploadDepthFrame(pixels, this.renderTarget.width, this.renderTarget.height);
+  }
+  if (this.renderTarget) {
+    this.presentRenderTarget();
+  }
+};
+Graphics3D.prototype.render = function(now) {
+  now *= 1e-3;
+  deltaTime = now - then;
+  then = now;
+  this.drawScene(this.programInfo, deltaTime);
+  requestAnimationFrame(Graphics3D.prototype.render.bind(this));
+};
+Graphics3D.prototype.startRendering = function() {
+  requestAnimationFrame(Graphics3D.prototype.render.bind(this));
+};
+Graphics3D.prototype.resize = function(width, height) {
+  const dpr = GraphicsBase.prototype.resize.call(this, width, height);
+  if (this.gl)
+    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+  return dpr;
+};
+class CanvasMaker extends Graphics3D {
+  // canvas ;;
+  /** @type {Element | null} */
+  element = null;
+  /** @type {((this: CanvasMaker, t: number)=>void) | null} */
+  onDraw = null;
+  /**
+   * @param {CanvasLike} [element]
+   * @param {CanvasContext} [context]
+   */
+  constructor(element, context) {
+    super(element || document.createElement("canvas"), context);
+    this.canvas.setAttribute("layoutsubtree", "");
+  }
+  /** @param {HTMLElement} element */
+  createCanvas(element) {
+    element.setAttribute("drawable", "");
+    this.canvas.appendChild(element);
+    this.element = element;
+    document.body.appendChild(this.canvas);
+  }
+  /** @param {Element} element */
+  insertElement(element) {
+    element.setAttribute("drawable", "");
+    this.canvas.moveBefore(element, null);
+    this.element = element;
+  }
+  putMainInCanvas() {
+    const main = document.querySelector("main");
+    if (!main) return;
+    this.createCanvas(main);
+    this.startDrawing();
+  }
+  startDrawing() {
+    const gl = this.gl;
+    this.canvas.width = innerWidth;
+    this.canvas.height = innerHeight;
+    const W = this.canvas.width, H = this.canvas.height;
+    gl.viewport(0, 0, W, H);
+    const FRAG = (
+      /* GLSL */
+      `precision mediump float; uniform sampler2D s; varying vec2 v; void main() { gl_FragColor = texture2D(s, v); }`
+    );
+    const bgProg = this.initShaderProgram(
+      /* GLSL */
+      `attribute vec2 p; varying vec2 v; void main() { v = vec2(p.x * .5 + .5, .5 - p.y * .5); gl_Position = vec4(p, 0., 1.); }`,
+      FRAG
+    );
+    const bgBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const cubeProg = this.initShaderProgram(
+      /* GLSL */
+      `
+	attribute vec3 p; attribute vec2 t; uniform float a, asp; varying vec2 v;
+	void main() {
+		vec3 q = p;
+		q.xz = mat2(cos(a), sin(a), -sin(a), cos(a)) * q.xz;        // spin around Y
+		q.yz = mat2(cos(.5), sin(.5), -sin(.5), cos(.5)) * q.yz;    // tilt around X
+		q.z -= 5.;
+		v = t;
+		gl_Position = vec4(q.x * 2.4 / asp, q.y * 2.4, -1.105 * q.z - 2.105, -q.z);
+	}`,
+      FRAG
+    );
+    if (!cubeProg || !bgProg) return;
+    const V = [], I = [];
+    for (let f = 0; f < 6; f++) {
+      const a = f % 3, s = f < 3 ? 1 : -1, u = (a + 1) % 3, w = (a + 2) % 3;
+      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const p = [0, 0, 0];
+        p[a] = s;
+        p[u] = x;
+        p[w] = y;
+        V.push(...p, (x * s + 1) / 2, (1 - y) / 2);
+      }
+      I.push(f * 4, f * 4 + 1, f * 4 + 2, f * 4, f * 4 + 2, f * 4 + 3);
+    }
+    const cubeBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW);
+    const idxBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), gl.STATIC_DRAW);
+    const bgP = gl.getAttribLocation(bgProg, "p");
+    const cubeP = gl.getAttribLocation(cubeProg, "p");
+    const cubeT = gl.getAttribLocation(cubeProg, "t");
+    const uAngle = gl.getUniformLocation(cubeProg, "a");
+    const uAsp = gl.getUniformLocation(cubeProg, "asp");
+    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    this.canvas.onpaint = () => {
+      const panel = this.element;
+      if (!panel) return;
+      if (gl.texElementSubImage2D) gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, panel, { width: W, height: H });
+      else if (gl.texElementImage2D) gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, panel);
+      if (this.canvas.updateElementGeometry) this.canvas.updateElementGeometry(panel, { canvasTransform: new DOMMatrix() });
+    };
+    this.canvas.requestPaint();
+    var self2 = this;
+    this.hasDepthBuffer = true;
+    (function draw(t) {
+      self2.clear();
+      gl.disable(gl.DEPTH_TEST);
+      gl.useProgram(bgProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
+      gl.enableVertexAttribArray(bgP);
+      gl.vertexAttribPointer(bgP, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.disableVertexAttribArray(bgP);
+      gl.enable(gl.DEPTH_TEST);
+      gl.useProgram(cubeProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+      gl.enableVertexAttribArray(cubeP);
+      gl.vertexAttribPointer(cubeP, 3, gl.FLOAT, false, 20, 0);
+      gl.enableVertexAttribArray(cubeT);
+      gl.vertexAttribPointer(cubeT, 2, gl.FLOAT, false, 20, 12);
+      gl.uniform1f(uAsp, W / H);
+      gl.uniform1f(uAngle, t / 1e3);
+      gl.drawElements(gl.TRIANGLES, I.length, gl.UNSIGNED_SHORT, 0);
+      gl.disableVertexAttribArray(cubeP);
+      gl.disableVertexAttribArray(cubeT);
+      requestAnimationFrame(draw);
+    })(0);
+  }
+  /** @param {number} t */
+  draw(t) {
+    if (this.onDraw) this.onDraw(t);
+  }
+}
+const canvasMaker = new CanvasMaker();
+class ScreenShooter extends CanvasMaker {
+  constructor() {
+    super(new OffscreenCanvas(1e3, 1e3), "2d");
+  }
+  async screenshotElement(element, { debug = false } = {}) {
+    if (typeof CanvasRenderingContext2D.prototype.drawElementImage !== "function")
+      throw new Error("html-in-canvas unavailable");
+    const rect = element.getBoundingClientRect();
+    const cssW = Math.max(1, Math.ceil(rect.width));
+    const cssH = Math.max(1, Math.ceil(rect.height));
+    const dpr = this.resize(cssW, cssH);
+    const outW = this.canvas.width;
+    const outH = this.canvas.height;
+    const mount = document.createElement("canvas");
+    mount.setAttribute("layoutsubtree", "");
+    mount.width = outW;
+    mount.height = outH;
+    mount.style.cssText = `position:fixed;top:0;left:0;width:${cssW}px;height:${cssH}px;z-index:-2147483647;pointer-events:none`;
+    document.body.appendChild(mount);
+    const mountCtx = mount.getContext("2d");
+    const parent = element.parentNode;
+    const placeholder = document.createComment("screenshot-placeholder");
+    parent.insertBefore(placeholder, element);
+    const savedStyle = element.getAttribute("style");
+    const hadDrawable = element.hasAttribute("drawable");
+    const move = (to, ref) => {
+      if (typeof to.moveBefore !== "function")
+        throw new Error("moveBefore() unavailable");
+      to.moveBefore(element, ref || null);
+    };
+    const frame = () => new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        setTimeout(resolve, 50);
+      });
+    });
+    try {
+      move(mount);
+      element.setAttribute("drawable", "");
+      if (element instanceof HTMLElement) {
+        Object.assign(element.style, {
+          boxSizing: "border-box",
+          width: `${cssW}px`,
+          height: `${cssH}px`,
+          minWidth: `${cssW}px`,
+          maxWidth: `${cssW}px`,
+          minHeight: `${cssH}px`,
+          maxHeight: `${cssH}px`,
+          margin: "0",
+          flex: "none"
+        });
+      }
+      await document.fonts.ready;
+      await frame();
+      await frame();
+      mountCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      mountCtx.drawElementImage(element, 0, 0, cssW, cssH);
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.clearRect(0, 0, outW, outH);
+      this.ctx.drawImage(mount, 0, 0);
+      this.downloadCanvas();
+    } finally {
+      move(parent, placeholder);
+      placeholder.remove();
+      if (savedStyle === null)
+        element.removeAttribute("style");
+      else
+        element.setAttribute("style", savedStyle);
+      if (!hadDrawable)
+        element.removeAttribute("drawable");
+      mount.remove();
+    }
+  }
+}
 "use strict";
 var supportsObjectFit = Boolean(document.documentElement && document.documentElement.style && typeof document.documentElement.style.objectFit != "undefined");
 function changeTitlebarColor(newColor) {
@@ -5969,19 +6779,238 @@ NewtonManager.prototype.loop = function(time) {
 };
 NewtonManager.prototype.step = function(time) {
   var currentTime = time;
-  var deltaTime = this.lastTime - currentTime;
+  var deltaTime2 = this.lastTime - currentTime;
   this.lastTime = currentTime;
   var self2 = this;
   windowManager.forEachWindow(function(window2) {
     if (window2.dragging) return;
     if (!window2.velocity) window2.velocity = new Vector();
-    window2.velocity.y -= self2.gravity * deltaTime;
+    window2.velocity.y -= self2.gravity * deltaTime2;
     var lastY = window2.y;
     window2.y += window2.velocity.y;
     window2.x += window2.velocity.x;
     if (window2.y === lastY) window2.velocity.y = 0;
   });
 };
+class DesktopElement extends HTMLElement {
+}
+class WindowElement extends HTMLDivElement {
+  constructor() {
+    super();
+    this.dialog = null;
+  }
+  connectedCallback() {
+    console.log("I connected balls");
+  }
+  /** @param {boolean} [enable] Enable maximization */
+  toggleMaximizedVT(enable) {
+    if (document.activeViewTransition)
+      document.activeViewTransition.skipTransition();
+    this.style.viewTransitionName = "window-fullscreen";
+    const self2 = this;
+    if (document.startViewTransition) {
+      var transition = document.startViewTransition(() => self2.classList.toggle("maximized", enable));
+      transition.ready.catch((ev) => console.warn("transition interrupted:", ev));
+      const dialog = this.dialog;
+      if (dialog) transition.finished.finally(() => {
+        if (dialog.maximizeAnimations <= 1)
+          self2.style.viewTransitionName = "";
+        dialog.maximizeAnimations--;
+      });
+    } else this.classList.toggle("maximized", enable);
+  }
+}
+class OdometerDigit extends HTMLSpanElement {
+  constructor() {
+    super();
+    this.lineHeight = 40, this._value = 0;
+  }
+  connectedCallback() {
+    this.setAttribute("is", "odometer-track");
+  }
+  /** @param {number} digit Digit value */
+  set value(digit) {
+    this.style.transform = `translateY(-${digit * this.lineHeight}px)`;
+  }
+  get value() {
+    return this._value;
+  }
+}
+class OdometerDisplay extends HTMLTimeElement {
+  constructor() {
+    super();
+    this.tracks = [];
+  }
+  connectedCallback() {
+    this.setAttribute("is", "odometer-time");
+    this.textContent = "";
+    this.style.display = "flex";
+    this.style.overflow = "hidden";
+  }
+  /** @param {number} digits */
+  init(digits) {
+    this.innerHTML = "";
+    this.tracks.length = 0;
+    const height = this.clientHeight;
+    for (let i = 0; i < digits; i++) {
+      const digit = this.addDigit();
+      if (digit && height > 0) digit.lineHeight = height;
+    }
+  }
+  addDigit() {
+    const track = document.createElement("span", { is: "odometer-track" });
+    if (!(track instanceof OdometerDigit)) return;
+    track.textContent = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";
+    this.tracks.push(track);
+    this.appendChild(track);
+    return track;
+  }
+  /**
+   * @param {number} value
+   * @param {number} pos
+   */
+  getDigit(value, pos) {
+    return Math.floor(value / Math.pow(10, pos)) % 10;
+  }
+  /** @param {number} value */
+  set value(value) {
+    this.tracks.forEach((track, i) => {
+      track.value = this.getDigit(value, this.tracks.length - 1 - i);
+    });
+  }
+}
+class OdometerTime extends OdometerDisplay {
+  static get observedAttributes() {
+    return ["datetime", "value"];
+  }
+  connectedCallback() {
+    this.setAttribute("is", "odometer-time");
+    if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim()) {
+      this.setAttribute("value", this.textContent.trim());
+    }
+    this.buildTracks(this.currentGroupCount());
+    this.update();
+    this.style.overflow = "hidden";
+  }
+  get dateTime() {
+    return this.getAttribute("datetime") || "";
+  }
+  set dateTime(value) {
+    this.setAttribute("datetime", value);
+  }
+  /** value wins if present; otherwise fall back to datetime */
+  usingValue() {
+    return this.hasAttribute("value");
+  }
+  currentGroupCount() {
+    if (this.usingValue()) {
+      const v = this.getAttribute("value") || "00:00:00";
+      return v.split(":").length;
+    }
+    return 3;
+  }
+  /** @param {number} groups */
+  buildTracks(groups) {
+    this.textContent = "";
+    this.tracks.length = 0;
+    for (let i = 0; i < groups; i++) {
+      const digitsInGroup = i === 0 && groups === 4 ? 3 : 2;
+      for (let j = 0; j < digitsInGroup; j++) this.addDigit();
+      if (i < groups - 1) this.append(":");
+    }
+    const height = this.clientHeight;
+    if (height > 0) this.tracks.forEach((track) => {
+      track.lineHeight = height;
+    });
+  }
+  /**
+   * @param {string} name Name of the attribute
+   * @param {string} oldValue Old value
+   * @param {string} newValue New value
+   */
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue === newValue) return;
+    if (name === "value") {
+      this.update();
+      return;
+    }
+    if (name === "datetime" && !this.usingValue()) {
+      if (this.tracks.length !== 6) this.buildTracks(3);
+      this.update();
+    }
+  }
+  update() {
+    let digits;
+    if (this.usingValue()) {
+      const value = this.getAttribute("value") || "00:00:00";
+      const parts = value.split(":").map((n) => parseInt(n, 10) || 0);
+      digits = [];
+      parts.forEach((part, i) => {
+        const width = i === 0 && parts.length === 4 ? 3 : 2;
+        const str = String(part).padStart(width, "0");
+        for (const ch of str) digits.push(parseInt(ch, 10));
+      });
+    } else {
+      const date = new Date(this.dateTime);
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
+      digits = [
+        Math.floor(hours / 10),
+        hours % 10,
+        Math.floor(minutes / 10),
+        minutes % 10,
+        Math.floor(seconds / 10),
+        seconds % 10
+      ];
+    }
+    this.tracks.forEach((track, i) => {
+      if (digits[i] !== void 0) track.value = digits[i];
+    });
+  }
+}
+customElements.define("window-div", WindowElement, {
+  extends: "div"
+});
+customElements.define("odometer-track", OdometerDigit, {
+  extends: "span"
+});
+customElements.define("odometer-display", OdometerDisplay, {
+  extends: "time"
+});
+customElements.define("odometer-time", OdometerTime, {
+  extends: "time"
+});
+class Modern {
+  /**
+   * @param {HTMLElement} el
+   * @param {(pipWindow:Window)=>void} callback
+   */
+  static toggleElementPip(el, callback) {
+    if (typeof window.documentPictureInPicture === "undefined") {
+      console.warn("Document Picture-in-Picture not supported in this browser.");
+      return;
+    }
+    var existing = window.documentPictureInPicture.window;
+    if (existing)
+      existing.close();
+    var rect = el.getBoundingClientRect();
+    var width = Math.round(rect.width) || 400;
+    var height = Math.round(rect.height) || 300;
+    window.documentPictureInPicture.requestWindow({ width, height }).then((pipWindow) => {
+      var originalParent = el.parentNode;
+      var originalNextSibling = el.nextSibling;
+      pipWindow.document.body.style.margin = "0";
+      pipWindow.document.body.appendChild(el);
+      pipWindow.addEventListener("pagehide", () => {
+        if (!originalParent) return;
+        if (originalNextSibling) originalParent.insertBefore(el, originalNextSibling);
+        else originalParent.appendChild(el);
+      }, { once: true });
+      callback(pipWindow);
+    });
+  }
+}
 var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
 function init() {
