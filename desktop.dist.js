@@ -2475,7 +2475,12 @@ Dialog.prototype.initWithObject = function(object) {
       };
       var data = JSON.stringify(dragState);
       event2.dataTransfer.setData("application/json", data);
-      event2.dataTransfer.setData("text/plain", data);
+      event2.dataTransfer.setData("text/plain", self2.src || self2.title || self2.id);
+      if (self2.src) event2.dataTransfer.setData("text/uri-list", self2.src);
+      event2.dataTransfer.setData(
+        "text/html",
+        data
+      );
     });
   }
   if (this.id) windowManager.windows[this.id] = this;
@@ -4273,6 +4278,7 @@ var onLoad = function() {
     var json = dt.getData("application/json");
     var plain = dt.getData("text/plain");
     var uriList = dt.getData("text/uri-list") || "";
+    var html = dt.getData("text/html") || "";
     var droppedUrl = "";
     if (uriList) {
       var lines = uriList.replace(/\r\n/g, "\n").split("\n");
@@ -4289,7 +4295,21 @@ var onLoad = function() {
       if (maybeJson.charAt(0) === "{" || maybeJson.charAt(0) === "[") json = maybeJson;
     }
     var data = null;
-    if (json) {
+    if (html) {
+      try {
+        var parser = new DOMParser();
+        var newDoc = parser.parseFromString(html, "text/html");
+        var text = newDoc.body && newDoc.body.textContent ? newDoc.body.textContent : html;
+        var trimmed = text.trim();
+        if (trimmed) {
+          data = JSON.parse(trimmed);
+          if (data) json = trimmed;
+        }
+      } catch (exception) {
+        data = null;
+      }
+    }
+    if (!data && json) {
       try {
         data = JSON.parse(json);
       } catch (exception) {
