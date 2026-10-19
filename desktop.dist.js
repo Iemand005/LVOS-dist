@@ -1095,9 +1095,6 @@ function getViewBoxPosition() {
 function toPixels(value) {
   return Math.round(value) + "px";
 }
-function toPercent(value) {
-  return Math.round(value * 100) + "%";
-}
 function toDegrees(value) {
   return Math.round(value) + "deg";
 }
@@ -1416,11 +1413,6 @@ WindowManager.prototype.forEachWindow = function(callback) {
     if (dialog) callback(dialog, id);
   }
 };
-WindowManager.prototype.killAll = function() {
-  this.forEachWindow(function(dialog) {
-    dialog.kill();
-  });
-};
 WindowManager.prototype.synchronizeStates = function() {
   this.forEachWindow(function(dialog) {
     dialog.reportState();
@@ -1561,10 +1553,6 @@ WindowManager.prototype.injectApplications = function() {
   for (var i = 0; i < arguments.length; i++)
     arguments[i].forEach(windowManager.loadApp, windowManager);
   windowManager.loadState();
-};
-WindowManager.prototype.closeApp = function(appId) {
-  var window2 = windowManager.windows[appId];
-  if (window2) window2.kill();
 };
 WindowManager.prototype.toggleMica = function(enabled) {
   this.isMicaEnabled = typeof enabled === "undefined" ? enabled : !this.isMicaEnabled;
@@ -3263,10 +3251,6 @@ Dialog.prototype.setDragScale = function(scaleX, scaleY) {
   this._scaleX = nextX;
   this._scaleY = nextY;
 };
-Dialog.prototype.setScaleX = function(scaleX) {
-  this._scaleX = scaleX;
-  this.updateTransform();
-};
 Dialog.prototype.setScaleY = function(scaleY) {
   this._scaleY = scaleY;
   this.updateTransform();
@@ -3286,9 +3270,6 @@ Dialog.prototype.activate = function() {
 };
 Dialog.prototype.getTitleElement = function() {
   return this.getElementByTagOrClassName("h1");
-};
-Dialog.prototype.toggleTitleBar = function(force) {
-  return this.titleBar && !this.titleBar.classList.toggle("hidden", typeof force !== "undefined" ? !force : void 0);
 };
 Dialog.prototype.open = function() {
   return this.toggleOpen(true);
@@ -3604,9 +3585,6 @@ Dialog.prototype.move = function(x, y, update, animate) {
     this.broadcastState(state);
   }
 };
-Dialog.prototype.moveBy = function(deltaX, deltaY) {
-  this.move(this.x + deltaX, this.y + deltaY);
-};
 Dialog.prototype.moveToCenter = function(centerX, centerY) {
   if (typeof centerX !== "number" || typeof centerY !== "number") return;
   this.move(centerX - this.width / 2, centerY - this.height / 2);
@@ -3867,10 +3845,6 @@ Dialog.prototype.setMaxSize = function(width, height) {
   this._maxHeight = typeof height === "number" ? height : 200;
   this.resize();
 };
-Dialog.prototype.setMinAspectRatio = function(ratio) {
-  this._minAspectRatio = ratio;
-  this.resize();
-};
 Dialog.prototype.updateBodyOffset = function() {
   var bodyRect = this.getBodyRect();
   if (!bodyRect || bodyRect.width === 0 && bodyRect.height === 0 && bodyRect.x === 0 && bodyRect.y === 0) return;
@@ -3920,19 +3894,10 @@ Dialog.prototype.openUrl = function(url) {
 Dialog.prototype.refresh = function() {
   if (this.frame) this.openUrl(this.frame.src);
 };
-Dialog.prototype.loadFrame = function() {
-  if (!this.application) return;
-  var frame = this.getOrCreateFrame(true);
-  if (frame) appManager.openAppInIFrame(this.application.id, frame);
-};
 Dialog.prototype.launch = function() {
   if (!this.isOpen) this.initWithObject(this);
   if (this.mica) this.injectMica();
   this.open();
-};
-Dialog.prototype.relaunch = function() {
-  this.close();
-  this.launch();
 };
 Dialog.prototype.kill = function() {
   var parent = this.target && this.target.parentElement;
@@ -4083,9 +4048,6 @@ Dialog.prototype.removeMica = function() {
 Dialog.prototype.flip = function(enable) {
   this.toggleClassAnimated("flipped", enable);
 };
-Dialog.prototype.makeWallpaper = function() {
-  if (this.id) appManager.setWallpaper(this.id);
-};
 Dialog.prototype.getState = function() {
   return {
     title: this.title || this.id || "Unc",
@@ -4179,10 +4141,6 @@ function DocumentCrawler(customDocument) {
 }
 DocumentCrawler.prototype.getMetro = function() {
   return this.document.getElementById("metrobody");
-};
-DocumentCrawler.prototype.getMetroBody = function() {
-  var metro = this.getMetro();
-  return metro && metro.firstChild;
 };
 DocumentCrawler.prototype.getAllDialogs = function() {
   return this.document.getElementsByClassName("window");
@@ -5264,20 +5222,8 @@ class Modern {
 }
 "use strict";
 var supportsObjectFit = Boolean(document.documentElement && document.documentElement.style && typeof document.documentElement.style.objectFit != "undefined");
-function changeTitlebarColor(newColor) {
-  var metaTag = document.querySelector('meta[name="theme-color"]');
-  if (!metaTag) {
-    metaTag = document.createElement("meta");
-    metaTag.setAttribute("name", "theme-color");
-    document.head.appendChild(metaTag);
-  }
-  metaTag.setAttribute("content", newColor);
-}
 function vibrate() {
   navigator.vibrate(500);
-}
-function stopVibrations() {
-  navigator.vibrate(0);
 }
 var eventPrevent = function(event2) {
   event2.preventDefault();
@@ -5319,45 +5265,34 @@ var onLoad = function() {
     ev.preventDefault();
     ev.stopPropagation();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "copy";
-    console.log("DADARAGGY");
   };
   document.body.ondrop = function(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     if (!ev.dataTransfer) return;
     ev.dataTransfer.dropEffect = "copy";
-    console.log("Kronkel");
     var dt = ev.dataTransfer;
+    if (!dt) return;
+    dt.dropEffect = "copy";
     var json = dt.getData("application/json");
     var plain = dt.getData("text/plain");
     var uriList = dt.getData("text/uri-list") || "";
     var html = dt.getData("text/html") || "";
     var droppedUrl = "";
     if (uriList) {
-      var lines = uriList.replace(/\r\n/g, "\n").split("\n");
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (line && line.charAt(0) !== "#") {
-          droppedUrl = line;
-          break;
-        }
-      }
+      var line = uriList.split(/\r?\n/).find(function(entry) {
+        entry = entry.trim();
+        return entry && entry.charAt(0) !== "#";
+      });
+      droppedUrl = line ? line.trim() : "";
     }
-    if (!json && plain) {
-      var maybeJson = plain.trim();
-      if (maybeJson.charAt(0) === "{" || maybeJson.charAt(0) === "[") json = maybeJson;
-    }
+    if (!json && plain && /^[[{]/.test(plain.trim())) json = plain.trim();
     var data = null;
     if (html) {
       try {
-        var parser = new DOMParser();
-        var newDoc = parser.parseFromString(html, "text/html");
-        var text = newDoc.body && newDoc.body.textContent ? newDoc.body.textContent : html;
-        var trimmed = text.trim();
-        if (trimmed) {
-          data = JSON.parse(trimmed);
-          if (data) json = trimmed;
-        }
+        var newDoc = new DOMParser().parseFromString(html, "text/html");
+        var trimmed = (newDoc.body && newDoc.body.textContent || html).trim();
+        if (trimmed) data = JSON.parse(trimmed);
       } catch (exception) {
         data = null;
       }
@@ -5377,10 +5312,10 @@ var onLoad = function() {
       droppedUrl = plain.trim();
     }
     if (!droppedUrl) return;
+    var url;
     try {
-      var url = new URL(droppedUrl, location.href).href;
+      url = new URL(droppedUrl, location.href).href;
     } catch (exception) {
-      console.warn("Could not interpret dropped content as a URL.", exception);
       return;
     }
     if (!window.appManager || !window.windowManager) return;
@@ -5476,24 +5411,18 @@ ContextMenu.prototype.close = function() {
   if (!this.element) return;
   this.element.classList.remove("open");
 };
-ContextMenu.prototype.addItem = function(title, callback, icon) {
-  if (!this.element) return;
-};
 var contextMenu = new ContextMenu();
 var docontexthook = true;
 if (docontexthook) document.addEventListener("contextmenu", function(e) {
   e.preventDefault();
-  console.log("Open contex tp ples");
   contextMenu.open(e.clientX, e.clientY);
 }, false);
 var reflecitons = false;
 var dock = document.getElementById("dock");
-var applistItems = document.getElementById("dockapplist");
 window.addEventListener("keydown", function(event2) {
   switch (event2.key) {
     case "F11":
       event2.preventDefault();
-      console.log("F11 captured! Custom action goes here.");
       void document.documentElement.requestFullscreen();
       break;
     case "F10":
@@ -5556,9 +5485,6 @@ DesktopManager.prototype.addOrMoveDesktopGap = function() {
 function setTheme(theme) {
   document.body.classList.add(theme);
   window.windowManager.synchronizeStates();
-}
-function hasTheme(theme) {
-  return document.body.classList.contains(theme);
 }
 DesktopManager.removeTheme = function(theme) {
   document.body.classList.remove(theme);
@@ -5654,11 +5580,6 @@ DesktopManager.prototype.clearWallpaperCache = function() {
   }, function() {
   });
 };
-DesktopManager.prototype.toggleOverlay = function(enable) {
-  var overlay = bodyCrawler.getOverlay();
-  if (!overlay) return;
-  overlay.classList.toggle("open", enable);
-};
 window.desktopManager = new DesktopManager();
 window.ondrag = document.ondrag = function(ev) {
   ev.preventDefault();
@@ -5674,7 +5595,6 @@ var wallpaperDB = null;
 function initWallpaperDB(onSuccess, onFailure) {
   var isFileScheme = window.location.protocol === "file:";
   if (isFileScheme) {
-    console.log("File scheme detected (HTA/local file). Using localStorage only.");
     if (onFailure) onFailure(new Error("IndexedDB not available for file:// scheme"));
     return;
   }
@@ -5688,12 +5608,10 @@ function initWallpaperDB(onSuccess, onFailure) {
   }
   var request = indexedDB.open("LVOSWallpaperDB", 1);
   request.onerror = function() {
-    console.warn("IndexedDB failed to open:", request.error);
     if (onFailure) onFailure(request.error);
   };
   request.onsuccess = function() {
     wallpaperDB = request.result;
-    console.log("IndexedDB opened successfully");
     onSuccess(wallpaperDB);
   };
   request.onupgradeneeded = function(event2) {
@@ -5705,44 +5623,23 @@ function initWallpaperDB(onSuccess, onFailure) {
   };
 }
 function localStorageFabblack(dataUrl) {
-  if (dataUrl) {
-    if (typeof settings != "undefined" && settings.set) {
-      try {
-        settings.set("wallpaperImage", dataUrl);
-        console.log("Wallpaper saved to localStorage via settings");
-      } catch (ex) {
-        console.warn("Failed to save to settings, trying direct localStorage:", ex.message);
-        try {
-          window.localStorage.setItem("wallpaperImage", dataUrl);
-          console.log("Wallpaper saved to direct localStorage");
-        } catch (ex2) {
-          console.warn("Failed to save to direct localStorage:", ex2.message);
-        }
-      }
-    } else {
-      try {
-        window.localStorage.setItem("wallpaperImage", dataUrl);
-        console.log("Wallpaper saved to direct localStorage");
-      } catch (ex) {
-        console.warn("Failed to save wallpaper to localStorage:", ex.message);
-      }
+  if (!dataUrl) return;
+  try {
+    if (typeof settings != "undefined" && settings.set) settings.set("wallpaperImage", dataUrl);
+    else throw new Error("Settings unavailable");
+  } catch (ex) {
+    try {
+      window.localStorage.setItem("wallpaperImage", dataUrl);
+    } catch (ex2) {
     }
   }
 }
 function saveWallpaperToCache(blob, dataUrl) {
-  if (!(blob instanceof Blob)) {
-    console.warn("Invalid blob provided to saveWallpaperToCache");
-    return;
-  }
+  if (!(blob instanceof Blob)) return;
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readwrite");
     var store = transaction.objectStore("wallpapers");
-    var request = store.put({ id: "current", blob, timestamp: Date.now() });
-    request.onsuccess = function() {
-      console.log("Wallpaper saved to IndexedDB");
-    };
-    request.onerror = function() {
-      console.warn("Failed to save wallpaper to IndexedDB, falling back to localStorage:", request.error);
+    store.put({ id: "current", blob, timestamp: Date.now() }).onerror = function() {
       localStorageFabblack(dataUrl);
     };
   }, function() {
@@ -5756,66 +5653,32 @@ function hasRegisteredWallpaperSelection() {
 }
 function loadWallpaperFromCache() {
   initWallpaperDB(function(db) {
-    var transaction = db.transaction(["wallpapers"], "readonly");
-    var store = transaction.objectStore("wallpapers");
+    var store = db.transaction(["wallpapers"], "readonly").objectStore("wallpapers");
     var request = store.get("current");
     request.onsuccess = function() {
       var result = request.result;
       if (result && result.blob && window.desktopManager && !hasRegisteredWallpaperSelection()) {
-        var objectUrl = URL.createObjectURL(result.blob);
-        console.log("Loading cached wallpaper from IndexedDB");
-        window.desktopManager.applyWallpaperImage(objectUrl);
+        window.desktopManager.applyWallpaperImage(URL.createObjectURL(result.blob));
       } else {
         loadWallpaperFromLocalStorage();
       }
     };
-    request.onerror = function() {
-      loadWallpaperFromLocalStorage();
-    };
-  }, function() {
-    loadWallpaperFromLocalStorage();
-  });
+    request.onerror = loadWallpaperFromLocalStorage;
+  }, loadWallpaperFromLocalStorage);
 }
 function loadWallpaperFromLocalStorage() {
   if (hasRegisteredWallpaperSelection()) return;
-  console.log("Attempting to load wallpaper from localStorage...");
-  console.log("settings defined:", typeof settings != "undefined");
-  if (typeof settings == "undefined") {
-    console.warn("Settings not available yet, trying direct localStorage access");
-    try {
-      var cachedWallpaper = window.localStorage.getItem("wallpaperImage");
-      if (cachedWallpaper && window.desktopManager) {
-        console.log("Loading cached wallpaper from direct localStorage");
-        window.desktopManager.applyWallpaperImage(cachedWallpaper);
-      } else {
-        console.log("No cached wallpaper found in localStorage, or applyWallpaperImage not available");
-      }
-    } catch (ex) {
-      console.warn("Failed to load wallpaper from direct localStorage:", ex.message);
-    }
-    return;
-  }
+  var key = "wallpaperImage";
+  var cachedWallpaper;
   try {
-    var cachedWallpaper = settings.get("wallpaperImage");
-    console.log("Retrieved from settings.get():", cachedWallpaper ? "found" : "not found");
-    if (cachedWallpaper && window.desktopManager) {
-      console.log("Loading cached wallpaper from localStorage via settings");
-      window.desktopManager.applyWallpaperImage(cachedWallpaper);
-    } else {
-      console.log("No cached wallpaper found in settings, or applyWallpaperImage not available");
-    }
+    cachedWallpaper = typeof settings != "undefined" ? settings.get(key) : window.localStorage.getItem(key);
   } catch (ex) {
-    console.warn("Failed to load wallpaper from settings localStorage:", ex.message);
     try {
-      var cachedWallpaper = window.localStorage.getItem("wallpaperImage");
-      if (cachedWallpaper && window.desktopManager) {
-        console.log("Loading cached wallpaper from direct localStorage (fallback)");
-        window.desktopManager.applyWallpaperImage(cachedWallpaper);
-      }
+      cachedWallpaper = window.localStorage.getItem(key);
     } catch (ex2) {
-      console.warn("Direct localStorage fallback also failed:", ex2.message);
     }
   }
+  if (cachedWallpaper && window.desktopManager) window.desktopManager.applyWallpaperImage(cachedWallpaper);
 }
 function handleWallpaperDrop(ev) {
   ev.preventDefault();
@@ -5833,13 +5696,10 @@ function handleWallpaperDrop(ev) {
       if (!(typeof dataUrl === "string")) return;
       try {
         if (window.desktopManager) {
-          window.desktopManager.applyWallpaperImage(dataUrl, void 0, function() {
-            console.warn("Failed to apply dropped wallpaper image");
-          });
+          window.desktopManager.applyWallpaperImage(dataUrl);
           saveWallpaperToCache(file, dataUrl);
         }
       } catch (ex) {
-        console.error("Error applying wallpaper:", ex);
       }
     };
     reader.readAsDataURL(file);
@@ -5866,20 +5726,10 @@ var wallpaper = DesktopManager.getWallpaper();
 if (wallpaper) {
   wallpaper.ondragover = function(ev) {
     ev.preventDefault();
-    console.log("okdi");
   };
   wallpaper.ondrop = function(ev) {
     ev.preventDefault();
   };
-}
-function loadMetro() {
-  var metro = document.getElementById("metro");
-  if (metro) {
-    metro.style.display = "block";
-    var metroFrame = document.createElement("iframe");
-    metroFrame.src = "mobile.html";
-    metro.appendChild(metroFrame);
-  }
 }
 var screenShooter = new ScreenShooter();
 var picker = new ElementPicker({
