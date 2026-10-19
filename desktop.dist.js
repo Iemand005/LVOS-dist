@@ -1502,6 +1502,13 @@ WindowManager.prototype.dropApplication = function(application, x, y, offset, st
     var grabY = offset ? offset.y : 0;
     dialog.moveToCenter(x - grabX, y - grabY);
   }
+  if (dialog.target) {
+    try {
+      dialog.resize();
+      dialog.update();
+    } catch (exception) {
+    }
+  }
   return dialog;
 };
 WindowManager.prototype.toggleDragging = function(enabled) {
