@@ -55,6 +55,9 @@ function TabScroller(parent, hasButtons) {
 	}
 
 	if (parent) parent.appendChild(this.container);
+
+	if (typeof window.CSS !== "undefined" || !CSS.supports("scroll-snap-type: x mandatory")) 
+		this.setupScollHandler();
 }
 
 TabScroller.prototype.addTab = function(content, title) {
@@ -69,4 +72,37 @@ TabScroller.prototype.addTab = function(content, title) {
 	}
 
 	this.container.style.setProperty('--total-pages', this.tabs.length);
+};
+
+TabScroller.prototype.setupScollHandler = function() {
+	/** @type {number} */
+	var timer;
+
+	var self = this;
+	
+	this.element.addEventListener("scroll", function() {
+		clearTimeout(timer);
+		timer = setTimeout(function() {
+			var width = self.element.clientWidth / 2;
+			var index = Math.floor(self.element.scrollLeft / width);
+
+			if (self.element.scrollLeft % width > width / 2) index++;
+
+			var start = self.element.scrollLeft;
+			var end = index * width;
+			var duration = 300;
+			var time = performance.now();
+
+			function animate(now) {
+				var progress = Math.min((now - time) / duration, 1);
+				progress = 1 - Math.pow(1 - progress, 3);
+
+				self.element.scrollLeft = start + (end - start) * progress;
+
+				if (progress < 1) requestAnimationFrame(animate);
+			}
+
+			requestAnimationFrame(animate);
+		}, 150);
+	});
 };
