@@ -350,22 +350,24 @@ AppManager.prototype.forEachApp = function(callback) {
 AppManager.prototype.forEachWallpaper = function(callback) {
   this._forEach(this._wallpapers, callback);
 };
-Object.defineProperty(AppManager.prototype, "apps", {
-  get: function() {
-    return this._apps;
-  }
-});
-Object.defineProperty(AppManager.prototype, "installedApps", {
-  get: function() {
-    if (!hasLocalStorage) return [];
-    try {
-      var string = localStorage.getItem("installedApps");
-      if (string === null) return [];
-      var apps = JSON.parse(string);
-      return apps instanceof Array ? apps : [];
-    } catch (exception) {
-      if (exception instanceof Error) console.error(exception.message);
-      return [];
+Object.defineProperties(AppManager.prototype, {
+  ["apps"]: {
+    get: function() {
+      return this._apps;
+    }
+  },
+  ["installedApps"]: {
+    get: function() {
+      if (!hasLocalStorage) return [];
+      try {
+        var string = localStorage.getItem("installedApps");
+        if (string === null) return [];
+        var apps = JSON.parse(string);
+        return apps instanceof Array ? apps : [];
+      } catch (exception) {
+        if (exception instanceof Error) console.error(exception.message);
+        return [];
+      }
     }
   }
 });
@@ -872,65 +874,67 @@ function WindowManager() {
   this.windowSnap = new WindowSnap();
   this.snapGroups = /* @__PURE__ */ new Map();
 }
-Object.defineProperty(WindowManager.prototype, "windows", {
-  get: function() {
-    return this._windows;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "windowStates", {
-  get: function() {
-    if (!this._windowStates && localStorage)
-      try {
-        var string = localStorage.getItem("windowState");
-        if (string === null) return null;
-        this._windowStates = JSON.parse(string);
-      } catch (ex) {
-      }
-    return this._windowStates;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "state", {
-  get: function() {
-    var state = {};
-    for (var id in this.windows) {
-      var window2 = this.windows[id];
-      if (window2) state[id] = window2.getState();
+Object.defineProperties(WindowManager.prototype, {
+  ["windows"]: {
+    get: function() {
+      return this._windows;
     }
-    return state;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "isBlurEnabled", {
-  get: function() {
-    return this._isBlurEnabled;
   },
-  set: function(value) {
-    if (typeof value === "boolean") this._isBlurEnabled = value;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "isMicaEnabled", {
-  get: function() {
-    return this._isMicaEnabled;
+  ["windowStates"]: {
+    get: function() {
+      if (!this._windowStates && localStorage)
+        try {
+          var string = localStorage.getItem("windowState");
+          if (string === null) return null;
+          this._windowStates = JSON.parse(string);
+        } catch (ex) {
+        }
+      return this._windowStates;
+    }
   },
-  set: function(value) {
-    if (typeof value !== "boolean") return;
-    document.body.classList.toggle("mica", value);
-    windowManager.forEachWindow(function(window2) {
-      window2.mica = value;
-    });
-    this._isMicaEnabled = value;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "isWindowUpdatesEnabled", {
-  /**
-     * @this {WindowManager}
-     */
-  get: function() {
-    return this._isWindowUpdatesEnabled;
+  ["state"]: {
+    get: function() {
+      var state = {};
+      for (var id in this.windows) {
+        var window2 = this.windows[id];
+        if (window2) state[id] = window2.getState();
+      }
+      return state;
+    }
   },
-  set: function(value) {
-    if (value) window.addEventListener("resize", this.resizeHandler, false);
-    else window.removeEventListener("resize", this.resizeHandler, false);
-    this._isWindowUpdatesEnabled = value;
+  ["isBlurEnabled"]: {
+    get: function() {
+      return this._isBlurEnabled;
+    },
+    set: function(value) {
+      if (typeof value === "boolean") this._isBlurEnabled = value;
+    }
+  },
+  ["isMicaEnabled"]: {
+    get: function() {
+      return this._isMicaEnabled;
+    },
+    set: function(value) {
+      if (typeof value !== "boolean") return;
+      document.body.classList.toggle("mica", value);
+      windowManager.forEachWindow(function(window2) {
+        window2.mica = value;
+      });
+      this._isMicaEnabled = value;
+    }
+  },
+  ["isWindowUpdatesEnabled"]: {
+    /**
+       * @this {WindowManager}
+       */
+    get: function() {
+      return this._isWindowUpdatesEnabled;
+    },
+    set: function(value) {
+      if (value) window.addEventListener("resize", this.resizeHandler, false);
+      else window.removeEventListener("resize", this.resizeHandler, false);
+      this._isWindowUpdatesEnabled = value;
+    }
   }
 });
 WindowManager.prototype.saveState = function() {
@@ -2237,380 +2241,382 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   if (frame || !create || !this.body) return frame;
   return this.body.appendChild(document.createElement("iframe"));
 };
-Object.defineProperty(Dialog.prototype, "isOpen", {
-  get: function() {
-    return Boolean(this.target && this.target.classList.contains("open"));
-  },
-  set: function(open) {
-    this.toggleOpen(open);
-  }
-});
-Object.defineProperty(Dialog.prototype, "frame", {
-  get: function() {
-    return this.target && this.target.getElementsByTagName("iframe")[0] || null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "resizable", {
-  get: function() {
-    return !this.application ? true : this.application.resizable !== false;
-  },
-  set: function(v) {
-    if (v) this._createSizers();
-  }
-});
-Object.defineProperty(Dialog.prototype, "src", {
-  get: function() {
-    return this._src || this.application && this.application.src;
-  },
-  set: function(url) {
-    this.openUrl(url);
-  }
-});
-Object.defineProperty(Dialog.prototype, "body", {
-  get: function() {
-    var content = this.content;
-    if (!content) return null;
-    return this.getElementByTagOrClassName("article", content);
-  }
-});
-Object.defineProperty(Dialog.prototype, "titleBar", {
-  get: function() {
-    return this.getElementByTagOrClassName("header");
-  }
-});
-Object.defineProperty(Dialog.prototype, "contentDocument", {
-  get: function() {
-    var frame = this.frame;
-    return frame && frame.contentDocument;
-  }
-});
-Object.defineProperty(Dialog.prototype, "contentWindow", {
-  get: function() {
-    var frame = this.frame;
-    return frame ? frame.contentWindow : null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "mica", {
-  get: function() {
-    return this._mica;
-  },
-  set: function(mica) {
-    if (mica) this._mica = this.injectMica();
-    else this._mica = this.removeMica();
-    this.move();
-  }
-});
-Object.defineProperty(Dialog.prototype, "x", {
-  get: function() {
-    return this._x * window.innerWidth;
-  },
-  set: function(x) {
-    if (typeof x === "number") this.move(x, this.y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "y", {
-  get: function() {
-    return this._y * window.innerHeight;
-  },
-  set: function(y) {
-    if (typeof y === "number") this.move(this.x, y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "z", {
-  get: function() {
-    return this._z;
-  },
-  set: function(z) {
-    if (typeof z === "number") this.setZ(z);
-  }
-});
-Object.defineProperty(Dialog.prototype, "width", {
-  get: function() {
-    return this._width;
-  },
-  set: function(width) {
-    this.setWidth(width);
-  }
-});
-Object.defineProperty(Dialog.prototype, "height", {
-  get: function() {
-    return this._height;
-  },
-  /** @param {number} height */
-  set: function(height) {
-    this.setHeight(height);
-  }
-});
-Object.defineProperty(Dialog.prototype, "minWidth", {
-  get: function() {
-    return this._minWidth;
-  },
-  set: function(width) {
-    this.setMinSize(width);
-  }
-});
-Object.defineProperty(Dialog.prototype, "minHeight", {
-  get: function() {
-    return this._minHeight;
-  },
-  set: function(height) {
-    this.setMinSize(this.minWidth, height);
-  }
-});
-Object.defineProperty(Dialog.prototype, "maxWidth", {
-  get: function() {
-    return this._maxWidth;
-  },
-  set: function(width) {
-    this.setMaxSize(width);
-  }
-});
-Object.defineProperty(Dialog.prototype, "maxHeight", {
-  get: function() {
-    return this._maxHeight;
-  },
-  set: function(height) {
-    this.setMaxSize(this.maxWidth, height);
-  }
-});
-Object.defineProperty(Dialog.prototype, "position", {
-  get: function() {
-    return new Vector(this.x, this.y);
-  },
-  set: function(position) {
-    if (position instanceof Vector)
-      this.move(position.x, position.y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "size", {
-  get: function() {
-    return new Vector(this.width, this.height);
-  },
-  set: function(size) {
-    if (typeof size.x !== "number" || typeof size.y !== "number") return;
-    this.resize(size.x, size.y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "aspectRatio", {
-  get: function() {
-    return this.width / this.height;
-  },
-  set: function(aspect) {
-    this.width = this.height * aspect;
-  }
-});
-Object.defineProperty(Dialog.prototype, "aspectRatioConstraint", {
-  get: function() {
-    return this._aspectRatio;
-  },
-  set: function(aspect) {
-    this._aspectRatio = typeof aspect === "number" && aspect > 0 ? aspect : 0;
-  }
-});
-Object.defineProperty(Dialog.prototype, "constrainAspectRatio", {
-  get: function() {
-    return this._aspectRatioEnabled;
-  },
-  set: function(enabled) {
-    if (!this._aspectRatio) this._aspectRatio = this.aspectRatio;
-    this._aspectRatioEnabled = !!enabled;
-  }
-});
-Object.defineProperty(Dialog.prototype, "constrainAspectRatioInner", {
-  get: function() {
-    return this._constrainAspectRatioInner;
-  },
-  set: function(enabled) {
-    this._constrainAspectRatioInner = !!enabled;
-  }
-});
-Object.defineProperty(Dialog.prototype, "constrainAspectRatioLine", {
-  get: function() {
-    return this._constrainAspectRatioLine;
-  },
-  set: function(enabled) {
-    this._constrainAspectRatioLine = !!enabled;
-  }
-});
-Object.defineProperty(Dialog.prototype, "minAspectRatio", {
-  get: function() {
-    return this._minAspectRatio;
-  },
-  set: function(aspect) {
-    this.width = this.height * aspect;
-  }
-});
-Object.defineProperty(Dialog.prototype, "maxAspectRatio", {
-  get: function() {
-    return this._maxAspectRatio;
-  },
-  set: function(aspect) {
-    this.width = this.height * aspect;
-  }
-});
-Object.defineProperty(Dialog.prototype, "top", {
-  get: function() {
-    return this.y;
-  },
-  set: function(top) {
-    var bounds = WindowManager.windowBounds;
-    var bottom = this.bottomFromTop;
-    if (bounds.bottom !== Infinity && bottom >= bounds.bottom - 0.5) bottom = bounds.bottom;
-    if (top < bounds.top) top = bounds.top;
-    var height = Math.max(Math.min(bottom - top, this.maxHeight), this.minHeight);
-    top = bottom - height;
-    this._height = height;
-    this._y = top / window.innerHeight;
-    if (this.useTransform) {
-      if (this.target) this.target.style.height = toPixels(height);
-      this.updateTransform();
-    } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
-    this._isMinHeight = height === this.minHeight;
-  }
-});
-Object.defineProperty(Dialog.prototype, "left", {
-  get: function() {
-    return this.x;
-  },
-  set: function(left) {
-    var bounds = WindowManager.windowBounds;
-    var right = this.rightFromLeft;
-    if (bounds.right !== Infinity && right >= bounds.right - 0.5) right = bounds.right;
-    if (left < bounds.left) left = bounds.left;
-    var width = Math.max(Math.min(right - left, this.maxWidth), this.minWidth);
-    left = right - width;
-    this._width = width;
-    this._x = left / window.innerWidth;
-    if (this.useTransform) {
-      if (this.target) this.target.style.width = toPixels(width);
-      if (this.useTransform) this.updateTransform();
-    } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
-    this._isMinWidth = width === this.minWidth;
-  }
-});
-Object.defineProperty(Dialog.prototype, "rightFromLeft", {
-  get: function() {
-    return this.x + this.width;
-  },
-  set: function(right) {
-    this.width = right - this.x;
-  }
-});
-Object.defineProperty(Dialog.prototype, "right", {
-  get: function() {
-    return window.innerWidth - this.rightFromLeft;
-  },
-  set: function(right) {
-    if (typeof right === "number") {
-      var bounds = WindowManager.windowBounds;
-      if (right > bounds.right) right = bounds.right;
-      if (right < bounds.left) right = bounds.left;
-      this.width = window.innerWidth - right - this.x;
+Object.defineProperties(Dialog.prototype, {
+  ["isOpen"]: {
+    get: function() {
+      return Boolean(this.target && this.target.classList.contains("open"));
+    },
+    set: function(open) {
+      this.toggleOpen(open);
     }
-  }
-});
-Object.defineProperty(Dialog.prototype, "bottomFromTop", {
-  get: function() {
-    return this.y + this.height;
   },
-  set: function(bottom) {
-    this.height = bottom - this.y;
-  }
-});
-Object.defineProperty(Dialog.prototype, "bottom", {
-  get: function() {
-    return window.innerHeight - this.bottomFromTop;
-  },
-  set: function(bottom) {
-    if (typeof bottom === "number") {
-      var bounds = WindowManager.windowBounds;
-      if (bottom > bounds.bottom) bottom = bounds.bottom;
-      if (bottom < bounds.top) bottom = bounds.top;
-      this.height = window.innerHeight - bottom - this.y;
+  ["frame"]: {
+    get: function() {
+      return this.target && this.target.getElementsByTagName("iframe")[0] || null;
     }
-  }
-});
-Object.defineProperty(Dialog.prototype, "inset", {
-  get: function() {
-    return (this.bottom + this.right + this.left + this.top) / 4;
   },
-  set: function(inset) {
-    this.bottom = this.right = this.left = this.top = inset;
-  }
-});
-Object.defineProperty(Dialog.prototype, "isMinWidth", {
-  get: function() {
-    return this._isMinWidth;
-  }
-});
-Object.defineProperty(Dialog.prototype, "isMinHeight", {
-  get: function() {
-    return this._isMinHeight;
-  }
-});
-Object.defineProperty(Dialog.prototype, "useTransform", {
-  get: function() {
-    return this._useTransform;
+  ["resizable"]: {
+    get: function() {
+      return !this.application ? true : this.application.resizable !== false;
+    },
+    set: function(v) {
+      if (v) this._createSizers();
+    }
   },
-  set: function(useTransform2) {
-    this.updateUseTransform(useTransform2);
-  }
-});
-Object.defineProperty(Dialog.prototype, "useScale", {
-  get: function() {
-    return this._useScale;
+  ["src"]: {
+    get: function() {
+      return this._src || this.application && this.application.src;
+    },
+    set: function(url) {
+      this.openUrl(url);
+    }
   },
-  set: function(useScale2) {
-    this.updateScale(useScale2);
-  }
-});
-Object.defineProperty(Dialog.prototype, "title", {
-  get: function() {
-    if (this._title) return this._title;
-    var titleElement = this.getTitleElement();
-    if (titleElement && titleElement.innerHTML) return titleElement.innerHTML;
-    return this.id;
+  ["body"]: {
+    get: function() {
+      var content = this.content;
+      if (!content) return null;
+      return this.getElementByTagOrClassName("article", content);
+    }
   },
-  set: function(title) {
-    this.setTitle(title);
-  }
-});
-Object.defineProperty(Dialog.prototype, "maximized", {
-  get: function() {
-    if (!this.target) return false;
-    return this.target.classList.contains("maximized");
+  ["titleBar"]: {
+    get: function() {
+      return this.getElementByTagOrClassName("header");
+    }
   },
-  set: function(maximized) {
-    this.toggleMaximized(maximized);
-  }
-});
-Object.defineProperty(Dialog.prototype, "snapped", {
-  get: function() {
-    if (!this.target) return false;
-    return this.target.classList.contains("snapped");
+  ["contentDocument"]: {
+    get: function() {
+      var frame = this.frame;
+      return frame && frame.contentDocument;
+    }
   },
-  set: function(snapped) {
-    this.toggleSnapped(snapped);
-  }
-});
-Object.defineProperty(Dialog.prototype, "heightSnapped", {
-  get: function() {
-    if (!this.target) return false;
-    return this.target.classList.contains("height-snapped");
+  ["contentWindow"]: {
+    get: function() {
+      var frame = this.frame;
+      return frame ? frame.contentWindow : null;
+    }
   },
-  set: function(snapped) {
-    this.toggleHeightSnapped(snapped);
-  }
-});
-Object.defineProperty(Dialog.prototype, "windowTarget", {
-  get: function() {
-    var target = this.target;
-    if (target && "dialog" in target)
-      return (
-        /** @type {WindowElement} */
-        target
-      );
-    return null;
+  ["mica"]: {
+    get: function() {
+      return this._mica;
+    },
+    set: function(mica) {
+      if (mica) this._mica = this.injectMica();
+      else this._mica = this.removeMica();
+      this.move();
+    }
+  },
+  ["x"]: {
+    get: function() {
+      return this._x * window.innerWidth;
+    },
+    set: function(x) {
+      if (typeof x === "number") this.move(x, this.y);
+    }
+  },
+  ["y"]: {
+    get: function() {
+      return this._y * window.innerHeight;
+    },
+    set: function(y) {
+      if (typeof y === "number") this.move(this.x, y);
+    }
+  },
+  ["z"]: {
+    get: function() {
+      return this._z;
+    },
+    set: function(z) {
+      if (typeof z === "number") this.setZ(z);
+    }
+  },
+  ["width"]: {
+    get: function() {
+      return this._width;
+    },
+    set: function(width) {
+      this.setWidth(width);
+    }
+  },
+  ["height"]: {
+    get: function() {
+      return this._height;
+    },
+    /** @param {number} height */
+    set: function(height) {
+      this.setHeight(height);
+    }
+  },
+  ["minWidth"]: {
+    get: function() {
+      return this._minWidth;
+    },
+    set: function(width) {
+      this.setMinSize(width);
+    }
+  },
+  ["minHeight"]: {
+    get: function() {
+      return this._minHeight;
+    },
+    set: function(height) {
+      this.setMinSize(this.minWidth, height);
+    }
+  },
+  ["maxWidth"]: {
+    get: function() {
+      return this._maxWidth;
+    },
+    set: function(width) {
+      this.setMaxSize(width);
+    }
+  },
+  ["maxHeight"]: {
+    get: function() {
+      return this._maxHeight;
+    },
+    set: function(height) {
+      this.setMaxSize(this.maxWidth, height);
+    }
+  },
+  ["position"]: {
+    get: function() {
+      return new Vector(this.x, this.y);
+    },
+    set: function(position) {
+      if (position instanceof Vector)
+        this.move(position.x, position.y);
+    }
+  },
+  ["size"]: {
+    get: function() {
+      return new Vector(this.width, this.height);
+    },
+    set: function(size) {
+      if (typeof size.x !== "number" || typeof size.y !== "number") return;
+      this.resize(size.x, size.y);
+    }
+  },
+  ["aspectRatio"]: {
+    get: function() {
+      return this.width / this.height;
+    },
+    set: function(aspect) {
+      this.width = this.height * aspect;
+    }
+  },
+  ["aspectRatioConstraint"]: {
+    get: function() {
+      return this._aspectRatio;
+    },
+    set: function(aspect) {
+      this._aspectRatio = typeof aspect === "number" && aspect > 0 ? aspect : 0;
+    }
+  },
+  ["constrainAspectRatio"]: {
+    get: function() {
+      return this._aspectRatioEnabled;
+    },
+    set: function(enabled) {
+      if (!this._aspectRatio) this._aspectRatio = this.aspectRatio;
+      this._aspectRatioEnabled = !!enabled;
+    }
+  },
+  ["constrainAspectRatioInner"]: {
+    get: function() {
+      return this._constrainAspectRatioInner;
+    },
+    set: function(enabled) {
+      this._constrainAspectRatioInner = !!enabled;
+    }
+  },
+  ["constrainAspectRatioLine"]: {
+    get: function() {
+      return this._constrainAspectRatioLine;
+    },
+    set: function(enabled) {
+      this._constrainAspectRatioLine = !!enabled;
+    }
+  },
+  ["minAspectRatio"]: {
+    get: function() {
+      return this._minAspectRatio;
+    },
+    set: function(aspect) {
+      this.width = this.height * aspect;
+    }
+  },
+  ["maxAspectRatio"]: {
+    get: function() {
+      return this._maxAspectRatio;
+    },
+    set: function(aspect) {
+      this.width = this.height * aspect;
+    }
+  },
+  ["top"]: {
+    get: function() {
+      return this.y;
+    },
+    set: function(top) {
+      var bounds = WindowManager.windowBounds;
+      var bottom = this.bottomFromTop;
+      if (bounds.bottom !== Infinity && bottom >= bounds.bottom - 0.5) bottom = bounds.bottom;
+      if (top < bounds.top) top = bounds.top;
+      var height = Math.max(Math.min(bottom - top, this.maxHeight), this.minHeight);
+      top = bottom - height;
+      this._height = height;
+      this._y = top / window.innerHeight;
+      if (this.useTransform) {
+        if (this.target) this.target.style.height = toPixels(height);
+        this.updateTransform();
+      } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
+      this._isMinHeight = height === this.minHeight;
+    }
+  },
+  ["left"]: {
+    get: function() {
+      return this.x;
+    },
+    set: function(left) {
+      var bounds = WindowManager.windowBounds;
+      var right = this.rightFromLeft;
+      if (bounds.right !== Infinity && right >= bounds.right - 0.5) right = bounds.right;
+      if (left < bounds.left) left = bounds.left;
+      var width = Math.max(Math.min(right - left, this.maxWidth), this.minWidth);
+      left = right - width;
+      this._width = width;
+      this._x = left / window.innerWidth;
+      if (this.useTransform) {
+        if (this.target) this.target.style.width = toPixels(width);
+        if (this.useTransform) this.updateTransform();
+      } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
+      this._isMinWidth = width === this.minWidth;
+    }
+  },
+  ["rightFromLeft"]: {
+    get: function() {
+      return this.x + this.width;
+    },
+    set: function(right) {
+      this.width = right - this.x;
+    }
+  },
+  ["right"]: {
+    get: function() {
+      return window.innerWidth - this.rightFromLeft;
+    },
+    set: function(right) {
+      if (typeof right === "number") {
+        var bounds = WindowManager.windowBounds;
+        if (right > bounds.right) right = bounds.right;
+        if (right < bounds.left) right = bounds.left;
+        this.width = window.innerWidth - right - this.x;
+      }
+    }
+  },
+  ["bottomFromTop"]: {
+    get: function() {
+      return this.y + this.height;
+    },
+    set: function(bottom) {
+      this.height = bottom - this.y;
+    }
+  },
+  ["bottom"]: {
+    get: function() {
+      return window.innerHeight - this.bottomFromTop;
+    },
+    set: function(bottom) {
+      if (typeof bottom === "number") {
+        var bounds = WindowManager.windowBounds;
+        if (bottom > bounds.bottom) bottom = bounds.bottom;
+        if (bottom < bounds.top) bottom = bounds.top;
+        this.height = window.innerHeight - bottom - this.y;
+      }
+    }
+  },
+  ["inset"]: {
+    get: function() {
+      return (this.bottom + this.right + this.left + this.top) / 4;
+    },
+    set: function(inset) {
+      this.bottom = this.right = this.left = this.top = inset;
+    }
+  },
+  ["isMinWidth"]: {
+    get: function() {
+      return this._isMinWidth;
+    }
+  },
+  ["isMinHeight"]: {
+    get: function() {
+      return this._isMinHeight;
+    }
+  },
+  ["useTransform"]: {
+    get: function() {
+      return this._useTransform;
+    },
+    set: function(useTransform2) {
+      this.updateUseTransform(useTransform2);
+    }
+  },
+  ["useScale"]: {
+    get: function() {
+      return this._useScale;
+    },
+    set: function(useScale2) {
+      this.updateScale(useScale2);
+    }
+  },
+  ["title"]: {
+    get: function() {
+      if (this._title) return this._title;
+      var titleElement = this.getTitleElement();
+      if (titleElement && titleElement.innerHTML) return titleElement.innerHTML;
+      return this.id;
+    },
+    set: function(title) {
+      this.setTitle(title);
+    }
+  },
+  ["maximized"]: {
+    get: function() {
+      if (!this.target) return false;
+      return this.target.classList.contains("maximized");
+    },
+    set: function(maximized) {
+      this.toggleMaximized(maximized);
+    }
+  },
+  ["snapped"]: {
+    get: function() {
+      if (!this.target) return false;
+      return this.target.classList.contains("snapped");
+    },
+    set: function(snapped) {
+      this.toggleSnapped(snapped);
+    }
+  },
+  ["heightSnapped"]: {
+    get: function() {
+      if (!this.target) return false;
+      return this.target.classList.contains("height-snapped");
+    },
+    set: function(snapped) {
+      this.toggleHeightSnapped(snapped);
+    }
+  },
+  ["windowTarget"]: {
+    get: function() {
+      var target = this.target;
+      if (target && "dialog" in target)
+        return (
+          /** @type {WindowElement} */
+          target
+        );
+      return null;
+    }
   }
 });
 Dialog.prototype.setTitle = function(title) {
@@ -2618,123 +2624,125 @@ Dialog.prototype.setTitle = function(title) {
   var titleElement = this.getTitleElement();
   if (titleElement) titleElement.innerHTML = title;
 };
-Object.defineProperty(Dialog.prototype, "id", {
-  get: function() {
-    return this._id || this.target && this.target.id || "unk";
+Object.defineProperties(Dialog.prototype, {
+  ["id"]: {
+    get: function() {
+      return this._id || this.target && this.target.id || "unk";
+    },
+    set: function(id) {
+      this._id = id;
+      windowManager.windows[id] = this;
+      if (this.target) this.target.setAttribute("id", id);
+    }
   },
-  set: function(id) {
-    this._id = id;
-    windowManager.windows[id] = this;
-    if (this.target) this.target.setAttribute("id", id);
-  }
-});
-Object.defineProperty(Dialog.prototype, "content", {
-  get: function() {
-    if (!this.target) return null;
-    return this.getElementByTagOrClassName("content");
-  }
-});
-Object.defineProperty(Dialog.prototype, "contentTransform", {
-  /** @type {()=>Transformable | null} */
-  get: function() {
-    if (this._contentTransform) return this._contentTransform;
-    var content = this.content;
-    if (!content) return null;
-    return this._contentTransform = new Transformable(content);
-  }
-});
-Object.defineProperty(Dialog.prototype, "transform", {
-  /** @type {()=>Transformable | null} */
-  get: function() {
-    if (this._transform) return this._transform;
-    var self2 = this;
-    (function() {
-    });
-    var target = this.target;
-    if (!target) return null;
-    this._transform = new Transformable(target);
-    return this._transform;
-  }
-});
-Object.defineProperty(Dialog.prototype, "killable", {
-  get: function() {
-    return this.application !== null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "borderSize", {
-  set: function(value) {
-    if (!this.content) return;
-    this.content.style.padding = toPixels(value);
-    this.content.style.border = toPixels(value);
-    this.content.style.borderRadius = toPixels(value);
-  },
-  get: function() {
-    return this.content && fromPixels(this.content.style.padding);
-  }
-});
-Object.defineProperty(Dialog.prototype, "popup", {
-  get: function() {
-    return this._popupWindow;
-  }
-});
-Object.defineProperty(Dialog.prototype, "micaElement", {
-  get: function() {
-    try {
+  ["content"]: {
+    get: function() {
       if (!this.target) return null;
-      var clipElem = this.target.getElementsByClassName("backdrop-filter");
-      if (!clipElem.length) return null;
-      var clip = clipElem[0];
-      if (isElement(clip)) return clip;
-    } catch (ex) {
-      if (ex instanceof Error) console.log(ex.message);
+      return this.getElementByTagOrClassName("content");
     }
-    return null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "micaBackdrop", {
-  get: function() {
-    try {
-      var micaElement = this.micaElement;
-      if (!micaElement) return null;
-      var backdrop = micaElement.children[0];
-      if (isElement(backdrop)) return backdrop;
-    } catch (ex) {
-      if (ex instanceof Error) console.log(ex.message);
-    }
-    return null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "skew", {
-  set: function(skew) {
-    this.setSkew(skew);
-  }
-});
-Object.defineProperty(Dialog.prototype, "scaleY", {
-  set: function(scaleY) {
-    this.setScaleY(scaleY);
-  }
-});
-Object.defineProperty(Dialog.prototype, "rotation", {
-  set: function(rotation) {
-    this.setRotation(rotation);
-  }
-});
-Object.defineProperty(Dialog.prototype, "opacity", {
-  set: function(opacity) {
-    this.target && (this.target.style.opacity = String(opacity));
   },
-  get: function() {
-    return this.target && this.target.style.opacity !== "" ? Number(this.target.style.opacity) : 1;
-  }
-});
-Object.defineProperty(Dialog.prototype, "icon", {
-  get: function() {
-    return this._appIcon;
-  }
-});
-Object.defineProperty(Dialog.prototype, "iconUrl", {
-  get: function() {
-    return this.getIconUrl();
+  ["contentTransform"]: {
+    /** @type {()=>Transformable | null} */
+    get: function() {
+      if (this._contentTransform) return this._contentTransform;
+      var content = this.content;
+      if (!content) return null;
+      return this._contentTransform = new Transformable(content);
+    }
+  },
+  ["transform"]: {
+    /** @type {()=>Transformable | null} */
+    get: function() {
+      if (this._transform) return this._transform;
+      var self2 = this;
+      (function() {
+      });
+      var target = this.target;
+      if (!target) return null;
+      this._transform = new Transformable(target);
+      return this._transform;
+    }
+  },
+  ["killable"]: {
+    get: function() {
+      return this.application !== null;
+    }
+  },
+  ["borderSize"]: {
+    set: function(value) {
+      if (!this.content) return;
+      this.content.style.padding = toPixels(value);
+      this.content.style.border = toPixels(value);
+      this.content.style.borderRadius = toPixels(value);
+    },
+    get: function() {
+      return this.content && fromPixels(this.content.style.padding);
+    }
+  },
+  ["popup"]: {
+    get: function() {
+      return this._popupWindow;
+    }
+  },
+  ["micaElement"]: {
+    get: function() {
+      try {
+        if (!this.target) return null;
+        var clipElem = this.target.getElementsByClassName("backdrop-filter");
+        if (!clipElem.length) return null;
+        var clip = clipElem[0];
+        if (isElement(clip)) return clip;
+      } catch (ex) {
+        if (ex instanceof Error) console.log(ex.message);
+      }
+      return null;
+    }
+  },
+  ["micaBackdrop"]: {
+    get: function() {
+      try {
+        var micaElement = this.micaElement;
+        if (!micaElement) return null;
+        var backdrop = micaElement.children[0];
+        if (isElement(backdrop)) return backdrop;
+      } catch (ex) {
+        if (ex instanceof Error) console.log(ex.message);
+      }
+      return null;
+    }
+  },
+  ["skew"]: {
+    set: function(skew) {
+      this.setSkew(skew);
+    }
+  },
+  ["scaleY"]: {
+    set: function(scaleY) {
+      this.setScaleY(scaleY);
+    }
+  },
+  ["rotation"]: {
+    set: function(rotation) {
+      this.setRotation(rotation);
+    }
+  },
+  ["opacity"]: {
+    set: function(opacity) {
+      this.target && (this.target.style.opacity = String(opacity));
+    },
+    get: function() {
+      return this.target && this.target.style.opacity !== "" ? Number(this.target.style.opacity) : 1;
+    }
+  },
+  ["icon"]: {
+    get: function() {
+      return this._appIcon;
+    }
+  },
+  ["iconUrl"]: {
+    get: function() {
+      return this.getIconUrl();
+    }
   }
 });
 Dialog.prototype.getIconUrl = function() {
@@ -3861,6 +3869,7 @@ class WindowElement extends HTMLDivElement {
     this.dialog = null;
   }
   connectedCallback() {
+    console.log("I connected balls");
   }
   /** @param {boolean} [enable] Enable maximization */
   toggleMaximizedVT(enable) {
@@ -4008,7 +4017,8 @@ class OdometerTime extends OdometerDisplay {
     this.tracks.forEach((track, i) => digits[i] !== void 0 && (track.value = digits[i]));
   }
 }
-const customElems = {
+let customElems;
+const customs = customElems = {
   "window-div": { constructor: WindowElement, extends: "div" },
   "odometer-track": { constructor: OdometerDigit, extends: "span" },
   "odometer-display": { constructor: OdometerDisplay, extends: "time" },
@@ -5184,6 +5194,40 @@ interceptor.bindage();
 window.addEventListener("load", function() {
   if (bindConsole) interceptor.init();
 }, false);
+function probeAllStorage() {
+  return {
+    OPFS: !!navigator.storage && typeof navigator.storage.getDirectory == "function",
+    CacheAPI: "caches" in window,
+    IndexedDB: !!window.indexedDB,
+    ChromeFileSystem: "webkitRequestFileSystem" in window,
+    LocalStorage: "localStorage" in window,
+    WebSQL: "openDatabase" in window,
+    GoogleGears: typeof window.GearsFactory != "undefined",
+    FlashBridge: (function() {
+      try {
+        return !!new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
+      } catch (e) {
+        return !!navigator.plugins && !!navigator.plugins["Shockwave Flash"];
+      }
+    })(),
+    IE_userData: (function() {
+      try {
+        return !!document.createElement("div").addBehavior;
+      } catch (e) {
+        return false;
+      }
+    })(),
+    ActiveX_FSO: (function() {
+      try {
+        return !!new ActiveXObject("Scripting.FileSystemObject");
+      } catch (e) {
+        return false;
+      }
+    })(),
+    JavaApplets: typeof navigator.javaEnabled == "function" && navigator.javaEnabled()
+  };
+}
+console.log("Detected Browser Capabilities:", probeAllStorage());
 function OmniFS() {
   this.webkitSize = 5 * 1024 * 1024;
   this.webkitFs = null;

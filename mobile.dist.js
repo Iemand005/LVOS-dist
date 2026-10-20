@@ -198,22 +198,24 @@ AppManager.prototype.forEachApp = function(callback) {
 AppManager.prototype.forEachWallpaper = function(callback) {
   this._forEach(this._wallpapers, callback);
 };
-Object.defineProperty(AppManager.prototype, "apps", {
-  get: function() {
-    return this._apps;
-  }
-});
-Object.defineProperty(AppManager.prototype, "installedApps", {
-  get: function() {
-    if (!hasLocalStorage) return [];
-    try {
-      var string = localStorage.getItem("installedApps");
-      if (string === null) return [];
-      var apps = JSON.parse(string);
-      return apps instanceof Array ? apps : [];
-    } catch (exception) {
-      if (exception instanceof Error) console.error(exception.message);
-      return [];
+Object.defineProperties(AppManager.prototype, {
+  ["apps"]: {
+    get: function() {
+      return this._apps;
+    }
+  },
+  ["installedApps"]: {
+    get: function() {
+      if (!hasLocalStorage) return [];
+      try {
+        var string = localStorage.getItem("installedApps");
+        if (string === null) return [];
+        var apps = JSON.parse(string);
+        return apps instanceof Array ? apps : [];
+      } catch (exception) {
+        if (exception instanceof Error) console.error(exception.message);
+        return [];
+      }
     }
   }
 });
@@ -866,6 +868,40 @@ function finishAppInstall() {
 }
 finishAppInstall();
 window.addEventListener("load", initApps, false);
+function probeAllStorage() {
+  return {
+    OPFS: !!navigator.storage && typeof navigator.storage.getDirectory == "function",
+    CacheAPI: "caches" in window,
+    IndexedDB: !!window.indexedDB,
+    ChromeFileSystem: "webkitRequestFileSystem" in window,
+    LocalStorage: "localStorage" in window,
+    WebSQL: "openDatabase" in window,
+    GoogleGears: typeof window.GearsFactory != "undefined",
+    FlashBridge: (function() {
+      try {
+        return !!new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
+      } catch (e) {
+        return !!navigator.plugins && !!navigator.plugins["Shockwave Flash"];
+      }
+    })(),
+    IE_userData: (function() {
+      try {
+        return !!document.createElement("div").addBehavior;
+      } catch (e) {
+        return false;
+      }
+    })(),
+    ActiveX_FSO: (function() {
+      try {
+        return !!new ActiveXObject("Scripting.FileSystemObject");
+      } catch (e) {
+        return false;
+      }
+    })(),
+    JavaApplets: typeof navigator.javaEnabled == "function" && navigator.javaEnabled()
+  };
+}
+console.log("Detected Browser Capabilities:", probeAllStorage());
 function OmniFS() {
   this.webkitSize = 5 * 1024 * 1024;
   this.webkitFs = null;
