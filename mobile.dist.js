@@ -1,8 +1,14 @@
 "use strict";
 function forEachIndexed(callbackfn, thisArg) {
-  for (var i = 0; i < this.length; ++i) callbackfn.call(thisArg, this[i], i, this);
+  if (typeof callbackfn !== "function") throw new TypeError(callbackfn + " is not a function");
+  var length = this == null || typeof this.length !== "number" ? 0 : this.length >>> 0;
+  for (var i = 0; i < length; ++i) callbackfn.call(thisArg, this[i], i, this);
 }
-Object.defineProperty(Object.prototype, "forEach", { value: forEachIndexed });
+if (!Object.prototype.hasOwnProperty("forEach")) Object.defineProperty(Object.prototype, "forEach", {
+  value: forEachIndexed,
+  writable: true,
+  configurable: true
+});
 function Launchpad() {
   this.launchpad = null;
   this.list = document.createElement("ul");
@@ -101,12 +107,11 @@ Launchpad.prototype._createMobileButton = function(app) {
 };
 Launchpad.prototype.addApp = function(app) {
   var appElement = document.createElement("li");
+  var openButton;
   if ("createOpenButton" in app) {
-    var openButton = app.createOpenButton();
-    appElement.appendChild(openButton);
+    openButton = app.createOpenButton();
   } else {
-    var openButton = this._createMobileButton(app);
-    appElement.appendChild(openButton);
+    openButton = this._createMobileButton(app);
     openButton.onclick = function() {
       mobileFrameManager.open(app);
     };
@@ -114,6 +119,7 @@ Launchpad.prototype.addApp = function(app) {
     appLabel.textContent = app && app.title || "Unknown";
     appElement.appendChild(appLabel);
   }
+  appElement.appendChild(openButton);
   this.list.appendChild(appElement);
 };
 Object.defineProperty(Launchpad.prototype, "isMobile", {
@@ -170,12 +176,8 @@ AppManager.prototype.addApp = function(app) {
   }
 };
 AppManager.prototype.addApps = function() {
-  for (var i = 0; i < arguments.length; i++) {
-    var arr = arguments[i];
-    if (arr instanceof Array)
-      for (var j = 0; j < arr.length; j++)
-        this.addApp(arr[j]);
-  }
+  for (var i = 0; i < arguments.length; i++)
+    if (arguments[i] instanceof Array) arguments[i].forEach(this.addApp, this);
 };
 AppManager.prototype.getApp = function(id) {
   if (!id) return null;
@@ -185,21 +187,16 @@ AppManager.prototype.removeApp = function(id) {
   if (!id) return;
   delete this._apps[id];
 };
-AppManager.prototype.forEachApp = function(callback) {
+AppManager.prototype._forEach = function(map, callback) {
   if (typeof callback !== "function") return;
-  for (var id in this._apps)
-    if (this._apps.hasOwnProperty(id)) {
-      var app = this._apps[id];
-      if (app) callback(app, id);
-    }
+  for (var id in map)
+    if (map.hasOwnProperty(id) && map[id]) callback(map[id], id);
+};
+AppManager.prototype.forEachApp = function(callback) {
+  this._forEach(this._apps, callback);
 };
 AppManager.prototype.forEachWallpaper = function(callback) {
-  if (typeof callback !== "function") return;
-  for (var id in this._wallpapers)
-    if (this._wallpapers.hasOwnProperty(id)) {
-      var app = this._wallpapers[id];
-      if (app) callback(app, id);
-    }
+  this._forEach(this._wallpapers, callback);
 };
 Object.defineProperty(AppManager.prototype, "apps", {
   get: function() {
@@ -225,9 +222,9 @@ AppManager.prototype.saveApp = function(app) {
   if (!app || typeof app !== "object" || !app.id) return;
   try {
     var apps = this.installedApps;
-    for (var i = 0; i < apps.length; i++) {
-      if (apps[i].id === app.id) return;
-    }
+    if (apps.some(function(existing) {
+      return existing.id === app.id;
+    })) return;
     apps.push(app);
     localStorage.setItem("installedApps", JSON.stringify(apps));
   } catch (exception) {
@@ -238,11 +235,9 @@ AppManager.prototype.loadApps = function() {
   if (!canSave || !hasLocalStorage) return;
   var self = this;
   try {
-    var apps = this.installedApps;
-    for (var i = 0; i < apps.length; i++) {
-      var app = apps[i];
+    this.installedApps.forEach(function(app) {
       if (app && app.src) self.addApp(app);
-    }
+    });
   } catch (exception) {
     handleStorageException(exception);
   }
@@ -267,7 +262,6 @@ AppManager.prototype.setWallpaper = function(id) {
   wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
 AppManager.prototype.openAppInIFrame = function(id, frame, onLoad) {
-  var self = this;
   let timeout = -1;
   var src = null;
   frame.onload = function() {
@@ -405,7 +399,6 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
   for (var flagId in flags2) {
     if (!flags2.hasOwnProperty(flagId) || flagId.charAt(0) === "_") continue;
     var flag = flags2[flagId];
-    var settingElement = document.createElement("label");
     var flagValue = flags2[flagId];
     switch (typeof flag) {
       case "boolean":
@@ -428,8 +421,6 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
         })(flagId);
         break;
     }
-    if (!settingElement) return;
-    flagsElement.appendChild(settingElement);
   }
   var settingsElement = document.getElementById("settings");
   if (settingsElement) settingsElement.appendChild(flagsElement);
@@ -498,8 +489,6 @@ function toggleColorDebug(enabled) {
 function toggleSquircles(enabled) {
   document.body.classList.toggle("squircles", enabled);
   settings.set("squircles", enabled);
-}
-function toggleCharmsEvent(ev) {
 }
 function setBorderSize(size) {
   settings.set("borderSize", size);
@@ -651,13 +640,9 @@ function loadThemeSetting() {
   }
 }
 var elements = {
-  charms: null,
   color: null,
   accent: null,
-  resetColor: null,
-  resetAccent: null,
   border: null,
-  dockAppList: null,
   theme: null,
   colorDebug: null,
   squircles: null,
@@ -700,13 +685,9 @@ function installAppFromUrl(useProxy) {
   }
 }
 function loadElements() {
-  elements.charms = document.getElementById("charms");
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
-  elements.resetColor = document.getElementById("resetaccent");
-  elements.resetAccent = document.getElementById("resetaccent");
   elements.border = document.getElementById("border");
-  elements.dockAppList = document.getElementById("dockapplist");
   elements.theme = document.getElementById("theme");
   elements.colorDebug = document.getElementById("color-debug");
   elements.squircles = document.getElementById("squircles");
@@ -720,7 +701,6 @@ function loadElements() {
   var applist = document.getElementById("applist");
   var charmsButton = applist ? applist.appendChild(document.createElement("button")) : document.createElement("button");
   charmsButton.textContent = "Settings";
-  window.addEventListener("mousedown", toggleCharmsEvent, false);
   if (charmsButton) charmsButton.onclick = function() {
     DesktopManager.toggleCharms();
   };
@@ -772,7 +752,6 @@ addEventListener("load", function() {
   loadElements();
   loadSettings();
 }, false);
-var metroAppList = document.getElementById("metroapplist");
 function downloadObject(object, fileName) {
   var uri = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(object));
   var a = document.createElement("a");
@@ -787,355 +766,71 @@ function downloadSettings() {
 }
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
+function provisionedApp(title, id, src, extra) {
+  return Object.assign({ title, id, src }, extra);
+}
 var applications = [
-  {
-    title: "Frosted Colors",
-    id: "colors",
-    distSrc: "https://iemand005.github.io/FrostedColours",
-    src: "Applications/FrostedColours/index.html",
-    wallpaper: true
-  },
-  {
-    title: "Calculator",
-    id: "calculator",
-    minWidth: 180,
-    minHeight: 240,
-    src: "./Applications/Calculator/calculator.html"
-  },
-  {
-    title: "Color Tool",
-    id: "colortool",
-    minWidth: 180,
-    minHeight: 240,
-    src: "./Applications/ColorTool/colors.html"
-  },
-  { title: "Example", id: "0", src: "./example.html" },
-  {
-    title: "Camera",
-    id: "camera",
-    src: "./Applications/Camera/index.html",
-    camera: true,
-    microphone: true
-    // add attribute allow="camera; microphone" to iframe!
-  },
-  {
-    title: "Video",
-    id: "video",
-    src: "./Applications/Video/index.html",
-    hidden: true
-  },
-  {
-    title: "Cover Flow",
-    id: "coverflow",
-    src: "./Applications/Coverflow/Coverflow.html"
-  },
-  {
-    title: "Music",
-    id: "music",
-    src: "./Applications/Music/index.html"
-  },
-  {
-    title: "Citates",
-    id: "citates",
-    src: "./Applications/Citaten/index.html",
-    hidden: true
-    // Hiding the incomplete apps. These are enabled once finished.
-  },
-  {
-    title: "Clock",
-    id: "clock",
-    src: "./Applications/Clock/index.html",
-    hidden: true
-  },
-  {
-    title: "Verlet",
-    id: "verlet",
-    src: "./Applications/Verlet/index.html",
-    hidden: true
-  },
-  {
-    title: "Recorder",
-    id: "recorder",
-    src: "./Applications/Recorder/index.html",
-    hidden: true
-  },
-  {
-    title: "Error",
-    id: "error",
-    src: "./Applications/Error/error.html",
-    hidden: true
-  },
-  {
-    title: "Cube",
-    id: "cube",
-    src: "./Applications/Cube/cube.html",
-    hidden: true
-  },
-  {
-    title: "Geode",
-    id: "geode",
-    src: "https://geode.tepartive.net",
-    hidden: true
-  },
-  {
-    title: "Level",
-    id: "level",
-    src: "./Applications/Level/level.html",
-    hidden: true
-  },
-  {
-    title: "Browser",
-    id: "browser",
-    src: "./Applications/Browser/index.html"
-  },
-  {
-    title: "MPTool",
-    id: "mptool",
-    src: "./Applications/MPTool/index.html",
-    hidden: true
-  },
-  {
-    title: "Autostereograms",
-    id: "stereograms",
-    src: "./Applications/StereogramMaker/index.html",
-    hidden: true
-  },
-  {
-    title: "Metronome",
-    id: "cyanide.metronome",
-    src: "./Applications/Cyanide/metronome/index.html",
-    hidden: true
-  },
-  {
-    title: "Rainboy",
-    id: "cyanide.rainboy",
-    src: "./Applications/Cyanide/rainboy/index.html",
-    hidden: true
-  },
-  {
-    title: "OPC",
-    id: "opc",
-    src: "https://bypass-online.netlify.app/",
-    iconUrl: "https://iemand005.github.io/OPC/files/apps/me.flexan.terminal/terminal.png",
-    accentColor: "rgb(37, 104, 245)"
-  },
-  {
-    title: "daedalOS",
-    id: "daedal",
-    src: "https://dustinbrett.com/"
-  },
-  {
-    title: "Fenix Engine Demo",
-    id: "fenix.web",
-    src: "https://iemand005.github.io/FenixWeb/"
-  },
-  {
-    title: "FoxCraft",
-    id: "fenix.foxcraft",
-    src: "https://iemand005.github.io/FenixWeb/FoxCraft/index.html"
-  },
-  {
-    title: "Cake",
-    id: "fenix.cake",
-    src: "https://iemand005.github.io/FenixWeb/Cake/index.html",
-    audioVisualizer: true
-  },
-  {
-    title: "My Web Archive",
-    id: "foxyz.archive",
-    src: "https://iemand005.github.io/Archive-2023/index.html"
-  },
-  {
-    title: "Tappy",
-    id: "foxyz.tappy",
-    // src: "https://iemand005.github.io/Tappy/tappy.html", // TODO: perhaps uh a prod vs dev env for github url and local
-    src: "./Applications/Tappy/tappy.html",
-    hidden: true
-  },
-  {
-    title: "AIOne",
-    id: "foxyz.aione",
-    src: "./Applications/AIOneWeb/index.html",
-    hidden: true
-  },
-  {
-    title: "WebGPUFluidSim",
-    id: "foxyz.webgpufluidsim",
-    src: "./Applications/WebGPUFluidSim/index.html",
-    moveEvents: true
-  },
-  {
-    title: "Fur:Trash",
-    id: "foxyz.fur:trash",
-    src: "https://open.spotify.com/embed/artist/1jp7cmyHDn5nuP3MMSwm1m?utm_source=generator&si=86b6cf864e0048c3",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f1788c05c5ac8638f68f84053a57"
-    // appIcon?
-  },
-  {
-    title: "Cavetown",
-    id: "foxyz.cavetown",
-    src: "https://open.spotify.com/embed/artist/2hR4h1Cao2ueuI7Cx9c7V8?utm_source=generator&theme=0&si=714602d32e764d47",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Awolnation",
-    id: "foxyz.awolnation",
-    src: "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Papa Roach",
-    id: "foxyz.papa-roach",
-    src: "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Monaco",
-    id: "monaco",
-    src: "./Applications/Monaco/monaco.html",
-    iconUrl: "https://code.visualstudio.com/favicon.ico"
-  },
-  {
-    title: "Furzona Lite",
-    id: "furzona",
-    src: "https://iemand005.github.io/FurzonaWeb",
-    iconUrl: "https://iemand005.github.io/FurzonaWeb/Logo.png"
-  },
-  {
-    title: "The Useless Web",
-    id: "theuselessweb",
-    src: "https://theuselessweb.com/"
-  },
-  {
-    title: "Windows 95",
-    id: "win95",
-    src: "https://98.js.org/"
-  },
-  {
-    title: "Pinball Space Cadet",
-    id: "pinball",
-    src: "https://98.js.org/programs/pinball/space-cadet.html",
-    iconUrl: "https://98.js.org/images/icons/pinball-16x16.png"
-  },
-  {
-    title: "Internet Exporer",
-    id: "ie",
-    src: "https://98.js.org/programs/explorer/index.html?address=https%3A%2F%2Fwww.google.com",
-    iconUrl: "https://98.js.org/images/icons/html-16x16.png"
-  },
-  {
-    title: "Solitaire",
-    id: "solitaire",
-    src: "https://98.js.org/programs/js-solitaire/index.html",
-    iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png"
-  },
-  {
-    title: "Pipes",
-    id: "pipes",
-    src: "https://98.js.org/programs/pipes/index.html#%7B%22hideUI%22%3Atrue%7D",
-    iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png",
-    screensaver: true
-  },
-  {
-    title: "Cavetown - Big Strong Man",
-    id: "cavetown.bigstrongmen",
-    src: "https://www.youtube.com/embed/uKn0BtAAEyw?si=s3Pz0PzIpQDCxizU"
-  },
-  {
-    title: "Gamepad Input Recorder",
-    id: "inputrecorder",
-    src: "https://iemand005.github.io/GamepadRecorder/"
-  },
-  {
-    title: "LVOS Mobile",
-    id: "mobile",
-    src: "./mobile.html",
-    distSrc: "https://iemand005.github.io/LVOS/mobile.html"
-  },
-  {
-    title: "LVOS",
-    id: "lvos",
-    src: "index.html",
-    distSrc: "https://iemand005.github.io/LVOS/",
-    altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
-  },
-  {
-    title: "Speak",
-    id: "speak",
-    src: "Applications/Speak/speak.html"
-  },
-  {
-    title: "Tepartive.NET",
-    id: "tepartive",
-    src: "https://tepartive.net/"
-  },
-  {
-    title: "ColourTool",
-    id: "color-tool",
-    src: "Applications/ColorTool/colors.html"
-  }
+  provisionedApp("Frosted Colors", "colors", "Applications/FrostedColours/index.html", { distSrc: "https://iemand005.github.io/FrostedColours", wallpaper: true }),
+  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Color Tool", "colortool", "./Applications/ColorTool/colors.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Example", "0", "./example.html"),
+  provisionedApp("Camera", "camera", "./Applications/Camera/index.html", { camera: true, microphone: true }),
+  provisionedApp("Video", "video", "./Applications/Video/index.html", { hidden: true }),
+  provisionedApp("Cover Flow", "coverflow", "./Applications/Coverflow/Coverflow.html"),
+  provisionedApp("Music", "music", "./Applications/Music/index.html"),
+  provisionedApp("Citates", "citates", "./Applications/Citaten/index.html", { hidden: true }),
+  provisionedApp("Clock", "clock", "./Applications/Clock/index.html", { hidden: true }),
+  provisionedApp("Verlet", "verlet", "./Applications/Verlet/index.html", { hidden: true }),
+  provisionedApp("Recorder", "recorder", "./Applications/Recorder/index.html", { hidden: true }),
+  provisionedApp("Error", "error", "./Applications/Error/error.html", { hidden: true }),
+  provisionedApp("Cube", "cube", "./Applications/Cube/cube.html", { hidden: true }),
+  provisionedApp("Geode", "geode", "https://geode.tepartive.net", { hidden: true }),
+  provisionedApp("Level", "level", "./Applications/Level/level.html", { hidden: true }),
+  provisionedApp("Browser", "browser", "./Applications/Browser/index.html"),
+  provisionedApp("MPTool", "mptool", "./Applications/MPTool/index.html", { hidden: true }),
+  provisionedApp("Autostereograms", "stereograms", "./Applications/StereogramMaker/index.html", { hidden: true }),
+  provisionedApp("Metronome", "cyanide.metronome", "./Applications/Cyanide/metronome/index.html", { hidden: true }),
+  provisionedApp("Rainboy", "cyanide.rainboy", "./Applications/Cyanide/rainboy/index.html", { hidden: true }),
+  provisionedApp("OPC", "opc", "https://bypass-online.netlify.app/", { iconUrl: "https://iemand005.github.io/OPC/files/apps/me.flexan.terminal/terminal.png", accentColor: "rgb(37, 104, 245)" }),
+  provisionedApp("daedalOS", "daedal", "https://dustinbrett.com/"),
+  provisionedApp("Fenix Engine Demo", "fenix.web", "https://iemand005.github.io/FenixWeb/"),
+  provisionedApp("FoxCraft", "fenix.foxcraft", "https://iemand005.github.io/FenixWeb/FoxCraft/index.html"),
+  provisionedApp("Cake", "fenix.cake", "https://iemand005.github.io/FenixWeb/Cake/index.html", { audioVisualizer: true }),
+  provisionedApp("My Web Archive", "foxyz.archive", "https://iemand005.github.io/Archive-2023/index.html"),
+  provisionedApp("Tappy", "foxyz.tappy", "./Applications/Tappy/tappy.html", { hidden: true }),
+  provisionedApp("AIOne", "foxyz.aione", "./Applications/AIOneWeb/index.html", { hidden: true }),
+  provisionedApp("WebGPUFluidSim", "foxyz.webgpufluidsim", "./Applications/WebGPUFluidSim/index.html", { moveEvents: true }),
+  provisionedApp("Fur:Trash", "foxyz.fur:trash", "https://open.spotify.com/embed/artist/1jp7cmyHDn5nuP3MMSwm1m?utm_source=generator&si=86b6cf864e0048c3", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f1788c05c5ac8638f68f84053a57" }),
+  provisionedApp("Cavetown", "foxyz.cavetown", "https://open.spotify.com/embed/artist/2hR4h1Cao2ueuI7Cx9c7V8?utm_source=generator&theme=0&si=714602d32e764d47", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Awolnation", "foxyz.awolnation", "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Papa Roach", "foxyz.papa-roach", "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Monaco", "monaco", "./Applications/Monaco/monaco.html", { iconUrl: "https://code.visualstudio.com/favicon.ico" }),
+  provisionedApp("Furzona Lite", "furzona", "https://iemand005.github.io/FurzonaWeb", { iconUrl: "https://iemand005.github.io/FurzonaWeb/Logo.png" }),
+  provisionedApp("The Useless Web", "theuselessweb", "https://theuselessweb.com/"),
+  provisionedApp("Windows 95", "win95", "https://98.js.org/"),
+  provisionedApp("Pinball Space Cadet", "pinball", "https://98.js.org/programs/pinball/space-cadet.html", { iconUrl: "https://98.js.org/images/icons/pinball-16x16.png" }),
+  provisionedApp("Internet Exporer", "ie", "https://98.js.org/programs/explorer/index.html?address=https%3A%2F%2Fwww.google.com", { iconUrl: "https://98.js.org/images/icons/html-16x16.png" }),
+  provisionedApp("Solitaire", "solitaire", "https://98.js.org/programs/js-solitaire/index.html", { iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png" }),
+  provisionedApp("Pipes", "pipes", "https://98.js.org/programs/pipes/index.html#%7B%22hideUI%22%3Atrue%7D", { iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png", screensaver: true }),
+  provisionedApp("Cavetown - Big Strong Man", "cavetown.bigstrongmen", "https://www.youtube.com/embed/uKn0BtAAEyw?si=s3Pz0PzIpQDCxizU"),
+  provisionedApp("Gamepad Input Recorder", "inputrecorder", "https://iemand005.github.io/GamepadRecorder/"),
+  provisionedApp("LVOS Mobile", "mobile", "./mobile.html", { distSrc: "https://iemand005.github.io/LVOS/mobile.html" }),
+  provisionedApp("LVOS", "lvos", "index.html", { distSrc: "https://iemand005.github.io/LVOS/", altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"] }),
+  provisionedApp("Speak", "speak", "Applications/Speak/speak.html"),
+  provisionedApp("Tepartive.NET", "tepartive", "https://tepartive.net/"),
+  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html")
 ];
 var games = [
-  {
-    title: "Conway",
-    id: "conway",
-    src: "./Games/Conway/index.html",
-    classes: ["rounded-corners"]
-  },
-  {
-    title: "Velocities",
-    id: "velocities",
-    src: "./Applications/Velocities/index.html",
-    moveEvents: true
-    // This flag enables attaching window movement statistic listener.
-  },
-  {
-    title: "Minesweeper",
-    id: "minesweeper",
-    src: "./Games/Minesweeper/index.html",
-    resizable: false,
-    scroll: false
-  },
-  {
-    title: "Chess",
-    id: "chess",
-    src: "./Games/Chess/index.html",
-    hidden: true
-  },
-  {
-    title: "Tetris",
-    id: "tetris",
-    src: "./Games/Tetris/tetris.html",
-    hidden: true
-  },
-  {
-    title: "Sudoku",
-    id: "sudoku",
-    src: "./Games/Sudoku/sudoku.html",
-    hidden: true
-  },
-  {
-    title: "Clicker",
-    id: "clicker",
-    src: "./Games/ChoccyClicker/clicker.html",
-    hidden: true
-  },
-  {
-    title: "FAT",
-    id: "mountain",
-    src: "https://iemand005.github.io/MountainWeb/"
-  },
-  {
-    title: "Planet Life",
-    id: "planetlife",
-    src: "https://www.planetlife.space/static/game/index.html"
-  },
-  {
-    title: "Horizon Background",
-    id: "horizon-bg",
-    src: "https://iemand005.github.io/HorizonBackground/",
-    wallpaper: true
-  }
+  provisionedApp("Conway", "conway", "./Games/Conway/index.html", { classes: ["rounded-corners"] }),
+  provisionedApp("Velocities", "velocities", "./Applications/Velocities/index.html", { moveEvents: true }),
+  provisionedApp("Minesweeper", "minesweeper", "./Games/Minesweeper/index.html", { resizable: false, scroll: false }),
+  provisionedApp("Chess", "chess", "./Games/Chess/index.html", { hidden: true }),
+  provisionedApp("Tetris", "tetris", "./Games/Tetris/tetris.html", { hidden: true }),
+  provisionedApp("Sudoku", "sudoku", "./Games/Sudoku/sudoku.html", { hidden: true }),
+  provisionedApp("Clicker", "clicker", "./Games/ChoccyClicker/clicker.html", { hidden: true }),
+  provisionedApp("FAT", "mountain", "https://iemand005.github.io/MountainWeb/"),
+  provisionedApp("Planet Life", "planetlife", "https://www.planetlife.space/static/game/index.html"),
+  provisionedApp("Horizon Background", "horizon-bg", "https://iemand005.github.io/HorizonBackground/", { wallpaper: true })
 ];
 if (typeof windowManager !== "undefined") {
   Object.defineProperty(Window.prototype, "windows", {
@@ -1162,7 +857,6 @@ function initApps() {
   }
   finishAppInstall();
 }
-;
 function finishAppInstall() {
   if (typeof appManager !== "undefined") {
     appManager.addApps(applications, games);
@@ -1172,40 +866,6 @@ function finishAppInstall() {
 }
 finishAppInstall();
 window.addEventListener("load", initApps, false);
-function probeAllStorage() {
-  return {
-    OPFS: !!navigator.storage && typeof navigator.storage.getDirectory == "function",
-    CacheAPI: "caches" in window,
-    IndexedDB: !!window.indexedDB,
-    ChromeFileSystem: "webkitRequestFileSystem" in window,
-    LocalStorage: "localStorage" in window,
-    WebSQL: "openDatabase" in window,
-    GoogleGears: typeof window.GearsFactory != "undefined",
-    FlashBridge: (function() {
-      try {
-        return !!new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
-      } catch (e) {
-        return !!navigator.plugins && !!navigator.plugins["Shockwave Flash"];
-      }
-    })(),
-    IE_userData: (function() {
-      try {
-        return !!document.createElement("div").addBehavior;
-      } catch (e) {
-        return false;
-      }
-    })(),
-    ActiveX_FSO: (function() {
-      try {
-        return !!new ActiveXObject("Scripting.FileSystemObject");
-      } catch (e) {
-        return false;
-      }
-    })(),
-    JavaApplets: typeof navigator.javaEnabled == "function" && navigator.javaEnabled()
-  };
-}
-console.log("Detected Browser Capabilities:", probeAllStorage());
 function OmniFS() {
   this.webkitSize = 5 * 1024 * 1024;
   this.webkitFs = null;
@@ -1297,7 +957,6 @@ window.addEventListener("load", function(e) {
   window.history.pushState(null, "", window.location.href);
   window.addEventListener("popstate", function(event) {
     window.history.pushState(null, "", window.location.href);
-    console.log("I gotta handle backnav!");
     goBack();
   });
   const blurGradient = document.createElement("div");
@@ -1343,7 +1002,6 @@ window.addEventListener("load", function(e) {
     document.body.classList.add("transparent");
   });
 });
-var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
 function init() {
   var launchpadElement = document.getElementById("launchpad");

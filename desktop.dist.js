@@ -1,8 +1,14 @@
 "use strict";
 function forEachIndexed(callbackfn, thisArg) {
-  for (var i = 0; i < this.length; ++i) callbackfn.call(thisArg, this[i], i, this);
+  if (typeof callbackfn !== "function") throw new TypeError(callbackfn + " is not a function");
+  var length = this == null || typeof this.length !== "number" ? 0 : this.length >>> 0;
+  for (var i = 0; i < length; ++i) callbackfn.call(thisArg, this[i], i, this);
 }
-Object.defineProperty(Object.prototype, "forEach", { value: forEachIndexed });
+if (!Object.prototype.hasOwnProperty("forEach")) Object.defineProperty(Object.prototype, "forEach", {
+  value: forEachIndexed,
+  writable: true,
+  configurable: true
+});
 function Vector(x, y) {
   if (typeof x != "number") x = 0, y = 0;
   else if (typeof y != "number") y = x;
@@ -253,12 +259,11 @@ Launchpad.prototype._createMobileButton = function(app) {
 };
 Launchpad.prototype.addApp = function(app) {
   var appElement = document.createElement("li");
+  var openButton;
   if ("createOpenButton" in app) {
-    var openButton = app.createOpenButton();
-    appElement.appendChild(openButton);
+    openButton = app.createOpenButton();
   } else {
-    var openButton = this._createMobileButton(app);
-    appElement.appendChild(openButton);
+    openButton = this._createMobileButton(app);
     openButton.onclick = function() {
       mobileFrameManager.open(app);
     };
@@ -266,6 +271,7 @@ Launchpad.prototype.addApp = function(app) {
     appLabel.textContent = app && app.title || "Unknown";
     appElement.appendChild(appLabel);
   }
+  appElement.appendChild(openButton);
   this.list.appendChild(appElement);
 };
 Object.defineProperty(Launchpad.prototype, "isMobile", {
@@ -322,12 +328,8 @@ AppManager.prototype.addApp = function(app) {
   }
 };
 AppManager.prototype.addApps = function() {
-  for (var i = 0; i < arguments.length; i++) {
-    var arr = arguments[i];
-    if (arr instanceof Array)
-      for (var j = 0; j < arr.length; j++)
-        this.addApp(arr[j]);
-  }
+  for (var i = 0; i < arguments.length; i++)
+    if (arguments[i] instanceof Array) arguments[i].forEach(this.addApp, this);
 };
 AppManager.prototype.getApp = function(id) {
   if (!id) return null;
@@ -337,21 +339,16 @@ AppManager.prototype.removeApp = function(id) {
   if (!id) return;
   delete this._apps[id];
 };
-AppManager.prototype.forEachApp = function(callback) {
+AppManager.prototype._forEach = function(map, callback) {
   if (typeof callback !== "function") return;
-  for (var id in this._apps)
-    if (this._apps.hasOwnProperty(id)) {
-      var app = this._apps[id];
-      if (app) callback(app, id);
-    }
+  for (var id in map)
+    if (map.hasOwnProperty(id) && map[id]) callback(map[id], id);
+};
+AppManager.prototype.forEachApp = function(callback) {
+  this._forEach(this._apps, callback);
 };
 AppManager.prototype.forEachWallpaper = function(callback) {
-  if (typeof callback !== "function") return;
-  for (var id in this._wallpapers)
-    if (this._wallpapers.hasOwnProperty(id)) {
-      var app = this._wallpapers[id];
-      if (app) callback(app, id);
-    }
+  this._forEach(this._wallpapers, callback);
 };
 Object.defineProperty(AppManager.prototype, "apps", {
   get: function() {
@@ -377,9 +374,9 @@ AppManager.prototype.saveApp = function(app) {
   if (!app || typeof app !== "object" || !app.id) return;
   try {
     var apps = this.installedApps;
-    for (var i = 0; i < apps.length; i++) {
-      if (apps[i].id === app.id) return;
-    }
+    if (apps.some(function(existing) {
+      return existing.id === app.id;
+    })) return;
     apps.push(app);
     localStorage.setItem("installedApps", JSON.stringify(apps));
   } catch (exception) {
@@ -390,11 +387,9 @@ AppManager.prototype.loadApps = function() {
   if (!canSave || !hasLocalStorage) return;
   var self2 = this;
   try {
-    var apps = this.installedApps;
-    for (var i = 0; i < apps.length; i++) {
-      var app = apps[i];
+    this.installedApps.forEach(function(app) {
       if (app && app.src) self2.addApp(app);
-    }
+    });
   } catch (exception) {
     handleStorageException(exception);
   }
@@ -419,7 +414,6 @@ AppManager.prototype.setWallpaper = function(id) {
   wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
 AppManager.prototype.openAppInIFrame = function(id, frame, onLoad2) {
-  var self2 = this;
   let timeout = -1;
   var src = null;
   frame.onload = function() {
@@ -1937,8 +1931,8 @@ function Dialog(object, create) {
   if (!this.scroll && this.body) this.body.style.overflow = "hidden";
   var appList = document.getElementById("applist");
   if (appList) appList.appendChild(this.createOpenButton());
-  var metroAppList2 = document.getElementById("metroapplist");
-  if (metroAppList2) metroAppList2.appendChild(this.createOpenButton());
+  var metroAppList = document.getElementById("metroapplist");
+  if (metroAppList) metroAppList.appendChild(this.createOpenButton());
   if (create || isElement(object)) this.initWithObject(object);
   this._popupPositionInterval = 0;
   this.dragging = false;
@@ -3162,44 +3156,41 @@ Dialog.prototype.updateHeight = function() {
   if (this.useTransform) this.target.style.height = toPixels(this._height);
   else this.target.style.bottom = toPixels(this.bottom);
 };
-Dialog.prototype.setWidth = function(width, update, animate) {
-  if (typeof width !== "number") return;
+Dialog.prototype._setSize = function(axis, size, update, animate) {
+  if (typeof size !== "number" || axis === "height" && !this.target) return;
+  var isWidth = axis === "width";
   var bounds = WindowManager.windowBounds;
-  if (bounds.right !== Infinity) {
-    var overflow = this.x + width - bounds.right;
+  var far = isWidth ? bounds.right : bounds.bottom;
+  var near = isWidth ? bounds.left : bounds.top;
+  var pos = isWidth ? this.x : this.y;
+  if (far !== Infinity) {
+    var overflow = pos + size - far;
     if (overflow > 0) {
-      var newX = this.x - overflow;
-      if (bounds.left !== void 0 && newX < bounds.left) newX = bounds.left;
-      this.move(newX);
+      var newPos = pos - overflow;
+      if (near !== void 0 && newPos < near) newPos = near;
+      if (isWidth) this.move(newPos);
+      else this.move(this.x, newPos);
     }
+    size = Math.min(size, far - (isWidth ? this.x : this.y));
   }
-  if (bounds.right !== Infinity) width = Math.min(width, bounds.right - this.x);
-  this._width = Math.max(Math.min(width, this.maxWidth), this.minWidth);
-  this._isMinWidth = this._width === this.minWidth;
+  if (isWidth) {
+    this._width = Math.max(Math.min(size, this.maxWidth), this.minWidth);
+    this._isMinWidth = this._width === this.minWidth;
+  } else {
+    this._height = Math.max(Math.min(size, this.maxHeight), this.minHeight);
+    this._isMinHeight = this._height === this.minHeight;
+  }
   if (update !== false) {
-    if (animate) this.animate(this.updateWidth);
-    else this.updateWidth();
-  }
-};
-Dialog.prototype.setHeight = function(height, update, animate) {
-  if (typeof height !== "number" || !this.target) return;
-  var bounds = WindowManager.windowBounds;
-  if (bounds.bottom !== Infinity) {
-    var overflow = this.y + height - bounds.bottom;
-    if (overflow > 0) {
-      var newY = this.y - overflow;
-      if (bounds.top !== void 0 && newY < bounds.top) newY = bounds.top;
-      this.move(this.x, newY);
-    }
-  }
-  var finalHeight = height;
-  if (bounds.bottom !== Infinity) finalHeight = Math.min(finalHeight, bounds.bottom - this.y);
-  this._height = Math.max(Math.min(finalHeight, this.maxHeight), this.minHeight);
-  this._isMinHeight = this._height === this.minHeight;
-  if (update !== false) {
-    if (animate) this.animate(this.updateHeight);
+    if (animate) this.animate(isWidth ? this.updateWidth : this.updateHeight);
+    else if (isWidth) this.updateWidth();
     else this.updateHeight();
   }
+};
+Dialog.prototype.setWidth = function(width, update, animate) {
+  this._setSize("width", width, update, animate);
+};
+Dialog.prototype.setHeight = function(height, update, animate) {
+  this._setSize("height", height, update, animate);
 };
 Dialog.prototype.resize = function(width, height, direction) {
   if (this.fixed) return;
@@ -3215,6 +3206,15 @@ Dialog.prototype.resize = function(width, height, direction) {
     if (oldHeight !== this.height) state.height = this.height;
     this.broadcastState(state);
   }
+};
+Dialog.prototype._commitResize = function(newW, newH, newX, newY, oldX, oldY, minW, minH) {
+  this._width = newW;
+  this._height = newH;
+  this._isMinWidth = newW === minW;
+  this._isMinHeight = newH === minH;
+  if (newX !== oldX || newY !== oldY) this.move(newX, newY);
+  this.updateWidth();
+  this.updateHeight();
 };
 Dialog.prototype._resizeFree = function(width, height, direction) {
   var oldX = this.x, oldY = this.y;
@@ -3249,13 +3249,7 @@ Dialog.prototype._resizeFree = function(width, height, direction) {
       newY = oldY + oldH - newH;
       break;
   }
-  this._width = newW;
-  this._height = newH;
-  this._isMinWidth = newW === minW;
-  this._isMinHeight = newH === minH;
-  if (newX !== oldX || newY !== oldY) this.move(newX, newY);
-  this.updateWidth();
-  this.updateHeight();
+  this._commitResize(newW, newH, newX, newY, oldX, oldY, minW, minH);
 };
 Dialog.prototype._resizeWithAspect = function(width, height, direction) {
   var ratio = this._aspectRatio;
@@ -3641,9 +3635,9 @@ Dialog.prototype.moveElementIntoPipById = function(id) {
   });
 };
 Dialog.prototype.screenshot = function() {
-  var target = this.target;
-  if (!target) return;
-  if (screenShooter) screenShooter.screenshotElement(target);
+  if (!this.target) return;
+  var shooter = getScreenShooter();
+  if (shooter) shooter.screenshotElement(this.target);
 };
 function DragAction() {
   this.execute = function() {
@@ -3722,12 +3716,10 @@ function genericTyped(type) {
 const hey = genericTyped(document.createElement("button"));
 const meow = document.createElement("applet");
 function ElementPicker(options) {
-  options = options;
   this.active = false;
   this.onSelect = options.onSelect || function(el) {
     console.log("Selected:", el);
   };
-  this.box = null;
   this.statusEl = null;
   this.hovered = null;
   this.prevOutline = "";
@@ -3753,7 +3745,6 @@ ElementPicker.prototype.register = function() {
 };
 ElementPicker.prototype.start = function() {
   this.active = true;
-  this.createBox();
   document.body.style.cursor = "crosshair";
   document.addEventListener("mousemove", this.boundMove, true);
   document.addEventListener("click", this.boundClick, true);
@@ -3764,7 +3755,6 @@ ElementPicker.prototype.start = function() {
 ElementPicker.prototype.stop = function() {
   this.active = false;
   document.body.style.cursor = "";
-  if (this.box) this.box.style.display = "none";
   document.removeEventListener("mousemove", this.boundMove, true);
   document.removeEventListener("click", this.boundClick, true);
   document.removeEventListener("keydown", this.boundKey, true);
@@ -3785,16 +3775,6 @@ ElementPicker.prototype.unhighlight = function(skipRemove) {
   this.hovered = null;
   this.prevOutline = "";
 };
-ElementPicker.prototype.drawRectAround = function(el) {
-  if (!this.box) return;
-  var r = el.getBoundingClientRect();
-  var s = this.box.style;
-  s.display = "block";
-  s.left = r.left + "px";
-  s.top = r.top + "px";
-  s.width = r.width + "px";
-  s.height = r.height + "px";
-};
 ElementPicker.prototype.onClick = function(e) {
   if (!e.isTrusted) return;
   e.preventDefault();
@@ -3806,19 +3786,6 @@ ElementPicker.prototype.onClick = function(e) {
 };
 ElementPicker.prototype.onKey = function(e) {
   if (e.key === "Escape") this.stop();
-};
-ElementPicker.prototype.createBox = function() {
-  if (this.box) return;
-  this.box = document.createElement("div");
-  Object.assign(this.box.style, {
-    position: "fixed",
-    pointerEvents: "none",
-    zIndex: 2147483646,
-    border: "2px solid #2f81f7",
-    background: "rgba(47,129,247,0.15)",
-    display: "none"
-  });
-  document.body.appendChild(this.box);
 };
 ElementPicker.prototype.status = function(msg) {
   if (!this.statusEl) {
@@ -3840,697 +3807,6 @@ ElementPicker.prototype.status = function(msg) {
   this.statusEl.textContent = msg;
   this.statusEl.style.display = msg ? "block" : "none";
 };
-function GraphicsBase(element, context) {
-  var canvas = null;
-  if (element instanceof HTMLCanvasElement) canvas = element;
-  else if (typeof element === "string") {
-    var c = document.getElementById(element);
-    if (c instanceof HTMLCanvasElement) canvas = c;
-  } else canvas = document.createElement("canvas");
-  if (!canvas) throw new Error("Object does not resolve to a canvas!");
-  this.canvas = canvas;
-  var self2 = this;
-  this.canvas.onresize = function() {
-    self2.resize();
-  };
-  this.ctx = context ? canvas.getContext(context) : null;
-}
-Object.defineProperty(GraphicsBase.prototype, "width", {
-  get: function() {
-    return this.canvas.width;
-  },
-  set: function(width) {
-    if (typeof width === "number")
-      this.canvas.width = width;
-  }
-});
-Object.defineProperty(GraphicsBase.prototype, "height", {
-  get: function() {
-    return this.canvas.height;
-  },
-  set: function(height) {
-    if (typeof height === "number")
-      this.canvas.height = height;
-  }
-});
-GraphicsBase.prototype.resize = function(width, height) {
-  if (typeof width === "undefined" || typeof height === "undefined") {
-    const rect = this.canvas.getBoundingClientRect();
-    width = rect.width;
-    height = rect.height;
-  }
-  const dpr = window.devicePixelRatio || 1;
-  this.width = width * dpr;
-  this.height = height * dpr;
-  return dpr;
-};
-GraphicsBase.prototype.downloadImage = function(data, filename) {
-  var a = document.createElement("a");
-  a.href = data;
-  a.download = filename || "untitled.jpeg";
-  document.body.appendChild(a);
-  a.click();
-};
-GraphicsBase.prototype.getDataUrl = function(type, quality) {
-  return this.canvas.toDataURL("image/" + (type || "png"), quality || 1);
-};
-GraphicsBase.prototype.downloadCanvas = function(filename) {
-  this.downloadImage(this.getDataUrl(), filename);
-};
-function Graphics3D(canvas, context) {
-  GraphicsBase.call(this, canvas, context);
-  if (context === "2d") return;
-  this.gl = context === "webgl2" && this.canvas.getContext("webgl2") || this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-  if (!this.gl) throw new Error("WebGL not supported!");
-  this.gl.clearColor(0, 0, 0, 0);
-  this.buffers = {
-    position: [],
-    indices: [],
-    color: []
-  };
-  this.renderTarget = null;
-  this.blitProgram = null;
-  this.blitBuffer = null;
-  this.blitAttribLocation = -1;
-  this.blitTextureLocation = null;
-  this.hasDepthBuffer = false;
-  this.onrender = function() {
-  };
-}
-Graphics3D.prototype = Object.create(GraphicsBase.prototype);
-Graphics3D.prototype.constructor = Graphics3D;
-var mat4 = {
-  create: function() {
-    return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-  },
-  multiply: function(out, a, b) {
-    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-    var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-    var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-    var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-    var b00 = b[0], b01 = b[1], b02 = b[2], b03 = b[3];
-    var b10 = b[4], b11 = b[5], b12 = b[6], b13 = b[7];
-    var b20 = b[8], b21 = b[9], b22 = b[10], b23 = b[11];
-    var b30 = b[12], b31 = b[13], b32 = b[14], b33 = b[15];
-    out[0] = a00 * b00 + a10 * b01 + a20 * b02 + a30 * b03;
-    out[1] = a01 * b00 + a11 * b01 + a21 * b02 + a31 * b03;
-    out[2] = a02 * b00 + a12 * b01 + a22 * b02 + a32 * b03;
-    out[3] = a03 * b00 + a13 * b01 + a23 * b02 + a33 * b03;
-    out[4] = a00 * b10 + a10 * b11 + a20 * b12 + a30 * b13;
-    out[5] = a01 * b10 + a11 * b11 + a21 * b12 + a31 * b13;
-    out[6] = a02 * b10 + a12 * b11 + a22 * b12 + a32 * b13;
-    out[7] = a03 * b10 + a13 * b11 + a23 * b12 + a33 * b13;
-    out[8] = a00 * b20 + a10 * b21 + a20 * b22 + a30 * b23;
-    out[9] = a01 * b20 + a11 * b21 + a21 * b22 + a31 * b23;
-    out[10] = a02 * b20 + a12 * b21 + a22 * b22 + a32 * b23;
-    out[11] = a03 * b20 + a13 * b21 + a23 * b22 + a33 * b23;
-    out[12] = a00 * b30 + a10 * b31 + a20 * b32 + a30 * b33;
-    out[13] = a01 * b30 + a11 * b31 + a21 * b32 + a31 * b33;
-    out[14] = a02 * b30 + a12 * b31 + a22 * b32 + a32 * b33;
-    out[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
-    return out;
-  },
-  perspective: function(out, fovy, aspect, near, far) {
-    var f = 1 / Math.tan(fovy / 2);
-    out[0] = f / aspect;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = f;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[11] = -1;
-    out[12] = 0;
-    out[13] = 0;
-    out[15] = 0;
-    if (far == null || far === Infinity) {
-      out[10] = -1;
-      out[14] = -2 * near;
-    } else {
-      var nf = 1 / (near - far);
-      out[10] = (far + near) * nf;
-      out[14] = 2 * far * near * nf;
-    }
-    return out;
-  },
-  translate: function(out, a, v) {
-    var x = v[0], y = v[1], z = v[2];
-    if (a === out) {
-      out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
-      out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
-      out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
-      out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
-      return out;
-    }
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    out[9] = a[9];
-    out[10] = a[10];
-    out[11] = a[11];
-    out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
-    out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
-    out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
-    out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
-    return out;
-  },
-  rotate: function(out, a, rad, axis) {
-    var x = axis[0], y = axis[1], z = axis[2];
-    var len = Math.sqrt(x * x + y * y + z * z);
-    if (!len) return null;
-    x /= len;
-    y /= len;
-    z /= len;
-    var s = Math.sin(rad);
-    var c = Math.cos(rad);
-    var t = 1 - c;
-    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-    var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-    var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-    var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-    var b00 = x * x * t + c;
-    var b01 = y * x * t + z * s;
-    var b02 = z * x * t - y * s;
-    var b10 = x * y * t - z * s;
-    var b11 = y * y * t + c;
-    var b12 = z * y * t + x * s;
-    var b20 = x * z * t + y * s;
-    var b21 = y * z * t - x * s;
-    var b22 = z * z * t + c;
-    out[0] = a00 * b00 + a10 * b01 + a20 * b02;
-    out[1] = a01 * b00 + a11 * b01 + a21 * b02;
-    out[2] = a02 * b00 + a12 * b01 + a22 * b02;
-    out[3] = a03 * b00 + a13 * b01 + a23 * b02;
-    out[4] = a00 * b10 + a10 * b11 + a20 * b12;
-    out[5] = a01 * b10 + a11 * b11 + a21 * b12;
-    out[6] = a02 * b10 + a12 * b11 + a22 * b12;
-    out[7] = a03 * b10 + a13 * b11 + a23 * b12;
-    out[8] = a00 * b20 + a10 * b21 + a20 * b22;
-    out[9] = a01 * b20 + a11 * b21 + a21 * b22;
-    out[10] = a02 * b20 + a12 * b21 + a22 * b22;
-    out[11] = a03 * b20 + a13 * b21 + a23 * b22;
-    out[12] = a30;
-    out[13] = a31;
-    out[14] = a32;
-    out[15] = a33;
-    return out;
-  }
-};
-function Vector3D(x, y, z) {
-  this.x = 0;
-  this.y = 0;
-  this.z = 0;
-  if (typeof x === "number") {
-    this.x = x;
-    if (y === void 0 || z === void 0)
-      this.y = x, this.z = x;
-    else this.y = y, this.z = z;
-  } else if (typeof x == "object" && x.x && x.y && x.z) {
-    this.x = x.x, this.y = x.y, this.z = x.z;
-  }
-}
-Vector3D.prototype.div = function(amount) {
-  this.x /= amount, this.y /= amount, this.z /= amount;
-  return this;
-};
-Vector3D.prototype.normalize = function() {
-  return this.div(this.x + this.y + this.z);
-};
-Graphics3D.prototype.clear = function() {
-  var mask = this.gl.COLOR_BUFFER_BIT;
-  if (this.hasDepthBuffer) mask |= this.gl.DEPTH_BUFFER_BIT;
-  this.gl.clear(mask);
-};
-Graphics3D.prototype.setClearColor = function(red, green, blue, alpha) {
-  this.gl.clearColor(red, green, blue, alpha);
-};
-Graphics3D.prototype.setRenderTarget = function(renderTarget) {
-  this.renderTarget = renderTarget;
-};
-Graphics3D.prototype.initBlitResources = function() {
-  if (this.blitProgram) return;
-  const gl = this.gl;
-  const vsSource = "attribute vec2 aPosition; varying vec2 vUv; void main() { vUv = aPosition * 0.5 + 0.5; gl_Position = vec4(aPosition, 0.0, 1.0); }";
-  const fsSource = "precision mediump float; uniform sampler2D uTexture; varying vec2 vUv; void main() { gl_FragColor = texture2D(uTexture, vUv); }";
-  const vertexShader = this.loadShader(gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = this.loadShader(gl.FRAGMENT_SHADER, fsSource);
-  if (!vertexShader || !fragmentShader) return console.warn("Failed to load shaders");
-  const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    alert(
-      "Unable to initialize the blit shader program: " + gl.getProgramInfoLog(program)
-    );
-    return;
-  }
-  this.blitProgram = program;
-  this.blitAttribLocation = gl.getAttribLocation(program, "aPosition");
-  this.blitTextureLocation = gl.getUniformLocation(program, "uTexture");
-  this.blitBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.blitBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-};
-Graphics3D.prototype.presentRenderTarget = function() {
-  const gl = this.gl;
-  if (!this.renderTarget || !gl) return;
-  if (!this.blitProgram) this.initBlitResources();
-  if (!this.blitProgram || this.blitAttribLocation === -1) return;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  gl.disable(gl.DEPTH_TEST);
-  gl.useProgram(this.blitProgram);
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.blitBuffer);
-  gl.vertexAttribPointer(this.blitAttribLocation, 2, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(this.blitAttribLocation);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, this.renderTarget.colorTexture);
-  gl.uniform1i(this.blitTextureLocation, 0);
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-};
-Graphics3D.prototype.loadShader = function(type, source) {
-  const shader = this.gl.createShader(type);
-  if (!shader) return null;
-  this.gl.shaderSource(shader, source);
-  this.gl.compileShader(shader);
-  if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-    alert(
-      "An error occurred compiling the shaders: " + this.gl.getShaderInfoLog(shader)
-    );
-    this.gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-};
-Graphics3D.prototype.initShaderProgram = function(vsSource, fsSource) {
-  const vertexShader = this.loadShader(this.gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, fsSource);
-  if (!vertexShader || !fragmentShader) return;
-  const shaderProgram = this.gl.createProgram();
-  this.gl.attachShader(shaderProgram, vertexShader);
-  this.gl.attachShader(shaderProgram, fragmentShader);
-  this.gl.linkProgram(shaderProgram);
-  if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
-    alert(
-      "Unable to initialize the shader program: " + this.gl.getProgramInfoLog(shaderProgram)
-    );
-    return null;
-  }
-  return shaderProgram;
-};
-Graphics3D.prototype.loadShaders = function(vsSource, fsSource) {
-  const gl = this.gl;
-  this.shaderProgram = this.initShaderProgram(vsSource, fsSource);
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  const positions = [1, 1, -1, 1, 1, -1, -1, -1];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-  this.programInfo = {
-    program: this.shaderProgram,
-    attribLocations: {
-      vertexPosition: this.gl.getAttribLocation(
-        this.shaderProgram,
-        "aVertexPosition"
-      ),
-      vertexColor: this.gl.getAttribLocation(this.shaderProgram, "aVertexColor")
-    },
-    uniformLocations: {
-      projectionMatrix: this.gl.getUniformLocation(
-        this.shaderProgram,
-        "uProjectionMatrix"
-      ),
-      modelViewMatrix: this.gl.getUniformLocation(
-        this.shaderProgram,
-        "uModelViewMatrix"
-      )
-    }
-  };
-};
-let deltaTime = 0;
-let then = 0;
-function Camera() {
-  this.rotation = new Vector3D();
-}
-Graphics3D.prototype.drawScene = function(programInfo, deltaTime2, camera) {
-  const gl = this.gl;
-  if (this.renderTarget) {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderTarget.framebuffer);
-    gl.viewport(0, 0, this.renderTarget.width, this.renderTarget.height);
-  } else {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  }
-  gl.clearDepth(1);
-  gl.enable(gl.DEPTH_TEST);
-  gl.depthFunc(gl.LEQUAL);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.clearDepth(1);
-  const fov = 45;
-  const fieldOfView = fov * Math.PI / 180;
-  const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-  const zNear = 0.1;
-  const zFar = 100;
-  const projectionMatrix = mat4.create();
-  mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
-  const modelViewMatrix = mat4.create();
-  mat4.translate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to translate
-    [-0, 0, -6]
-  );
-  mat4.rotate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to rotate
-    camera.rotation.z,
-    // amount to rotate in radians
-    [0, 0, 1]
-  );
-  mat4.rotate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to rotate
-    camera.rotation.y,
-    // amount to rotate in radians
-    [0, 1, 0]
-  );
-  mat4.rotate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to rotate
-    camera.rotation.x,
-    // amount to rotate in radians
-    [1, 0, 0]
-  );
-  {
-    const numComponents2 = 3;
-    const type2 = gl.FLOAT;
-    const normalize2 = false;
-    const stride2 = 0;
-    const offset2 = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
-    gl.vertexAttribPointer(
-      this.programInfo.attribLocations.vertexPosition,
-      numComponents2,
-      type2,
-      normalize2,
-      stride2,
-      offset2
-    );
-    gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
-  }
-  const numComponents = 4;
-  const type = gl.FLOAT;
-  const normalize = false;
-  const stride = 0;
-  const offset = 0;
-  if (this.programInfo.attribLocations.vertexColor !== -1) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.color);
-    gl.vertexAttribPointer(
-      this.programInfo.attribLocations.vertexColor,
-      numComponents,
-      type,
-      normalize,
-      stride,
-      offset
-    );
-    gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexColor);
-  }
-  gl.useProgram(this.programInfo.program);
-  gl.uniformMatrix4fv(
-    this.programInfo.uniformLocations.projectionMatrix,
-    false,
-    projectionMatrix
-  );
-  gl.uniformMatrix4fv(
-    this.programInfo.uniformLocations.modelViewMatrix,
-    false,
-    modelViewMatrix
-  );
-  {
-    const vertexCount = 36;
-    const type2 = gl.UNSIGNED_SHORT;
-    const offset2 = 0;
-    gl.drawElements(gl.TRIANGLES, vertexCount, type2, offset2);
-  }
-  if (this.renderTarget && typeof uploadDepthFrame === "function" && typeof stereogramState !== "undefined" && stereogramState.depthSource === "generated") {
-    const pixels = new Uint8Array(
-      this.renderTarget.width * this.renderTarget.height * 4
-    );
-    gl.readPixels(
-      0,
-      0,
-      this.renderTarget.width,
-      this.renderTarget.height,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      pixels
-    );
-    uploadDepthFrame(pixels, this.renderTarget.width, this.renderTarget.height);
-  }
-  if (this.renderTarget) {
-    this.presentRenderTarget();
-  }
-};
-Graphics3D.prototype.render = function(now) {
-  now *= 1e-3;
-  deltaTime = now - then;
-  then = now;
-  this.drawScene(this.programInfo, deltaTime);
-  requestAnimationFrame(Graphics3D.prototype.render.bind(this));
-};
-Graphics3D.prototype.startRendering = function() {
-  requestAnimationFrame(Graphics3D.prototype.render.bind(this));
-};
-Graphics3D.prototype.resize = function(width, height) {
-  const dpr = GraphicsBase.prototype.resize.call(this, width, height);
-  if (this.gl)
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-  return dpr;
-};
-class CanvasMaker extends Graphics3D {
-  // canvas ;;
-  /** @type {Element | null} */
-  element = null;
-  /** @type {((this: CanvasMaker, t: number)=>void) | null} */
-  onDraw = null;
-  /**
-   * @param {CanvasLike} [element]
-   * @param {CanvasContext} [context]
-   */
-  constructor(element, context) {
-    super(element || document.createElement("canvas"), context);
-    this.canvas.setAttribute("layoutsubtree", "");
-  }
-  /** @param {HTMLElement} element */
-  createCanvas(element) {
-    element.setAttribute("drawable", "");
-    this.canvas.appendChild(element);
-    this.element = element;
-    document.body.appendChild(this.canvas);
-  }
-  /** @param {Element} element */
-  insertElement(element) {
-    element.setAttribute("drawable", "");
-    this.canvas.moveBefore(element, null);
-    this.element = element;
-  }
-  putMainInCanvas() {
-    const main = document.querySelector("main");
-    if (!main) return;
-    this.createCanvas(main);
-    this.startDrawing();
-  }
-  startDrawing() {
-    const gl = this.gl;
-    this.canvas.width = innerWidth;
-    this.canvas.height = innerHeight;
-    const W = this.canvas.width, H = this.canvas.height;
-    gl.viewport(0, 0, W, H);
-    const FRAG = (
-      /* GLSL */
-      `precision mediump float; uniform sampler2D s; varying vec2 v; void main() { gl_FragColor = texture2D(s, v); }`
-    );
-    const bgProg = this.initShaderProgram(
-      /* GLSL */
-      `attribute vec2 p; varying vec2 v; void main() { v = vec2(p.x * .5 + .5, .5 - p.y * .5); gl_Position = vec4(p, 0., 1.); }`,
-      FRAG
-    );
-    const bgBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    const cubeProg = this.initShaderProgram(
-      /* GLSL */
-      `
-	attribute vec3 p; attribute vec2 t; uniform float a, asp; varying vec2 v;
-	void main() {
-		vec3 q = p;
-		q.xz = mat2(cos(a), sin(a), -sin(a), cos(a)) * q.xz;        // spin around Y
-		q.yz = mat2(cos(.5), sin(.5), -sin(.5), cos(.5)) * q.yz;    // tilt around X
-		q.z -= 5.;
-		v = t;
-		gl_Position = vec4(q.x * 2.4 / asp, q.y * 2.4, -1.105 * q.z - 2.105, -q.z);
-	}`,
-      FRAG
-    );
-    if (!cubeProg || !bgProg) return;
-    const V = [], I = [];
-    for (let f = 0; f < 6; f++) {
-      const a = f % 3, s = f < 3 ? 1 : -1, u = (a + 1) % 3, w = (a + 2) % 3;
-      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        const p = [0, 0, 0];
-        p[a] = s;
-        p[u] = x;
-        p[w] = y;
-        V.push(...p, (x * s + 1) / 2, (1 - y) / 2);
-      }
-      I.push(f * 4, f * 4 + 1, f * 4 + 2, f * 4, f * 4 + 2, f * 4 + 3);
-    }
-    const cubeBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW);
-    const idxBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), gl.STATIC_DRAW);
-    const bgP = gl.getAttribLocation(bgProg, "p");
-    const cubeP = gl.getAttribLocation(cubeProg, "p");
-    const cubeT = gl.getAttribLocation(cubeProg, "t");
-    const uAngle = gl.getUniformLocation(cubeProg, "a");
-    const uAsp = gl.getUniformLocation(cubeProg, "asp");
-    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    this.canvas.onpaint = () => {
-      const panel = this.element;
-      if (!panel) return;
-      if (gl.texElementSubImage2D) gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, panel, { width: W, height: H });
-      else if (gl.texElementImage2D) gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, panel);
-      if (this.canvas.updateElementGeometry) this.canvas.updateElementGeometry(panel, { canvasTransform: new DOMMatrix() });
-    };
-    this.canvas.requestPaint();
-    var self2 = this;
-    this.hasDepthBuffer = true;
-    (function draw(t) {
-      self2.clear();
-      gl.disable(gl.DEPTH_TEST);
-      gl.useProgram(bgProg);
-      gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
-      gl.enableVertexAttribArray(bgP);
-      gl.vertexAttribPointer(bgP, 2, gl.FLOAT, false, 0, 0);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.disableVertexAttribArray(bgP);
-      gl.enable(gl.DEPTH_TEST);
-      gl.useProgram(cubeProg);
-      gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
-      gl.enableVertexAttribArray(cubeP);
-      gl.vertexAttribPointer(cubeP, 3, gl.FLOAT, false, 20, 0);
-      gl.enableVertexAttribArray(cubeT);
-      gl.vertexAttribPointer(cubeT, 2, gl.FLOAT, false, 20, 12);
-      gl.uniform1f(uAsp, W / H);
-      gl.uniform1f(uAngle, t / 1e3);
-      gl.drawElements(gl.TRIANGLES, I.length, gl.UNSIGNED_SHORT, 0);
-      gl.disableVertexAttribArray(cubeP);
-      gl.disableVertexAttribArray(cubeT);
-      requestAnimationFrame(draw);
-    })(0);
-  }
-  /** @param {number} t */
-  draw(t) {
-    if (this.onDraw) this.onDraw(t);
-  }
-}
-const canvasMaker = new CanvasMaker();
-class ScreenShooter extends CanvasMaker {
-  constructor() {
-    super(new OffscreenCanvas(1e3, 1e3), "2d");
-  }
-  async screenshotElement(element, { debug = false } = {}) {
-    if (typeof CanvasRenderingContext2D.prototype.drawElementImage !== "function")
-      throw new Error("html-in-canvas unavailable");
-    const rect = element.getBoundingClientRect();
-    const cssW = Math.max(1, Math.ceil(rect.width));
-    const cssH = Math.max(1, Math.ceil(rect.height));
-    const dpr = this.resize(cssW, cssH);
-    const outW = this.canvas.width;
-    const outH = this.canvas.height;
-    const mount = document.createElement("canvas");
-    mount.setAttribute("layoutsubtree", "");
-    mount.width = outW;
-    mount.height = outH;
-    mount.style.cssText = `position:fixed;top:0;left:0;width:${cssW}px;height:${cssH}px;z-index:-2147483647;pointer-events:none`;
-    document.body.appendChild(mount);
-    const mountCtx = mount.getContext("2d");
-    const parent = element.parentNode;
-    const placeholder = document.createComment("screenshot-placeholder");
-    parent.insertBefore(placeholder, element);
-    const savedStyle = element.getAttribute("style");
-    const hadDrawable = element.hasAttribute("drawable");
-    const move = (to, ref) => {
-      if (typeof to.moveBefore !== "function")
-        throw new Error("moveBefore() unavailable");
-      to.moveBefore(element, ref || null);
-    };
-    const frame = () => new Promise((resolve) => {
-      requestAnimationFrame(() => {
-        setTimeout(resolve, 50);
-      });
-    });
-    try {
-      move(mount);
-      element.setAttribute("drawable", "");
-      if (element instanceof HTMLElement) {
-        Object.assign(element.style, {
-          boxSizing: "border-box",
-          width: `${cssW}px`,
-          height: `${cssH}px`,
-          minWidth: `${cssW}px`,
-          maxWidth: `${cssW}px`,
-          minHeight: `${cssH}px`,
-          maxHeight: `${cssH}px`,
-          margin: "0",
-          flex: "none"
-        });
-      }
-      await document.fonts.ready;
-      await frame();
-      await frame();
-      mountCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      mountCtx.drawElementImage(element, 0, 0, cssW, cssH);
-      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.ctx.clearRect(0, 0, outW, outH);
-      this.ctx.drawImage(mount, 0, 0);
-      this.downloadCanvas();
-    } finally {
-      move(parent, placeholder);
-      placeholder.remove();
-      if (savedStyle === null)
-        element.removeAttribute("style");
-      else
-        element.setAttribute("style", savedStyle);
-      if (!hadDrawable)
-        element.removeAttribute("drawable");
-      mount.remove();
-    }
-  }
-}
 const supportsCSSScrollTimeline = CSS.supports("animation-timeline", "scroll()");
 function Tab(content, id) {
   this.content = document.createElement("section");
@@ -4585,7 +3861,6 @@ class WindowElement extends HTMLDivElement {
     this.dialog = null;
   }
   connectedCallback() {
-    console.log("I connected balls");
   }
   /** @param {boolean} [enable] Enable maximization */
   toggleMaximizedVT(enable) {
@@ -4760,14 +4035,9 @@ class Modern {
   }
 }
 "use strict";
-var supportsObjectFit = Boolean(document.documentElement && document.documentElement.style && typeof document.documentElement.style.objectFit != "undefined");
-function vibrate() {
-  navigator.vibrate(500);
-}
 var eventPrevent = function(event2) {
   event2.preventDefault();
 };
-var scrollTabs = null;
 var onLoad = function() {
   var desktop = document.getElementById("desktop");
   if (desktop) desktop.addEventListener("mousedown", function() {
@@ -4930,16 +4200,10 @@ function Desktop(name, desktopElement) {
 Desktop.prototype.insertWindow = function(dialog) {
   dialog.setParentElement(this.target);
 };
-function addDesktop() {
-}
 window.addEventListener("load", onLoad, false);
 function ContextMenu() {
   this.element = document.getElementById("context-menu");
 }
-ContextMenu.prototype.toggleOpen = function(force) {
-  if (!this.element) return;
-  this.element.classList.toggle("open", force);
-};
 ContextMenu.prototype.open = function(x, y) {
   if (!this.element) return;
   this.element.style.left = toPixels(x);
@@ -4951,12 +4215,10 @@ ContextMenu.prototype.close = function() {
   this.element.classList.remove("open");
 };
 var contextMenu = new ContextMenu();
-var docontexthook = true;
-if (docontexthook) document.addEventListener("contextmenu", function(e) {
+document.addEventListener("contextmenu", function(e) {
   e.preventDefault();
   contextMenu.open(e.clientX, e.clientY);
 }, false);
-var reflecitons = false;
 var dock = document.getElementById("dock");
 window.addEventListener("keydown", function(event2) {
   switch (event2.key) {
@@ -5270,10 +4532,16 @@ if (wallpaper) {
     ev.preventDefault();
   };
 }
-var screenShooter = new ScreenShooter();
+var screenShooter = null;
+function getScreenShooter() {
+  if (screenShooter) return screenShooter;
+  if (typeof ScreenShooter == "undefined") return null;
+  return screenShooter = new ScreenShooter();
+}
 var picker = new ElementPicker({
   onSelect: function(el) {
-    window.screenShooter.screenshotElement(el);
+    var shooter = getScreenShooter();
+    if (shooter) shooter.screenshotElement(el);
   },
   onMove: function(el) {
     if (el.nodeName === "ARTICLE") {
@@ -5331,7 +4599,6 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
   for (var flagId in flags2) {
     if (!flags2.hasOwnProperty(flagId) || flagId.charAt(0) === "_") continue;
     var flag = flags2[flagId];
-    var settingElement = document.createElement("label");
     var flagValue = flags2[flagId];
     switch (typeof flag) {
       case "boolean":
@@ -5354,8 +4621,6 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
         })(flagId);
         break;
     }
-    if (!settingElement) return;
-    flagsElement.appendChild(settingElement);
   }
   var settingsElement = document.getElementById("settings");
   if (settingsElement) settingsElement.appendChild(flagsElement);
@@ -5424,8 +4689,6 @@ function toggleColorDebug(enabled) {
 function toggleSquircles(enabled) {
   document.body.classList.toggle("squircles", enabled);
   settings.set("squircles", enabled);
-}
-function toggleCharmsEvent(ev) {
 }
 function setBorderSize(size) {
   settings.set("borderSize", size);
@@ -5577,13 +4840,9 @@ function loadThemeSetting() {
   }
 }
 var elements = {
-  charms: null,
   color: null,
   accent: null,
-  resetColor: null,
-  resetAccent: null,
   border: null,
-  dockAppList: null,
   theme: null,
   colorDebug: null,
   squircles: null,
@@ -5626,13 +4885,9 @@ function installAppFromUrl(useProxy) {
   }
 }
 function loadElements() {
-  elements.charms = document.getElementById("charms");
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
-  elements.resetColor = document.getElementById("resetaccent");
-  elements.resetAccent = document.getElementById("resetaccent");
   elements.border = document.getElementById("border");
-  elements.dockAppList = document.getElementById("dockapplist");
   elements.theme = document.getElementById("theme");
   elements.colorDebug = document.getElementById("color-debug");
   elements.squircles = document.getElementById("squircles");
@@ -5646,7 +4901,6 @@ function loadElements() {
   var applist = document.getElementById("applist");
   var charmsButton = applist ? applist.appendChild(document.createElement("button")) : document.createElement("button");
   charmsButton.textContent = "Settings";
-  window.addEventListener("mousedown", toggleCharmsEvent, false);
   if (charmsButton) charmsButton.onclick = function() {
     DesktopManager.toggleCharms();
   };
@@ -5698,7 +4952,6 @@ addEventListener("load", function() {
   loadElements();
   loadSettings();
 }, false);
-var metroAppList = document.getElementById("metroapplist");
 function downloadObject(object, fileName) {
   var uri = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(object));
   var a = document.createElement("a");
@@ -5713,355 +4966,71 @@ function downloadSettings() {
 }
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
+function provisionedApp(title, id, src, extra) {
+  return Object.assign({ title, id, src }, extra);
+}
 var applications = [
-  {
-    title: "Frosted Colors",
-    id: "colors",
-    distSrc: "https://iemand005.github.io/FrostedColours",
-    src: "Applications/FrostedColours/index.html",
-    wallpaper: true
-  },
-  {
-    title: "Calculator",
-    id: "calculator",
-    minWidth: 180,
-    minHeight: 240,
-    src: "./Applications/Calculator/calculator.html"
-  },
-  {
-    title: "Color Tool",
-    id: "colortool",
-    minWidth: 180,
-    minHeight: 240,
-    src: "./Applications/ColorTool/colors.html"
-  },
-  { title: "Example", id: "0", src: "./example.html" },
-  {
-    title: "Camera",
-    id: "camera",
-    src: "./Applications/Camera/index.html",
-    camera: true,
-    microphone: true
-    // add attribute allow="camera; microphone" to iframe!
-  },
-  {
-    title: "Video",
-    id: "video",
-    src: "./Applications/Video/index.html",
-    hidden: true
-  },
-  {
-    title: "Cover Flow",
-    id: "coverflow",
-    src: "./Applications/Coverflow/Coverflow.html"
-  },
-  {
-    title: "Music",
-    id: "music",
-    src: "./Applications/Music/index.html"
-  },
-  {
-    title: "Citates",
-    id: "citates",
-    src: "./Applications/Citaten/index.html",
-    hidden: true
-    // Hiding the incomplete apps. These are enabled once finished.
-  },
-  {
-    title: "Clock",
-    id: "clock",
-    src: "./Applications/Clock/index.html",
-    hidden: true
-  },
-  {
-    title: "Verlet",
-    id: "verlet",
-    src: "./Applications/Verlet/index.html",
-    hidden: true
-  },
-  {
-    title: "Recorder",
-    id: "recorder",
-    src: "./Applications/Recorder/index.html",
-    hidden: true
-  },
-  {
-    title: "Error",
-    id: "error",
-    src: "./Applications/Error/error.html",
-    hidden: true
-  },
-  {
-    title: "Cube",
-    id: "cube",
-    src: "./Applications/Cube/cube.html",
-    hidden: true
-  },
-  {
-    title: "Geode",
-    id: "geode",
-    src: "https://geode.tepartive.net",
-    hidden: true
-  },
-  {
-    title: "Level",
-    id: "level",
-    src: "./Applications/Level/level.html",
-    hidden: true
-  },
-  {
-    title: "Browser",
-    id: "browser",
-    src: "./Applications/Browser/index.html"
-  },
-  {
-    title: "MPTool",
-    id: "mptool",
-    src: "./Applications/MPTool/index.html",
-    hidden: true
-  },
-  {
-    title: "Autostereograms",
-    id: "stereograms",
-    src: "./Applications/StereogramMaker/index.html",
-    hidden: true
-  },
-  {
-    title: "Metronome",
-    id: "cyanide.metronome",
-    src: "./Applications/Cyanide/metronome/index.html",
-    hidden: true
-  },
-  {
-    title: "Rainboy",
-    id: "cyanide.rainboy",
-    src: "./Applications/Cyanide/rainboy/index.html",
-    hidden: true
-  },
-  {
-    title: "OPC",
-    id: "opc",
-    src: "https://bypass-online.netlify.app/",
-    iconUrl: "https://iemand005.github.io/OPC/files/apps/me.flexan.terminal/terminal.png",
-    accentColor: "rgb(37, 104, 245)"
-  },
-  {
-    title: "daedalOS",
-    id: "daedal",
-    src: "https://dustinbrett.com/"
-  },
-  {
-    title: "Fenix Engine Demo",
-    id: "fenix.web",
-    src: "https://iemand005.github.io/FenixWeb/"
-  },
-  {
-    title: "FoxCraft",
-    id: "fenix.foxcraft",
-    src: "https://iemand005.github.io/FenixWeb/FoxCraft/index.html"
-  },
-  {
-    title: "Cake",
-    id: "fenix.cake",
-    src: "https://iemand005.github.io/FenixWeb/Cake/index.html",
-    audioVisualizer: true
-  },
-  {
-    title: "My Web Archive",
-    id: "foxyz.archive",
-    src: "https://iemand005.github.io/Archive-2023/index.html"
-  },
-  {
-    title: "Tappy",
-    id: "foxyz.tappy",
-    // src: "https://iemand005.github.io/Tappy/tappy.html", // TODO: perhaps uh a prod vs dev env for github url and local
-    src: "./Applications/Tappy/tappy.html",
-    hidden: true
-  },
-  {
-    title: "AIOne",
-    id: "foxyz.aione",
-    src: "./Applications/AIOneWeb/index.html",
-    hidden: true
-  },
-  {
-    title: "WebGPUFluidSim",
-    id: "foxyz.webgpufluidsim",
-    src: "./Applications/WebGPUFluidSim/index.html",
-    moveEvents: true
-  },
-  {
-    title: "Fur:Trash",
-    id: "foxyz.fur:trash",
-    src: "https://open.spotify.com/embed/artist/1jp7cmyHDn5nuP3MMSwm1m?utm_source=generator&si=86b6cf864e0048c3",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f1788c05c5ac8638f68f84053a57"
-    // appIcon?
-  },
-  {
-    title: "Cavetown",
-    id: "foxyz.cavetown",
-    src: "https://open.spotify.com/embed/artist/2hR4h1Cao2ueuI7Cx9c7V8?utm_source=generator&theme=0&si=714602d32e764d47",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Awolnation",
-    id: "foxyz.awolnation",
-    src: "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Papa Roach",
-    id: "foxyz.papa-roach",
-    src: "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Monaco",
-    id: "monaco",
-    src: "./Applications/Monaco/monaco.html",
-    iconUrl: "https://code.visualstudio.com/favicon.ico"
-  },
-  {
-    title: "Furzona Lite",
-    id: "furzona",
-    src: "https://iemand005.github.io/FurzonaWeb",
-    iconUrl: "https://iemand005.github.io/FurzonaWeb/Logo.png"
-  },
-  {
-    title: "The Useless Web",
-    id: "theuselessweb",
-    src: "https://theuselessweb.com/"
-  },
-  {
-    title: "Windows 95",
-    id: "win95",
-    src: "https://98.js.org/"
-  },
-  {
-    title: "Pinball Space Cadet",
-    id: "pinball",
-    src: "https://98.js.org/programs/pinball/space-cadet.html",
-    iconUrl: "https://98.js.org/images/icons/pinball-16x16.png"
-  },
-  {
-    title: "Internet Exporer",
-    id: "ie",
-    src: "https://98.js.org/programs/explorer/index.html?address=https%3A%2F%2Fwww.google.com",
-    iconUrl: "https://98.js.org/images/icons/html-16x16.png"
-  },
-  {
-    title: "Solitaire",
-    id: "solitaire",
-    src: "https://98.js.org/programs/js-solitaire/index.html",
-    iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png"
-  },
-  {
-    title: "Pipes",
-    id: "pipes",
-    src: "https://98.js.org/programs/pipes/index.html#%7B%22hideUI%22%3Atrue%7D",
-    iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png",
-    screensaver: true
-  },
-  {
-    title: "Cavetown - Big Strong Man",
-    id: "cavetown.bigstrongmen",
-    src: "https://www.youtube.com/embed/uKn0BtAAEyw?si=s3Pz0PzIpQDCxizU"
-  },
-  {
-    title: "Gamepad Input Recorder",
-    id: "inputrecorder",
-    src: "https://iemand005.github.io/GamepadRecorder/"
-  },
-  {
-    title: "LVOS Mobile",
-    id: "mobile",
-    src: "./mobile.html",
-    distSrc: "https://iemand005.github.io/LVOS/mobile.html"
-  },
-  {
-    title: "LVOS",
-    id: "lvos",
-    src: "index.html",
-    distSrc: "https://iemand005.github.io/LVOS/",
-    altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
-  },
-  {
-    title: "Speak",
-    id: "speak",
-    src: "Applications/Speak/speak.html"
-  },
-  {
-    title: "Tepartive.NET",
-    id: "tepartive",
-    src: "https://tepartive.net/"
-  },
-  {
-    title: "ColourTool",
-    id: "color-tool",
-    src: "Applications/ColorTool/colors.html"
-  }
+  provisionedApp("Frosted Colors", "colors", "Applications/FrostedColours/index.html", { distSrc: "https://iemand005.github.io/FrostedColours", wallpaper: true }),
+  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Color Tool", "colortool", "./Applications/ColorTool/colors.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Example", "0", "./example.html"),
+  provisionedApp("Camera", "camera", "./Applications/Camera/index.html", { camera: true, microphone: true }),
+  provisionedApp("Video", "video", "./Applications/Video/index.html", { hidden: true }),
+  provisionedApp("Cover Flow", "coverflow", "./Applications/Coverflow/Coverflow.html"),
+  provisionedApp("Music", "music", "./Applications/Music/index.html"),
+  provisionedApp("Citates", "citates", "./Applications/Citaten/index.html", { hidden: true }),
+  provisionedApp("Clock", "clock", "./Applications/Clock/index.html", { hidden: true }),
+  provisionedApp("Verlet", "verlet", "./Applications/Verlet/index.html", { hidden: true }),
+  provisionedApp("Recorder", "recorder", "./Applications/Recorder/index.html", { hidden: true }),
+  provisionedApp("Error", "error", "./Applications/Error/error.html", { hidden: true }),
+  provisionedApp("Cube", "cube", "./Applications/Cube/cube.html", { hidden: true }),
+  provisionedApp("Geode", "geode", "https://geode.tepartive.net", { hidden: true }),
+  provisionedApp("Level", "level", "./Applications/Level/level.html", { hidden: true }),
+  provisionedApp("Browser", "browser", "./Applications/Browser/index.html"),
+  provisionedApp("MPTool", "mptool", "./Applications/MPTool/index.html", { hidden: true }),
+  provisionedApp("Autostereograms", "stereograms", "./Applications/StereogramMaker/index.html", { hidden: true }),
+  provisionedApp("Metronome", "cyanide.metronome", "./Applications/Cyanide/metronome/index.html", { hidden: true }),
+  provisionedApp("Rainboy", "cyanide.rainboy", "./Applications/Cyanide/rainboy/index.html", { hidden: true }),
+  provisionedApp("OPC", "opc", "https://bypass-online.netlify.app/", { iconUrl: "https://iemand005.github.io/OPC/files/apps/me.flexan.terminal/terminal.png", accentColor: "rgb(37, 104, 245)" }),
+  provisionedApp("daedalOS", "daedal", "https://dustinbrett.com/"),
+  provisionedApp("Fenix Engine Demo", "fenix.web", "https://iemand005.github.io/FenixWeb/"),
+  provisionedApp("FoxCraft", "fenix.foxcraft", "https://iemand005.github.io/FenixWeb/FoxCraft/index.html"),
+  provisionedApp("Cake", "fenix.cake", "https://iemand005.github.io/FenixWeb/Cake/index.html", { audioVisualizer: true }),
+  provisionedApp("My Web Archive", "foxyz.archive", "https://iemand005.github.io/Archive-2023/index.html"),
+  provisionedApp("Tappy", "foxyz.tappy", "./Applications/Tappy/tappy.html", { hidden: true }),
+  provisionedApp("AIOne", "foxyz.aione", "./Applications/AIOneWeb/index.html", { hidden: true }),
+  provisionedApp("WebGPUFluidSim", "foxyz.webgpufluidsim", "./Applications/WebGPUFluidSim/index.html", { moveEvents: true }),
+  provisionedApp("Fur:Trash", "foxyz.fur:trash", "https://open.spotify.com/embed/artist/1jp7cmyHDn5nuP3MMSwm1m?utm_source=generator&si=86b6cf864e0048c3", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f1788c05c5ac8638f68f84053a57" }),
+  provisionedApp("Cavetown", "foxyz.cavetown", "https://open.spotify.com/embed/artist/2hR4h1Cao2ueuI7Cx9c7V8?utm_source=generator&theme=0&si=714602d32e764d47", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Awolnation", "foxyz.awolnation", "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Papa Roach", "foxyz.papa-roach", "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Monaco", "monaco", "./Applications/Monaco/monaco.html", { iconUrl: "https://code.visualstudio.com/favicon.ico" }),
+  provisionedApp("Furzona Lite", "furzona", "https://iemand005.github.io/FurzonaWeb", { iconUrl: "https://iemand005.github.io/FurzonaWeb/Logo.png" }),
+  provisionedApp("The Useless Web", "theuselessweb", "https://theuselessweb.com/"),
+  provisionedApp("Windows 95", "win95", "https://98.js.org/"),
+  provisionedApp("Pinball Space Cadet", "pinball", "https://98.js.org/programs/pinball/space-cadet.html", { iconUrl: "https://98.js.org/images/icons/pinball-16x16.png" }),
+  provisionedApp("Internet Exporer", "ie", "https://98.js.org/programs/explorer/index.html?address=https%3A%2F%2Fwww.google.com", { iconUrl: "https://98.js.org/images/icons/html-16x16.png" }),
+  provisionedApp("Solitaire", "solitaire", "https://98.js.org/programs/js-solitaire/index.html", { iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png" }),
+  provisionedApp("Pipes", "pipes", "https://98.js.org/programs/pipes/index.html#%7B%22hideUI%22%3Atrue%7D", { iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png", screensaver: true }),
+  provisionedApp("Cavetown - Big Strong Man", "cavetown.bigstrongmen", "https://www.youtube.com/embed/uKn0BtAAEyw?si=s3Pz0PzIpQDCxizU"),
+  provisionedApp("Gamepad Input Recorder", "inputrecorder", "https://iemand005.github.io/GamepadRecorder/"),
+  provisionedApp("LVOS Mobile", "mobile", "./mobile.html", { distSrc: "https://iemand005.github.io/LVOS/mobile.html" }),
+  provisionedApp("LVOS", "lvos", "index.html", { distSrc: "https://iemand005.github.io/LVOS/", altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"] }),
+  provisionedApp("Speak", "speak", "Applications/Speak/speak.html"),
+  provisionedApp("Tepartive.NET", "tepartive", "https://tepartive.net/"),
+  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html")
 ];
 var games = [
-  {
-    title: "Conway",
-    id: "conway",
-    src: "./Games/Conway/index.html",
-    classes: ["rounded-corners"]
-  },
-  {
-    title: "Velocities",
-    id: "velocities",
-    src: "./Applications/Velocities/index.html",
-    moveEvents: true
-    // This flag enables attaching window movement statistic listener.
-  },
-  {
-    title: "Minesweeper",
-    id: "minesweeper",
-    src: "./Games/Minesweeper/index.html",
-    resizable: false,
-    scroll: false
-  },
-  {
-    title: "Chess",
-    id: "chess",
-    src: "./Games/Chess/index.html",
-    hidden: true
-  },
-  {
-    title: "Tetris",
-    id: "tetris",
-    src: "./Games/Tetris/tetris.html",
-    hidden: true
-  },
-  {
-    title: "Sudoku",
-    id: "sudoku",
-    src: "./Games/Sudoku/sudoku.html",
-    hidden: true
-  },
-  {
-    title: "Clicker",
-    id: "clicker",
-    src: "./Games/ChoccyClicker/clicker.html",
-    hidden: true
-  },
-  {
-    title: "FAT",
-    id: "mountain",
-    src: "https://iemand005.github.io/MountainWeb/"
-  },
-  {
-    title: "Planet Life",
-    id: "planetlife",
-    src: "https://www.planetlife.space/static/game/index.html"
-  },
-  {
-    title: "Horizon Background",
-    id: "horizon-bg",
-    src: "https://iemand005.github.io/HorizonBackground/",
-    wallpaper: true
-  }
+  provisionedApp("Conway", "conway", "./Games/Conway/index.html", { classes: ["rounded-corners"] }),
+  provisionedApp("Velocities", "velocities", "./Applications/Velocities/index.html", { moveEvents: true }),
+  provisionedApp("Minesweeper", "minesweeper", "./Games/Minesweeper/index.html", { resizable: false, scroll: false }),
+  provisionedApp("Chess", "chess", "./Games/Chess/index.html", { hidden: true }),
+  provisionedApp("Tetris", "tetris", "./Games/Tetris/tetris.html", { hidden: true }),
+  provisionedApp("Sudoku", "sudoku", "./Games/Sudoku/sudoku.html", { hidden: true }),
+  provisionedApp("Clicker", "clicker", "./Games/ChoccyClicker/clicker.html", { hidden: true }),
+  provisionedApp("FAT", "mountain", "https://iemand005.github.io/MountainWeb/"),
+  provisionedApp("Planet Life", "planetlife", "https://www.planetlife.space/static/game/index.html"),
+  provisionedApp("Horizon Background", "horizon-bg", "https://iemand005.github.io/HorizonBackground/", { wallpaper: true })
 ];
 if (typeof windowManager !== "undefined") {
   Object.defineProperty(Window.prototype, "windows", {
@@ -6088,7 +5057,6 @@ function initApps() {
   }
   finishAppInstall();
 }
-;
 function finishAppInstall() {
   if (typeof appManager !== "undefined") {
     appManager.addApps(applications, games);
@@ -6216,40 +5184,6 @@ interceptor.bindage();
 window.addEventListener("load", function() {
   if (bindConsole) interceptor.init();
 }, false);
-function probeAllStorage() {
-  return {
-    OPFS: !!navigator.storage && typeof navigator.storage.getDirectory == "function",
-    CacheAPI: "caches" in window,
-    IndexedDB: !!window.indexedDB,
-    ChromeFileSystem: "webkitRequestFileSystem" in window,
-    LocalStorage: "localStorage" in window,
-    WebSQL: "openDatabase" in window,
-    GoogleGears: typeof window.GearsFactory != "undefined",
-    FlashBridge: (function() {
-      try {
-        return !!new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
-      } catch (e) {
-        return !!navigator.plugins && !!navigator.plugins["Shockwave Flash"];
-      }
-    })(),
-    IE_userData: (function() {
-      try {
-        return !!document.createElement("div").addBehavior;
-      } catch (e) {
-        return false;
-      }
-    })(),
-    ActiveX_FSO: (function() {
-      try {
-        return !!new ActiveXObject("Scripting.FileSystemObject");
-      } catch (e) {
-        return false;
-      }
-    })(),
-    JavaApplets: typeof navigator.javaEnabled == "function" && navigator.javaEnabled()
-  };
-}
-console.log("Detected Browser Capabilities:", probeAllStorage());
 function OmniFS() {
   this.webkitSize = 5 * 1024 * 1024;
   this.webkitFs = null;
@@ -6340,20 +5274,19 @@ NewtonManager.prototype.loop = function(time) {
 };
 NewtonManager.prototype.step = function(time) {
   var currentTime = time;
-  var deltaTime2 = this.lastTime - currentTime;
+  var deltaTime = this.lastTime - currentTime;
   this.lastTime = currentTime;
   var self2 = this;
   windowManager.forEachWindow(function(window2) {
     if (window2.dragging) return;
     if (!window2.velocity) window2.velocity = new Vector();
-    window2.velocity.y -= self2.gravity * deltaTime2;
+    window2.velocity.y -= self2.gravity * deltaTime;
     var lastY = window2.y;
     window2.y += window2.velocity.y;
     window2.x += window2.velocity.x;
     if (window2.y === lastY) window2.velocity.y = 0;
   });
 };
-var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
 function init() {
   var launchpadElement = document.getElementById("launchpad");
