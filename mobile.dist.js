@@ -199,12 +199,12 @@ AppManager.prototype.forEachWallpaper = function(callback) {
   this._forEach(this._wallpapers, callback);
 };
 Object.defineProperties(AppManager.prototype, {
-  ["apps"]: {
+  apps: {
     get: function() {
       return this._apps;
     }
   },
-  ["installedApps"]: {
+  installedApps: {
     get: function() {
       if (!hasLocalStorage) return [];
       try {

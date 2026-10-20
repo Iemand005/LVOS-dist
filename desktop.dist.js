@@ -351,12 +351,12 @@ AppManager.prototype.forEachWallpaper = function(callback) {
   this._forEach(this._wallpapers, callback);
 };
 Object.defineProperties(AppManager.prototype, {
-  ["apps"]: {
+  apps: {
     get: function() {
       return this._apps;
     }
   },
-  ["installedApps"]: {
+  installedApps: {
     get: function() {
       if (!hasLocalStorage) return [];
       try {
@@ -875,12 +875,12 @@ function WindowManager() {
   this.snapGroups = /* @__PURE__ */ new Map();
 }
 Object.defineProperties(WindowManager.prototype, {
-  ["windows"]: {
+  windows: {
     get: function() {
       return this._windows;
     }
   },
-  ["windowStates"]: {
+  windowStates: {
     get: function() {
       if (!this._windowStates && localStorage)
         try {
@@ -892,7 +892,7 @@ Object.defineProperties(WindowManager.prototype, {
       return this._windowStates;
     }
   },
-  ["state"]: {
+  state: {
     get: function() {
       var state = {};
       for (var id in this.windows) {
@@ -902,7 +902,7 @@ Object.defineProperties(WindowManager.prototype, {
       return state;
     }
   },
-  ["isBlurEnabled"]: {
+  isBlurEnabled: {
     get: function() {
       return this._isBlurEnabled;
     },
@@ -910,7 +910,7 @@ Object.defineProperties(WindowManager.prototype, {
       if (typeof value === "boolean") this._isBlurEnabled = value;
     }
   },
-  ["isMicaEnabled"]: {
+  isMicaEnabled: {
     get: function() {
       return this._isMicaEnabled;
     },
@@ -923,7 +923,7 @@ Object.defineProperties(WindowManager.prototype, {
       this._isMicaEnabled = value;
     }
   },
-  ["isWindowUpdatesEnabled"]: {
+  isWindowUpdatesEnabled: {
     /**
        * @this {WindowManager}
        */
@@ -2242,7 +2242,7 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   return this.body.appendChild(document.createElement("iframe"));
 };
 Object.defineProperties(Dialog.prototype, {
-  ["isOpen"]: {
+  isOpen: {
     get: function() {
       return Boolean(this.target && this.target.classList.contains("open"));
     },
@@ -2250,12 +2250,12 @@ Object.defineProperties(Dialog.prototype, {
       this.toggleOpen(open);
     }
   },
-  ["frame"]: {
+  frame: {
     get: function() {
       return this.target && this.target.getElementsByTagName("iframe")[0] || null;
     }
   },
-  ["resizable"]: {
+  resizable: {
     get: function() {
       return !this.application ? true : this.application.resizable !== false;
     },
@@ -2263,7 +2263,7 @@ Object.defineProperties(Dialog.prototype, {
       if (v) this._createSizers();
     }
   },
-  ["src"]: {
+  src: {
     get: function() {
       return this._src || this.application && this.application.src;
     },
@@ -2271,31 +2271,31 @@ Object.defineProperties(Dialog.prototype, {
       this.openUrl(url);
     }
   },
-  ["body"]: {
+  body: {
     get: function() {
       var content = this.content;
       if (!content) return null;
       return this.getElementByTagOrClassName("article", content);
     }
   },
-  ["titleBar"]: {
+  titleBar: {
     get: function() {
       return this.getElementByTagOrClassName("header");
     }
   },
-  ["contentDocument"]: {
+  contentDocument: {
     get: function() {
       var frame = this.frame;
       return frame && frame.contentDocument;
     }
   },
-  ["contentWindow"]: {
+  contentWindow: {
     get: function() {
       var frame = this.frame;
       return frame ? frame.contentWindow : null;
     }
   },
-  ["mica"]: {
+  mica: {
     get: function() {
       return this._mica;
     },
@@ -2305,7 +2305,7 @@ Object.defineProperties(Dialog.prototype, {
       this.move();
     }
   },
-  ["x"]: {
+  x: {
     get: function() {
       return this._x * window.innerWidth;
     },
@@ -2313,7 +2313,7 @@ Object.defineProperties(Dialog.prototype, {
       if (typeof x === "number") this.move(x, this.y);
     }
   },
-  ["y"]: {
+  y: {
     get: function() {
       return this._y * window.innerHeight;
     },
@@ -2321,7 +2321,7 @@ Object.defineProperties(Dialog.prototype, {
       if (typeof y === "number") this.move(this.x, y);
     }
   },
-  ["z"]: {
+  z: {
     get: function() {
       return this._z;
     },
@@ -2329,7 +2329,7 @@ Object.defineProperties(Dialog.prototype, {
       if (typeof z === "number") this.setZ(z);
     }
   },
-  ["width"]: {
+  width: {
     get: function() {
       return this._width;
     },
@@ -2337,7 +2337,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setWidth(width);
     }
   },
-  ["height"]: {
+  height: {
     get: function() {
       return this._height;
     },
@@ -2346,7 +2346,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setHeight(height);
     }
   },
-  ["minWidth"]: {
+  minWidth: {
     get: function() {
       return this._minWidth;
     },
@@ -2354,7 +2354,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setMinSize(width);
     }
   },
-  ["minHeight"]: {
+  minHeight: {
     get: function() {
       return this._minHeight;
     },
@@ -2362,7 +2362,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setMinSize(this.minWidth, height);
     }
   },
-  ["maxWidth"]: {
+  maxWidth: {
     get: function() {
       return this._maxWidth;
     },
@@ -2370,7 +2370,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setMaxSize(width);
     }
   },
-  ["maxHeight"]: {
+  maxHeight: {
     get: function() {
       return this._maxHeight;
     },
@@ -2378,7 +2378,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setMaxSize(this.maxWidth, height);
     }
   },
-  ["position"]: {
+  position: {
     get: function() {
       return new Vector(this.x, this.y);
     },
@@ -2387,7 +2387,7 @@ Object.defineProperties(Dialog.prototype, {
         this.move(position.x, position.y);
     }
   },
-  ["size"]: {
+  size: {
     get: function() {
       return new Vector(this.width, this.height);
     },
@@ -2396,7 +2396,7 @@ Object.defineProperties(Dialog.prototype, {
       this.resize(size.x, size.y);
     }
   },
-  ["aspectRatio"]: {
+  aspectRatio: {
     get: function() {
       return this.width / this.height;
     },
@@ -2404,7 +2404,7 @@ Object.defineProperties(Dialog.prototype, {
       this.width = this.height * aspect;
     }
   },
-  ["aspectRatioConstraint"]: {
+  aspectRatioConstraint: {
     get: function() {
       return this._aspectRatio;
     },
@@ -2412,7 +2412,7 @@ Object.defineProperties(Dialog.prototype, {
       this._aspectRatio = typeof aspect === "number" && aspect > 0 ? aspect : 0;
     }
   },
-  ["constrainAspectRatio"]: {
+  constrainAspectRatio: {
     get: function() {
       return this._aspectRatioEnabled;
     },
@@ -2421,7 +2421,7 @@ Object.defineProperties(Dialog.prototype, {
       this._aspectRatioEnabled = !!enabled;
     }
   },
-  ["constrainAspectRatioInner"]: {
+  constrainAspectRatioInner: {
     get: function() {
       return this._constrainAspectRatioInner;
     },
@@ -2429,7 +2429,7 @@ Object.defineProperties(Dialog.prototype, {
       this._constrainAspectRatioInner = !!enabled;
     }
   },
-  ["constrainAspectRatioLine"]: {
+  constrainAspectRatioLine: {
     get: function() {
       return this._constrainAspectRatioLine;
     },
@@ -2437,7 +2437,7 @@ Object.defineProperties(Dialog.prototype, {
       this._constrainAspectRatioLine = !!enabled;
     }
   },
-  ["minAspectRatio"]: {
+  minAspectRatio: {
     get: function() {
       return this._minAspectRatio;
     },
@@ -2445,7 +2445,7 @@ Object.defineProperties(Dialog.prototype, {
       this.width = this.height * aspect;
     }
   },
-  ["maxAspectRatio"]: {
+  maxAspectRatio: {
     get: function() {
       return this._maxAspectRatio;
     },
@@ -2453,7 +2453,7 @@ Object.defineProperties(Dialog.prototype, {
       this.width = this.height * aspect;
     }
   },
-  ["top"]: {
+  top: {
     get: function() {
       return this.y;
     },
@@ -2473,7 +2473,7 @@ Object.defineProperties(Dialog.prototype, {
       this._isMinHeight = height === this.minHeight;
     }
   },
-  ["left"]: {
+  left: {
     get: function() {
       return this.x;
     },
@@ -2493,7 +2493,7 @@ Object.defineProperties(Dialog.prototype, {
       this._isMinWidth = width === this.minWidth;
     }
   },
-  ["rightFromLeft"]: {
+  rightFromLeft: {
     get: function() {
       return this.x + this.width;
     },
@@ -2501,7 +2501,7 @@ Object.defineProperties(Dialog.prototype, {
       this.width = right - this.x;
     }
   },
-  ["right"]: {
+  right: {
     get: function() {
       return window.innerWidth - this.rightFromLeft;
     },
@@ -2514,7 +2514,7 @@ Object.defineProperties(Dialog.prototype, {
       }
     }
   },
-  ["bottomFromTop"]: {
+  bottomFromTop: {
     get: function() {
       return this.y + this.height;
     },
@@ -2522,7 +2522,7 @@ Object.defineProperties(Dialog.prototype, {
       this.height = bottom - this.y;
     }
   },
-  ["bottom"]: {
+  bottom: {
     get: function() {
       return window.innerHeight - this.bottomFromTop;
     },
@@ -2535,7 +2535,7 @@ Object.defineProperties(Dialog.prototype, {
       }
     }
   },
-  ["inset"]: {
+  inset: {
     get: function() {
       return (this.bottom + this.right + this.left + this.top) / 4;
     },
@@ -2543,17 +2543,17 @@ Object.defineProperties(Dialog.prototype, {
       this.bottom = this.right = this.left = this.top = inset;
     }
   },
-  ["isMinWidth"]: {
+  isMinWidth: {
     get: function() {
       return this._isMinWidth;
     }
   },
-  ["isMinHeight"]: {
+  isMinHeight: {
     get: function() {
       return this._isMinHeight;
     }
   },
-  ["useTransform"]: {
+  useTransform: {
     get: function() {
       return this._useTransform;
     },
@@ -2561,7 +2561,7 @@ Object.defineProperties(Dialog.prototype, {
       this.updateUseTransform(useTransform2);
     }
   },
-  ["useScale"]: {
+  useScale: {
     get: function() {
       return this._useScale;
     },
@@ -2569,7 +2569,7 @@ Object.defineProperties(Dialog.prototype, {
       this.updateScale(useScale2);
     }
   },
-  ["title"]: {
+  title: {
     get: function() {
       if (this._title) return this._title;
       var titleElement = this.getTitleElement();
@@ -2580,7 +2580,7 @@ Object.defineProperties(Dialog.prototype, {
       this.setTitle(title);
     }
   },
-  ["maximized"]: {
+  maximized: {
     get: function() {
       if (!this.target) return false;
       return this.target.classList.contains("maximized");
@@ -2589,7 +2589,7 @@ Object.defineProperties(Dialog.prototype, {
       this.toggleMaximized(maximized);
     }
   },
-  ["snapped"]: {
+  snapped: {
     get: function() {
       if (!this.target) return false;
       return this.target.classList.contains("snapped");
@@ -2598,7 +2598,7 @@ Object.defineProperties(Dialog.prototype, {
       this.toggleSnapped(snapped);
     }
   },
-  ["heightSnapped"]: {
+  heightSnapped: {
     get: function() {
       if (!this.target) return false;
       return this.target.classList.contains("height-snapped");
@@ -2607,7 +2607,7 @@ Object.defineProperties(Dialog.prototype, {
       this.toggleHeightSnapped(snapped);
     }
   },
-  ["windowTarget"]: {
+  windowTarget: {
     get: function() {
       var target = this.target;
       if (target && "dialog" in target)
@@ -2625,7 +2625,7 @@ Dialog.prototype.setTitle = function(title) {
   if (titleElement) titleElement.innerHTML = title;
 };
 Object.defineProperties(Dialog.prototype, {
-  ["id"]: {
+  id: {
     get: function() {
       return this._id || this.target && this.target.id || "unk";
     },
@@ -2635,13 +2635,13 @@ Object.defineProperties(Dialog.prototype, {
       if (this.target) this.target.setAttribute("id", id);
     }
   },
-  ["content"]: {
+  content: {
     get: function() {
       if (!this.target) return null;
       return this.getElementByTagOrClassName("content");
     }
   },
-  ["contentTransform"]: {
+  contentTransform: {
     /** @type {()=>Transformable | null} */
     get: function() {
       if (this._contentTransform) return this._contentTransform;
@@ -2650,7 +2650,7 @@ Object.defineProperties(Dialog.prototype, {
       return this._contentTransform = new Transformable(content);
     }
   },
-  ["transform"]: {
+  transform: {
     /** @type {()=>Transformable | null} */
     get: function() {
       if (this._transform) return this._transform;
@@ -2663,12 +2663,12 @@ Object.defineProperties(Dialog.prototype, {
       return this._transform;
     }
   },
-  ["killable"]: {
+  killable: {
     get: function() {
       return this.application !== null;
     }
   },
-  ["borderSize"]: {
+  borderSize: {
     set: function(value) {
       if (!this.content) return;
       this.content.style.padding = toPixels(value);
@@ -2679,12 +2679,12 @@ Object.defineProperties(Dialog.prototype, {
       return this.content && fromPixels(this.content.style.padding);
     }
   },
-  ["popup"]: {
+  popup: {
     get: function() {
       return this._popupWindow;
     }
   },
-  ["micaElement"]: {
+  micaElement: {
     get: function() {
       try {
         if (!this.target) return null;
@@ -2698,7 +2698,7 @@ Object.defineProperties(Dialog.prototype, {
       return null;
     }
   },
-  ["micaBackdrop"]: {
+  micaBackdrop: {
     get: function() {
       try {
         var micaElement = this.micaElement;
@@ -2711,22 +2711,22 @@ Object.defineProperties(Dialog.prototype, {
       return null;
     }
   },
-  ["skew"]: {
+  skew: {
     set: function(skew) {
       this.setSkew(skew);
     }
   },
-  ["scaleY"]: {
+  scaleY: {
     set: function(scaleY) {
       this.setScaleY(scaleY);
     }
   },
-  ["rotation"]: {
+  rotation: {
     set: function(rotation) {
       this.setRotation(rotation);
     }
   },
-  ["opacity"]: {
+  opacity: {
     set: function(opacity) {
       this.target && (this.target.style.opacity = String(opacity));
     },
@@ -2734,12 +2734,12 @@ Object.defineProperties(Dialog.prototype, {
       return this.target && this.target.style.opacity !== "" ? Number(this.target.style.opacity) : 1;
     }
   },
-  ["icon"]: {
+  icon: {
     get: function() {
       return this._appIcon;
     }
   },
-  ["iconUrl"]: {
+  iconUrl: {
     get: function() {
       return this.getIconUrl();
     }
