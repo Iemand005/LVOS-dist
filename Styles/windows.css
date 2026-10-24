@@ -507,10 +507,9 @@ article > *,
 }
 
 .window > table.content > tbody > tr > td.article {
-	height: 100%;
+	height: auto;
 	padding: 0;
 	position: relative;
-	overflow: hidden;
 }
 
 .window > table.content > tbody > tr > td.article > iframe {
