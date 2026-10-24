@@ -510,9 +510,10 @@ article > *,
 	height: 100%;
 	padding: 0;
 	position: relative;
+	overflow: hidden;
 }
 
-.window > table.content > tbody > tr > td.article iframe {
+.window > table.content > tbody > tr > td.article > iframe {
 	position: absolute;
 	left: 0;
 	top: 0;
