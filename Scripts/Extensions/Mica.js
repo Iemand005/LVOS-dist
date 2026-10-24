@@ -148,38 +148,25 @@ var micaExtension = {
 	name: "Mica",
 	enabled: true,
 
-	onWindowLaunch: function(dialog) {
-		injectMica(dialog);
+	flags: {
+		useMica: {
+			enumerable: true,
+			configurable: true,
+			get: function() { return micaExtension.enabled === true; },
+			set: function(value) { window.windowManager.setExtensionEnabled(micaExtension, !!value); }
+		}
 	},
 
-	onWindowMove: function(dialog) {
-		updateMicaPosition(dialog);
-	},
+	onWindowLaunch: injectMica,
+	onWindowMove: updateMicaPosition,
 
 	onEnable: function() {
-		window.windowManager.forEachWindow(function(dialog) {
-			injectMica(dialog);
-		});
+		window.windowManager.forEachWindow(injectMica);
 	},
 
 	onDisable: function() {
-		window.windowManager.forEachWindow(function(dialog) {
-			removeMica(dialog);
-		});
+		window.windowManager.forEachWindow(removeMica);
 	}
 };
 
 window.windowManager.registerExtension(micaExtension);
-
-/**
- * Mica is switched on and off with the "Use Mica" setting, so the setting follows
- * the extension instead of the extension having to poll the setting. The setting is
- * an own property of the flags, so the settings panel shows a checkbox for it and
- * remembers its state.
- */
-if (typeof flags !== "undefined") Object.defineProperty(flags, "useMica", {
-	enumerable: true,
-	configurable: true,
-	get: function() { return micaExtension.enabled === true; },
-	set: function(value) { window.windowManager.setExtensionEnabled(micaExtension, !!value); }
-});
