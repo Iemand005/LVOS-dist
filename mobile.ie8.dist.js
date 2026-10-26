@@ -10,37 +10,45 @@ function __lvosMethodName(prefix, name) {
   var base = prefix + __lvosCapitalize(name).replace(/[^A-Za-z0-9_$]/g, "_");
   var method = base;
   var index = 1;
-  while (__lvosReserved[method] || __lvosMethodNames[method]) method = base + "$" + index++;
+  while (__lvosReserved[method] || __lvosMethodNames[method])
+    method = base + "$" + index++;
   __lvosMethodNames[method] = true;
   return method;
 }
 function __lvosRegister(target, name, getter, setter, enumerable) {
-  if (!target) return;
+  if (!target)
+    return;
   name = String(name);
   var info = __lvosAccessors[name];
-  if (!info) info = __lvosAccessors[name] = { get: null, set: null };
+  if (!info)
+    info = __lvosAccessors[name] = { get: null, set: null };
   if (typeof getter === "function") {
-    if (!info.get) info.get = __lvosMethodName("get", name);
-    getter.__lvosAccessorName = name;
+    if (!info.get)
+      info.get = __lvosMethodName("get", name);
     target[info.get] = getter;
   }
   if (typeof setter === "function") {
-    if (!info.set) info.set = __lvosMethodName("set", name);
-    setter.__lvosAccessorName = name;
+    if (!info.set)
+      info.set = __lvosMethodName("set", name);
     target[info.set] = setter;
   }
-  if (enumerable && !(name in target)) target[name] = void 0;
+  if (enumerable && !(name in target))
+    target[name] = void 0;
 }
 function __lvosDefineProperty(target, key, attributes) {
-  if (!target || !attributes) return target;
+  if (!target || !attributes)
+    return target;
   var hasGetter = typeof attributes.get === "function";
   var hasSetter = typeof attributes.set === "function";
-  if (hasGetter || hasSetter) __lvosRegister(target, key, attributes.get, attributes.set, attributes.enumerable === true);
-  if ("value" in attributes) target[key] = attributes.value;
+  if (hasGetter || hasSetter)
+    __lvosRegister(target, key, attributes.get, attributes.set, attributes.enumerable === true);
+  if ("value" in attributes)
+    target[key] = attributes.value;
   return target;
 }
 function __lvosDefineProperties(target, descriptors) {
-  if (!target || !descriptors) return target;
+  if (!target || !descriptors)
+    return target;
   for (var key in descriptors) {
     if (Object.prototype.hasOwnProperty.call(descriptors, key))
       __lvosDefineProperty(target, key, descriptors[key]);
@@ -55,27 +63,31 @@ function __lvosObject(target, accessors) {
   return target;
 }
 function __lvosGet(object, key) {
-  if (object == null) return void 0;
+  if (object == null)
+    return void 0;
   var info = __lvosAccessors[key];
   if (info && info.get) {
     var getter = object[info.get];
-    if (typeof getter === "function" && getter.__lvosAccessorName === key) return getter.call(object);
+    if (typeof getter === "function")
+      return getter.call(object);
   }
   return object[key];
 }
 function __lvosSet(object, key, value) {
-  if (object == null) return value;
+  if (object == null)
+    return value;
   var info = __lvosAccessors[key];
   if (info) {
     if (info.set) {
       var setter = object[info.set];
-      if (typeof setter === "function" && setter.__lvosAccessorName === key) {
+      if (typeof setter === "function") {
         setter.call(object, value);
         return value;
       }
     } else if (info.get) {
       var getter = object[info.get];
-      if (typeof getter === "function" && getter.__lvosAccessorName === key) return value;
+      if (typeof getter === "function")
+        return value;
     }
   }
   object[key] = value;
@@ -425,7 +437,7 @@ function LVMessenger() {
 }
 LVMessenger.broadcast = function(target, type, data, id) {
   if (target && "JSON" in window)
-    target.postMessage(JSON.stringify({ type, data, id }), "*");
+    target.postMessage(JSON.stringify({ type: type, data: data, id: id }), "*");
 };
 LVMessenger.receive = function(callback, destroyWhenType) {
   var messageListener = function(ev) {
@@ -963,7 +975,7 @@ function downloadSettings() {
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
 function provisionedApp(title, id, src, extra) {
-  return Object.assign({ title, id, src }, extra);
+  return Object.assign({ title: title, id: id, src: src }, extra);
 }
 var applications = [
   provisionedApp("Settings App", "settings", "./Applications/Settings/settings.html"),
@@ -1198,40 +1210,40 @@ window.addEventListener("load", function(e) {
     window.history.pushState(null, "", window.location.href);
     goBack();
   });
-  const blurGradient = document.createElement("div");
+  var blurGradient = document.createElement("div");
   blurGradient.className = "blur-gradient";
   blurGradient.classList.add("horizontal");
-  const layers = 30;
-  const blur = 0.2;
-  const reverse = true;
-  const blurLayers = [];
-  for (let i = 0; i < layers; i++) {
-    const element = document.createElement("div");
-    const progress = Math.pow((layers - i) / layers, 0.5);
-    const start = reverse ? 100 - progress * 100 : 0;
-    const end = reverse ? 100 : progress * 100;
-    element.style.setProperty("--blur", `${blur * i}px`);
-    element.style.setProperty("--start", `${start}%`);
-    element.style.setProperty("--end", `${end}%`);
+  var layers = 30;
+  var blur = 0.2;
+  var reverse = true;
+  var blurLayers = [];
+  for (var i = 0; i < layers; i++) {
+    var element = document.createElement("div");
+    var progress = Math.pow((layers - i) / layers, 0.5);
+    var start = reverse ? 100 - progress * 100 : 0;
+    var end = reverse ? 100 : progress * 100;
+    element.style.setProperty("--blur", "".concat(blur * i, "px"));
+    element.style.setProperty("--start", "".concat(start, "%"));
+    element.style.setProperty("--end", "".concat(end, "%"));
     blurGradient.appendChild(element);
     blurLayers.push(element);
   }
   this.document.body.appendChild(blurGradient);
-  const springBoard = document.querySelector(".spring-board");
-  const rotation = document.querySelector("#rotation");
+  var springBoard = document.querySelector(".spring-board");
+  var rotation = document.querySelector("#rotation");
   if (!(springBoard instanceof HTMLElement))
     return;
   var setProgress = function(value, max) {
-    const degrees = value;
-    const scale = 1 + degrees / 150;
-    const blurScale = degrees / 30;
-    blurLayers.forEach((element, i) => {
-      element.style.setProperty("--blur", `${blur * i * blurScale}px`);
+    var degrees = value;
+    var scale = 1 + degrees / 150;
+    var blurScale = degrees / 30;
+    blurLayers.forEach(function(element2, i2) {
+      element2.style.setProperty("--blur", "".concat(blur * i2 * blurScale, "px"));
     });
-    springBoard.style.transform = `perspective(5000px) rotateY(${degrees}deg) scaleX(${scale})`;
-    const maskProgress = 1 - degrees / (max / 1.7);
-    const opacity = Math.min(1, (maskProgress + 0.5) * 3);
-    springBoard.style.setProperty("--mask", `linear-gradient(to right, rgb(0 0 0 / ${opacity}), rgb(0 0 0 / ${maskProgress}))`);
+    springBoard.style.transform = "perspective(5000px) rotateY(".concat(degrees, "deg) scaleX(").concat(scale, ")");
+    var maskProgress = 1 - degrees / (max / 1.7);
+    var opacity = Math.min(1, (maskProgress + 0.5) * 3);
+    springBoard.style.setProperty("--mask", "linear-gradient(to right, rgb(0 0 0 / ".concat(opacity, "), rgb(0 0 0 / ").concat(maskProgress, "))"));
   };
   if (!(rotation instanceof HTMLInputElement))
     return;

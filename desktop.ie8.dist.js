@@ -1,6 +1,25 @@
 "use strict";
-var __lvosReserved = { "get": true, "getActiveFrame": true, "getActiveId": true, "getApp": true, "getAttribute": true, "getBodyRect": true, "getBoundingClientRect": true, "getButton": true, "getClientRects": true, "getData": true, "getDesktopIndexAt": true, "getDigit": true, "getDirectory": true, "getElementById": true, "getElementByTagOrClassName": true, "getElementsByClassName": true, "getElementsByTagName": true, "getExtension": true, "getFile": true, "getFileHandle": true, "getGestureSnapZone": true, "getHTML": true, "getHours": true, "getIconUrl": true, "getItem": true, "getMiniIconUrl": true, "getMinutes": true, "getOrCreateFrame": true, "getRect": true, "getSeconds": true, "getSnapContainer": true, "getSnapGroup": true, "getSnapSpacer": true, "getSnapZone": true, "getState": true, "getTitleElement": true, "getViewBoxPosition": true, "getVisualizerApps": true, "getWallpaper": true, "getWindowById": true, "getWindowOwningElement": true, "set": true, "setAttribute": true, "setClickOffset": true, "setData": true, "setDragScale": true, "setExpos\xE9Enabled": true, "setExtensionEnabled": true, "setHalfInset": true, "setHeight": true, "setHeightInset": true, "setIcon": true, "setInset": true, "setItem": true, "setMaxSize": true, "setMinSize": true, "setParentElement": true, "setPointerCapture": true, "setPointerPosition": true, "setProperty": true, "setRotation": true, "setScale": true, "setScaleY": true, "setSkew": true, "setTimeout": true, "setTitle": true, "setWallpaper": true, "setWidth": true, "setZ": true, "setupScollHandler": true };
-var __lvosAccessors = {};
+var __extends = this && this.__extends || /* @__PURE__ */ (function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2) if (Object.prototype.hasOwnProperty.call(b2, p)) d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+})();
+var __lvosReserved = { "get": true, "getActiveFrame": true, "getActiveId": true, "getApp": true, "getAttribute": true, "getBodyRect": true, "getBoundingClientRect": true, "getButton": true, "getClientRects": true, "getData": true, "getDesktopIndexAt": true, "getDigit": true, "getDirectory": true, "getElementById": true, "getElementByTagOrClassName": true, "getElementsByClassName": true, "getElementsByTagName": true, "getExtension": true, "getFile": true, "getFileHandle": true, "getGestureSnapZone": true, "getHTML": true, "getHours": true, "getIconUrl": true, "getItem": true, "getMiniIconUrl": true, "getMinutes": true, "getObservedAttributes": true, "getOrCreateFrame": true, "getRect": true, "getSeconds": true, "getSnapContainer": true, "getSnapGroup": true, "getSnapSpacer": true, "getSnapZone": true, "getState": true, "getTitleElement": true, "getViewBoxPosition": true, "getVisualizerApps": true, "getWallpaper": true, "getWindowById": true, "getWindowOwningElement": true, "set": true, "setAttribute": true, "setClickOffset": true, "setData": true, "setDragScale": true, "setExpos\xE9Enabled": true, "setExtensionEnabled": true, "setHalfInset": true, "setHeight": true, "setHeightInset": true, "setIcon": true, "setInset": true, "setItem": true, "setMaxSize": true, "setMinSize": true, "setParentElement": true, "setPointerCapture": true, "setPointerPosition": true, "setProperty": true, "setRotation": true, "setScale": true, "setScaleY": true, "setSkew": true, "setTimeout": true, "setTitle": true, "setValue": true, "setWallpaper": true, "setWidth": true, "setZ": true, "setupScollHandler": true };
+var __lvosAccessors = { "value": { "set": "setValue" }, "observedAttributes": { "get": "getObservedAttributes" } };
 var __lvosMethodNames = {};
 function __lvosCapitalize(name) {
   var text = String(name);
@@ -10,37 +29,45 @@ function __lvosMethodName(prefix, name) {
   var base = prefix + __lvosCapitalize(name).replace(/[^A-Za-z0-9_$]/g, "_");
   var method = base;
   var index = 1;
-  while (__lvosReserved[method] || __lvosMethodNames[method]) method = base + "$" + index++;
+  while (__lvosReserved[method] || __lvosMethodNames[method])
+    method = base + "$" + index++;
   __lvosMethodNames[method] = true;
   return method;
 }
 function __lvosRegister(target, name, getter, setter, enumerable) {
-  if (!target) return;
+  if (!target)
+    return;
   name = String(name);
   var info = __lvosAccessors[name];
-  if (!info) info = __lvosAccessors[name] = { get: null, set: null };
+  if (!info)
+    info = __lvosAccessors[name] = { get: null, set: null };
   if (typeof getter === "function") {
-    if (!info.get) info.get = __lvosMethodName("get", name);
-    getter.__lvosAccessorName = name;
+    if (!info.get)
+      info.get = __lvosMethodName("get", name);
     target[info.get] = getter;
   }
   if (typeof setter === "function") {
-    if (!info.set) info.set = __lvosMethodName("set", name);
-    setter.__lvosAccessorName = name;
+    if (!info.set)
+      info.set = __lvosMethodName("set", name);
     target[info.set] = setter;
   }
-  if (enumerable && !(name in target)) target[name] = void 0;
+  if (enumerable && !(name in target))
+    target[name] = void 0;
 }
 function __lvosDefineProperty(target, key, attributes) {
-  if (!target || !attributes) return target;
+  if (!target || !attributes)
+    return target;
   var hasGetter = typeof attributes.get === "function";
   var hasSetter = typeof attributes.set === "function";
-  if (hasGetter || hasSetter) __lvosRegister(target, key, attributes.get, attributes.set, attributes.enumerable === true);
-  if ("value" in attributes) target[key] = attributes.value;
+  if (hasGetter || hasSetter)
+    __lvosRegister(target, key, attributes.get, attributes.set, attributes.enumerable === true);
+  if ("value" in attributes)
+    target[key] = attributes.value;
   return target;
 }
 function __lvosDefineProperties(target, descriptors) {
-  if (!target || !descriptors) return target;
+  if (!target || !descriptors)
+    return target;
   for (var key in descriptors) {
     if (Object.prototype.hasOwnProperty.call(descriptors, key))
       __lvosDefineProperty(target, key, descriptors[key]);
@@ -55,27 +82,31 @@ function __lvosObject(target, accessors) {
   return target;
 }
 function __lvosGet(object, key) {
-  if (object == null) return void 0;
+  if (object == null)
+    return void 0;
   var info = __lvosAccessors[key];
   if (info && info.get) {
     var getter = object[info.get];
-    if (typeof getter === "function" && getter.__lvosAccessorName === key) return getter.call(object);
+    if (typeof getter === "function")
+      return getter.call(object);
   }
   return object[key];
 }
 function __lvosSet(object, key, value) {
-  if (object == null) return value;
+  if (object == null)
+    return value;
   var info = __lvosAccessors[key];
   if (info) {
     if (info.set) {
       var setter = object[info.set];
-      if (typeof setter === "function" && setter.__lvosAccessorName === key) {
+      if (typeof setter === "function") {
         setter.call(object, value);
         return value;
       }
     } else if (info.get) {
       var getter = object[info.get];
-      if (typeof getter === "function" && getter.__lvosAccessorName === key) return value;
+      if (typeof getter === "function")
+        return value;
     }
   }
   object[key] = value;
@@ -190,7 +221,7 @@ function LVMessenger() {
 }
 LVMessenger.broadcast = function(target, type, data, id) {
   if (target && "JSON" in window)
-    target.postMessage(JSON.stringify({ type, data, id }), "*");
+    target.postMessage(JSON.stringify({ type: type, data: data, id: id }), "*");
 };
 LVMessenger.receive = function(callback, destroyWhenType) {
   var messageListener = function(ev) {
@@ -714,7 +745,7 @@ function getWindowChromeHeight(window2) {
   return window2.outerHeight - window2.innerHeight;
 }
 Helpers.translateElement = function(element, x, y) {
-  transformElement(element, { x, y });
+  transformElement(element, { x: x, y: y });
 };
 function transformElement(element, t) {
   var transform = "";
@@ -1888,7 +1919,7 @@ WindowManager.prototype.handleBroadcast = function(type, data, id) {
       return;
     __lvosGet(document, "body").className = className;
     this.forEachWindow(function(dialog2) {
-      dialog2.messageFrame("theme", { className });
+      dialog2.messageFrame("theme", { className: className });
     });
     return;
   }
@@ -4446,185 +4477,216 @@ TabScroller.prototype.setupScollHandler = function() {
     }, 150);
   }, false);
 };
-class WindowElement extends HTMLDivElement {
-  constructor() {
-    super();
-    this.dialog = null;
-  }
-  /** @param {boolean} [enable] Enable maximization */
-  toggleMaximizedVT(enable) {
-    this.style.viewTransitionName = "window-fullscreen";
-    document.activeViewTransition?.skipTransition();
-    const toggle = () => this.classList.toggle("maximized", enable);
-    if (!("startViewTransition" in document))
-      return toggle();
-    var transition = document.startViewTransition(toggle);
-    transition.ready.catch((ev) => console.warn("transition interrupted:", ev));
-    const dialog = this.dialog;
-    if (dialog)
-      transition.finished.finally(() => {
-        if (dialog.maximizeAnimations <= 1)
-          this.style.viewTransitionName = "";
-        dialog.maximizeAnimations--;
-      });
-  }
-}
-class OdometerDigit extends HTMLSpanElement {
-  constructor() {
-    super();
-    this.lineHeight = 40;
-  }
-  /** @param {number} digit Digit value */
-  set value(digit) {
-    __lvosSet(this.style, "transform", `translateY(-${digit * this.lineHeight}px)`);
-  }
-}
-class OdometerDisplay extends HTMLTimeElement {
-  constructor() {
-    super();
-    this.tracks = [];
-  }
-  connectedCallback() {
-    this.textContent = "";
-    this.style.display = "flex";
-    this.style.overflow = "hidden";
-  }
-  /**
-   * Rebuilds the tracks: one for every digit, the groups separated by a colon.
-   * @param {number[]} groups Number of digits in each group
-   */
-  buildTracks(groups) {
-    this.textContent = "";
-    this.tracks.length = 0;
-    const height = this.clientHeight;
-    groups.forEach((digits, group) => {
-      for (let i = 0; i < digits; i++) {
-        const track = document.createElement("span", { is: "odometer-track" });
-        track.textContent = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";
-        if (track instanceof OdometerDigit) {
-          if (height > 0)
-            track.lineHeight = height;
-          this.tracks.push(track);
-        }
-        this.appendChild(track);
-      }
-      if (group < groups.length - 1)
-        this.append(":");
-    });
-  }
-  /** @param {number} digits Number of digits */
-  init(digits) {
-    this.buildTracks([digits]);
-  }
-  /** @type {DigitGetter} */
-  getDigit = (value, pos) => Math.floor(value / Math.pow(10, pos)) % 10;
-  /** @param {number} value */
-  set value(value) {
-    this.tracks.forEach((track, i) => track.value = this.getDigit(value, this.tracks.length - 1 - i));
-  }
-}
-class OdometerTime extends OdometerDisplay {
-  static get observedAttributes() {
-    return ["datetime", "value"];
-  }
-  connectedCallback() {
-    if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim())
-      this.setAttribute("value", this.textContent.trim());
-    this.buildTracks(this.groupSizes());
-    this.update();
-    this.style.overflow = "hidden";
-  }
-  /** Whether the digits come from the value attribute instead of the date. */
-  usingValue() {
-    return this.hasAttribute("value");
-  }
-  /** The digits of each group: the groups of the value, or the hours, minutes and seconds. */
-  groups() {
-    if (!this.usingValue()) {
-      const date = new Date(this.dateTime);
-      return [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part || 0).padStart(2, "0"));
+var WindowElement = (
+  /** @class */
+  (function(_super) {
+    __extends(WindowElement2, _super);
+    function WindowElement2() {
+      var _this = _super.call(this) || this;
+      _this.dialog = null;
+      return _this;
     }
-    const parts = (this.getAttribute("value") || "00:00:00").split(":");
-    return parts.map((part, i) => String(parseInt(part, 10) || 0).padStart(i === 0 && parts.length === 4 ? 3 : 2, "0"));
-  }
-  /** The number of digits in each group. */
-  groupSizes() {
-    return this.groups().map((group) => group.length);
-  }
-  /**
-   * @param {string} name Name of the attribute
-   * @param {string} oldValue Old value
-   * @param {string} newValue New value
-   */
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue)
-      return;
-    if (name === "value")
-      return this.update();
-    if (name !== "datetime" || this.usingValue())
-      return;
-    if (this.tracks.length !== 6)
-      this.buildTracks([2, 2, 2]);
-    this.update();
-  }
-  update() {
-    const digits = this.groups().join("").split("").map(Number);
-    this.tracks.forEach((track, i) => {
-      if (digits[i] !== void 0)
-        track.value = digits[i];
-    });
-  }
-}
-let customElems;
-const customs = customElems = {
+    WindowElement2.prototype.toggleMaximizedVT = function(enable) {
+      var _this = this;
+      var _a;
+      this.style.viewTransitionName = "window-fullscreen";
+      (_a = document.activeViewTransition) === null || _a === void 0 ? void 0 : _a.skipTransition();
+      var toggle = function() {
+        return _this.classList.toggle("maximized", enable);
+      };
+      if (!("startViewTransition" in document))
+        return toggle();
+      var transition = document.startViewTransition(toggle);
+      transition.ready.catch(function(ev) {
+        return console.warn("transition interrupted:", ev);
+      });
+      var dialog = this.dialog;
+      if (dialog)
+        transition.finished.finally(function() {
+          if (dialog.maximizeAnimations <= 1)
+            _this.style.viewTransitionName = "";
+          dialog.maximizeAnimations--;
+        });
+    };
+    return WindowElement2;
+  })(HTMLDivElement)
+);
+var OdometerDigit = (
+  /** @class */
+  (function(_super) {
+    __extends(OdometerDigit2, _super);
+    function OdometerDigit2() {
+      var _this = _super.call(this) || this;
+      _this.lineHeight = 40;
+      return _this;
+    }
+    OdometerDigit2.prototype.setValue = function(digit) {
+      __lvosSet(this.style, "transform", "translateY(-".concat(digit * this.lineHeight, "px)"));
+    };
+    return OdometerDigit2;
+  })(HTMLSpanElement)
+);
+var OdometerDisplay = (
+  /** @class */
+  (function(_super) {
+    __extends(OdometerDisplay2, _super);
+    function OdometerDisplay2() {
+      var _this = _super.call(this) || this;
+      _this.getDigit = function(value, pos) {
+        return Math.floor(value / Math.pow(10, pos)) % 10;
+      };
+      _this.tracks = [];
+      return _this;
+    }
+    OdometerDisplay2.prototype.connectedCallback = function() {
+      this.textContent = "";
+      this.style.display = "flex";
+      this.style.overflow = "hidden";
+    };
+    OdometerDisplay2.prototype.buildTracks = function(groups) {
+      var _this = this;
+      this.textContent = "";
+      this.tracks.length = 0;
+      var height = this.clientHeight;
+      groups.forEach(function(digits, group) {
+        for (var i = 0; i < digits; i++) {
+          var track = document.createElement("span", { is: "odometer-track" });
+          track.textContent = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";
+          if (track instanceof OdometerDigit) {
+            if (height > 0)
+              track.lineHeight = height;
+            _this.tracks.push(track);
+          }
+          _this.appendChild(track);
+        }
+        if (group < groups.length - 1)
+          _this.append(":");
+      });
+    };
+    OdometerDisplay2.prototype.init = function(digits) {
+      this.buildTracks([digits]);
+    };
+    OdometerDisplay2.prototype.setValue = function(value) {
+      var _this = this;
+      this.tracks.forEach(function(track, i) {
+        return __lvosSet(track, "value", _this.getDigit(value, _this.tracks.length - 1 - i));
+      });
+    };
+    return OdometerDisplay2;
+  })(HTMLTimeElement)
+);
+var OdometerTime = (
+  /** @class */
+  (function(_super) {
+    __extends(OdometerTime2, _super);
+    function OdometerTime2() {
+      return _super !== null && _super.apply(this, arguments) || this;
+    }
+    OdometerTime2.getObservedAttributes = function() {
+      return ["datetime", "value"];
+    };
+    OdometerTime2.prototype.connectedCallback = function() {
+      if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim())
+        this.setAttribute("value", this.textContent.trim());
+      this.buildTracks(this.groupSizes());
+      this.update();
+      this.style.overflow = "hidden";
+    };
+    OdometerTime2.prototype.usingValue = function() {
+      return this.hasAttribute("value");
+    };
+    OdometerTime2.prototype.groups = function() {
+      if (!this.usingValue()) {
+        var date = new Date(this.dateTime);
+        return [date.getHours(), date.getMinutes(), date.getSeconds()].map(function(part) {
+          return String(part || 0).padStart(2, "0");
+        });
+      }
+      var parts = (this.getAttribute("value") || "00:00:00").split(":");
+      return parts.map(function(part, i) {
+        return String(parseInt(part, 10) || 0).padStart(i === 0 && parts.length === 4 ? 3 : 2, "0");
+      });
+    };
+    OdometerTime2.prototype.groupSizes = function() {
+      return this.groups().map(function(group) {
+        return group.length;
+      });
+    };
+    OdometerTime2.prototype.attributeChangedCallback = function(name, oldValue, newValue) {
+      if (oldValue === newValue)
+        return;
+      if (name === "value")
+        return this.update();
+      if (name !== "datetime" || this.usingValue())
+        return;
+      if (this.tracks.length !== 6)
+        this.buildTracks([2, 2, 2]);
+      this.update();
+    };
+    OdometerTime2.prototype.update = function() {
+      var digits = this.groups().join("").split("").map(Number);
+      this.tracks.forEach(function(track, i) {
+        if (digits[i] !== void 0)
+          __lvosSet(track, "value", digits[i]);
+      });
+    };
+    return OdometerTime2;
+  })(OdometerDisplay)
+);
+var customElems;
+var customs = customElems = {
   "window-div": { constructor: WindowElement, extends: "div" },
   "odometer-track": { constructor: OdometerDigit, extends: "span" },
   "odometer-display": { constructor: OdometerDisplay, extends: "time" },
   "odometer-time": { constructor: OdometerTime, extends: "time" }
 };
-Object.entries(customElems).forEach(([name, c]) => customElements.define(name, c.constructor, c));
-class Modern {
-  /**
-   * Moves an element into a picture-in-picture window, and back when it closes.
-   * @param {HTMLElement} el The element to move
-   * @param {(pipWindow: Window)=>void} callback Called when the window is open
-   * @param {string|string[]} [stylesheets] The stylesheets the window should use
-   */
-  static toggleElementPip(el, callback, stylesheets) {
-    const pip = window.documentPictureInPicture;
-    if (!pip)
-      return console.warn("Document Picture-in-Picture not supported in this browser.");
-    pip.window?.close();
-    const rect = el.getBoundingClientRect();
-    pip.requestWindow({ width: Math.round(__lvosGet(rect, "width")) || 400, height: Math.round(__lvosGet(rect, "height")) || 300 }).then((pipWindow) => {
-      const parent = el.parentNode, sibling = el.nextSibling;
-      const sheets = ["./Styles/pip.css"];
-      if (stylesheets)
-        sheets.push(...Array.isArray(stylesheets) ? stylesheets : [stylesheets]);
-      Modern.loadStylesheets(pipWindow, sheets).then(() => pipWindow.dispatchEvent(new Event("resize")));
-      __lvosGet(pipWindow.document, "body").appendChild(el);
-      pipWindow.addEventListener("pagehide", () => parent && (sibling ? parent.insertBefore(el, sibling) : parent.appendChild(el)), { once: true });
-      callback(pipWindow);
-    });
-  }
-  /**
-   * Loads stylesheets into a picture-in-picture window. The window is a document
-   * of its own, so it needs the styles it should have.
-   * @param {Window} pipWindow The window to load the stylesheets into
-   * @param {string[]} stylesheets The stylesheets to load
-   */
-  static loadStylesheets(pipWindow, stylesheets) {
-    const head = pipWindow.document.head || pipWindow.document.documentElement;
-    return Promise.all(stylesheets.map((stylesheet) => new Promise((resolve) => {
-      const link = pipWindow.document.createElement("link");
-      link.rel = "stylesheet";
-      __lvosSet(link, "href", __lvosGet(new URL(stylesheet, document.baseURI), "href"));
-      link.addEventListener("load", resolve, { once: true });
-      link.addEventListener("error", resolve, { once: true });
-      head.appendChild(link);
-    })));
-  }
-}
+Object.entries(customElems).forEach(function(_a) {
+  var name = _a[0], c = _a[1];
+  return customElements.define(name, c.constructor, c);
+});
+var Modern = (
+  /** @class */
+  (function() {
+    function Modern2() {
+    }
+    Modern2.toggleElementPip = function(el, callback, stylesheets) {
+      var _a;
+      var pip = window.documentPictureInPicture;
+      if (!pip)
+        return console.warn("Document Picture-in-Picture not supported in this browser.");
+      (_a = pip.window) === null || _a === void 0 ? void 0 : _a.close();
+      var rect = el.getBoundingClientRect();
+      pip.requestWindow({ width: Math.round(__lvosGet(rect, "width")) || 400, height: Math.round(__lvosGet(rect, "height")) || 300 }).then(function(pipWindow) {
+        var parent = el.parentNode, sibling = el.nextSibling;
+        var sheets = ["./Styles/pip.css"];
+        if (stylesheets)
+          sheets.push.apply(sheets, Array.isArray(stylesheets) ? stylesheets : [stylesheets]);
+        Modern2.loadStylesheets(pipWindow, sheets).then(function() {
+          return pipWindow.dispatchEvent(new Event("resize"));
+        });
+        __lvosGet(pipWindow.document, "body").appendChild(el);
+        pipWindow.addEventListener("pagehide", function() {
+          return parent && (sibling ? parent.insertBefore(el, sibling) : parent.appendChild(el));
+        }, { once: true });
+        callback(pipWindow);
+      });
+    };
+    Modern2.loadStylesheets = function(pipWindow, stylesheets) {
+      var head = pipWindow.document.head || pipWindow.document.documentElement;
+      return Promise.all(stylesheets.map(function(stylesheet) {
+        return new Promise(function(resolve) {
+          var link = pipWindow.document.createElement("link");
+          link.rel = "stylesheet";
+          __lvosSet(link, "href", __lvosGet(new URL(stylesheet, document.baseURI), "href"));
+          link.addEventListener("load", resolve, { once: true });
+          link.addEventListener("error", resolve, { once: true });
+          head.appendChild(link);
+        });
+      }));
+    };
+    return Modern2;
+  })()
+);
 "use strict";
 var eventPrevent = function(event2) {
   event2.preventDefault();
@@ -5159,7 +5221,7 @@ function saveWallpaperToCache(blob, dataUrl) {
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readwrite");
     var store = transaction.objectStore("wallpapers");
-    store.put({ id: "current", blob, timestamp: Date.now() }).onerror = function() {
+    store.put({ id: "current", blob: blob, timestamp: Date.now() }).onerror = function() {
       localStorageFabblack(dataUrl);
     };
   }, function() {
@@ -5468,7 +5530,7 @@ function isColorDark(color) {
 function setColor(color) {
   if (typeof color == "undefined" || !(elements.color instanceof HTMLInputElement))
     return;
-  settings.set("color", elements.color.value = color);
+  settings.set("color", __lvosSet(elements.color, "value", color));
   var isWhite = isColorDark(color);
   if (!("windowManager" in window))
     return;
@@ -5488,7 +5550,7 @@ function setColor(color) {
 function setAccentColor(color) {
   if (!color)
     return;
-  elements.accent.value = color;
+  __lvosSet(elements.accent, "value", color);
   settings.set("accentColor", color);
   var isWhite = isColorDark(color);
   var metroStyle = document.getElementById("metro").style, charmStyle = document.getElementById("charms").style;
@@ -5504,7 +5566,7 @@ function loadSettings() {
 function updateWallpaperImageButton() {
   if (!elements.wallpaperImageButton || !elements.wallpaperSelect)
     return;
-  __lvosSet(elements.wallpaperImageButton, "hidden", elements.wallpaperSelect.value !== "image");
+  __lvosSet(elements.wallpaperImageButton, "hidden", __lvosGet(elements.wallpaperSelect, "value") !== "image");
 }
 function loadWallpaperOptions() {
   if (!elements.wallpaperSelect)
@@ -5512,22 +5574,22 @@ function loadWallpaperOptions() {
   var current = settings.get("wallpaper") || "";
   elements.wallpaperSelect.innerHTML = "";
   var noneOption = document.createElement("option");
-  noneOption.value = "";
+  __lvosSet(noneOption, "value", "");
   noneOption.textContent = "None";
   elements.wallpaperSelect.appendChild(noneOption);
   if (typeof appManager != "undefined" && typeof appManager.forEachWallpaper == "function") {
     appManager.forEachWallpaper(function(app, id) {
       var option = document.createElement("option");
-      option.value = "registered:" + id;
+      __lvosSet(option, "value", "registered:" + id);
       option.textContent = __lvosGet(app, "title") || id;
       elements.wallpaperSelect.appendChild(option);
     });
   }
   var imageOption = document.createElement("option");
-  imageOption.value = "image";
+  __lvosSet(imageOption, "value", "image");
   imageOption.textContent = "Image\u2026";
   elements.wallpaperSelect.appendChild(imageOption);
-  elements.wallpaperSelect.value = current;
+  __lvosSet(elements.wallpaperSelect, "value", current);
   updateWallpaperImageButton();
 }
 function restoreWallpaperSetting() {
@@ -5606,7 +5668,7 @@ function loadThemeSetting() {
       removeTheme("modern");
     applyStartButtonIcon(theme);
     if (elements.theme)
-      elements.theme.value = theme;
+      __lvosSet(elements.theme, "value", theme);
   }
   var colorDebug = settings.get("color-debug");
   if (typeof colorDebug == "boolean") {
@@ -5637,7 +5699,7 @@ var elements = {
   wallpaperImageButton: null
 };
 function installAppFromUrl(useProxy) {
-  var url = (elements.installAppUrl && elements.installAppUrl.value || "").trim();
+  var url = (elements.installAppUrl && __lvosGet(elements.installAppUrl, "value") || "").trim();
   if (!url)
     return;
   if (typeof appManager !== "undefined") {
@@ -5651,7 +5713,7 @@ function installAppFromUrl(useProxy) {
     appManager.addApp(app);
     appManager.saveApp(app);
     if (elements.installAppUrl)
-      elements.installAppUrl.value = "";
+      __lvosSet(elements.installAppUrl, "value", "");
     return;
   }
   if (typeof windowManager !== "undefined") {
@@ -5661,7 +5723,7 @@ function installAppFromUrl(useProxy) {
       windowManager.installApp(url);
     }
     if (elements.installAppUrl)
-      elements.installAppUrl.value = "";
+      __lvosSet(elements.installAppUrl, "value", "");
   }
 }
 function loadElements() {
@@ -5687,19 +5749,19 @@ function loadElements() {
     };
   if (elements.border)
     elements.border.oninput = elements.border.onchange = function() {
-      setBorderSize(this.value);
+      setBorderSize(__lvosGet(this, "value"));
     };
   if (elements.accent)
     elements.accent.oninput = elements.accent.onchange = function() {
-      setAccentColor(this.value);
+      setAccentColor(__lvosGet(this, "value"));
     };
   if (elements.color)
     elements.color.oninput = elements.color.onchange = function() {
-      setColor(this.value);
+      setColor(__lvosGet(this, "value"));
     };
   if (elements.theme)
     elements.theme.onchange = function() {
-      setThemeOption(this.value);
+      setThemeOption(__lvosGet(this, "value"));
     };
   if (elements.colorDebug)
     elements.colorDebug.onchange = function() {
@@ -5723,7 +5785,7 @@ function loadElements() {
     };
   if (elements.wallpaperSelect)
     elements.wallpaperSelect.onchange = function() {
-      setWallpaperOption(this.value);
+      setWallpaperOption(__lvosGet(this, "value"));
     };
   if (elements.wallpaperInput)
     elements.wallpaperInput.onchange = function() {
@@ -5762,7 +5824,7 @@ function downloadSettings() {
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
 function provisionedApp(title, id, src, extra) {
-  return Object.assign({ title, id, src }, extra);
+  return Object.assign({ title: title, id: id, src: src }, extra);
 }
 var applications = [
   provisionedApp("Settings App", "settings", "./Applications/Settings/settings.html"),
@@ -5904,7 +5966,7 @@ ConsoleInterceptor.prototype.init = function() {
   consoleForm.addEventListener("submit", function(event) {
     event.preventDefault();
     try {
-      var input = (event.target.input || this.stdin).value;
+      var input = __lvosGet(event.target.input || this.stdin, "value");
       self.results.push({
         type: ConsoleOutType.Input,
         data: [input]
