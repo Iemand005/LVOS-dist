@@ -643,7 +643,7 @@ var flags = __lvosObject({
       return this._compositorResize;
     },
     set: function(value) {
-      __lvosGet(document, "body").classList.toggle("compositor-animations", !!value);
+      // __lvosGet(document, "body").classList.toggle("compositor-animations", !!value);
       if (value)
         this._useViewTransitionMaximize = false;
       this._compositorResize = value;
@@ -666,7 +666,7 @@ var flags = __lvosObject({
       return this._preserveMaximizeAspect;
     },
     set: function(value) {
-      __lvosGet(document, "body").classList.toggle("preserve-aspect", !!value);
+      // __lvosGet(document, "body").classList.toggle("preserve-aspect", !!value);
       this._preserveMaximizeAspect = value;
     }
   },
@@ -3522,7 +3522,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
   var startY = __lvosGet(this, "y");
   var scaleX = startWidth > 0 ? endWidth / startWidth : 1;
   var scaleY = startHeight > 0 ? endHeight / startHeight : 1;
-  var isSlow = __lvosGet(document, "body") && __lvosGet(document, "body").classList.contains("slow-animations");
+  var isSlow = __lvosGet(document, "body") && // __lvosGet(document, "body").classList.contains("slow-animations");
   var duration = isSlow ? 3e3 : 280;
   var toTransform = function(x, y, sx, sy) {
     return "translate(" + Helpers.toPixels(x) + "," + Helpers.toPixels(y) + ") scale(" + sx + "," + sy + ")";
@@ -4320,7 +4320,7 @@ ElementPicker.prototype.start = function() {
   document.addEventListener("click", this.boundClick, true);
   document.addEventListener("keydown", this.boundKey, true);
   this.status("Pick mode: click an element (Esc to cancel)");
-  __lvosGet(document, "body").classList.add("picking");
+  // __lvosGet(document, "body").classList.add("picking");
 };
 ElementPicker.prototype.stop = function() {
   this.active = false;
@@ -4329,7 +4329,7 @@ ElementPicker.prototype.stop = function() {
   document.removeEventListener("click", this.boundClick, true);
   document.removeEventListener("keydown", this.boundKey, true);
   this.status("");
-  __lvosGet(document, "body").classList.remove("picking");
+  // __lvosGet(document, "body").classList.remove("picking");
 };
 ElementPicker.prototype.highlight = function(el) {
   if (el === this.hovered)
@@ -4756,14 +4756,14 @@ DesktopManager.prototype.enableExpos\u00E9 = function() {
     this.desktopParent = windowSection.parentNode;
     this.desktopNextSibling = windowSection.nextSibling;
   }
-  __lvosGet(document, "body").classList.add("expos\xE9");
+  // __lvosGet(document, "body").classList.add("expos\xE9");
   this.scrollTabs = new TabScroller(document.querySelector("main"));
   this.addDesktop("Main", windowSection);
   this.addDesktop();
   this.addDesktop();
 };
 DesktopManager.prototype.disableExpos\u00E9 = function() {
-  __lvosGet(document, "body").classList.remove("expos\xE9");
+  // __lvosGet(document, "body").classList.remove("expos\xE9");
   var windowSection = document.getElementById("window-section");
   var parent = this.desktopParent || document.getElementById("desktop-area");
   if (windowSection && parent) {
@@ -4796,11 +4796,11 @@ DesktopManager.prototype.addOrMoveDesktopGap = function() {
   this.scrollTabs.element.appendChild(this.gapDesktop);
 };
 function setTheme(theme) {
-  __lvosGet(document, "body").classList.add(theme);
+  // __lvosGet(document, "body").classList.add(theme);
   window.windowManager.synchronizeStates();
 }
 DesktopManager.removeTheme = function(theme) {
-  __lvosGet(document, "body").classList.remove(theme);
+  // __lvosGet(document, "body").classList.remove(theme);
 };
 DesktopManager.toggleCharms = function(force) {
   var charms = document.getElementById("charms");
@@ -5080,12 +5080,12 @@ if (document.readyState === "loading") {
 }
 window.addEventListener("keydown", function(event2) {
   if (event2.key === "Shift" || event2.keyCode === 16) {
-    __lvosGet(document, "body").classList.add("slow-animations");
+    // __lvosGet(document, "body").classList.add("slow-animations");
   }
 }, false);
 window.addEventListener("keyup", function(event2) {
   if (event2.key === "Shift" || event2.keyCode === 16) {
-    __lvosGet(document, "body").classList.remove("slow-animations");
+    // __lvosGet(document, "body").classList.remove("slow-animations");
   }
 }, false);
 var wallpaper = DesktopManager.getWallpaper();
@@ -5277,11 +5277,11 @@ function setThemeOption(theme) {
     windowManager.broadcastTheme();
 }
 function toggleColorDebug(enabled) {
-  __lvosGet(document, "body").classList.toggle("color-debug", enabled);
+  // __lvosGet(document, "body").classList.toggle("color-debug", enabled);
   settings.set("color-debug", enabled);
 }
 function toggleSquircles(enabled) {
-  __lvosGet(document, "body").classList.toggle("squircles", enabled);
+  // __lvosGet(document, "body").classList.toggle("squircles", enabled);
   settings.set("squircles", enabled);
 }
 function setBorderSize(size) {
@@ -5430,10 +5430,10 @@ function loadThemeSetting() {
   var theme = settings.get("theme");
   if (THEMES.indexOf(theme) !== -1) {
     for (var i = 0; i < THEMES.length; i++)
-      __lvosGet(document, "body").classList.remove(THEMES[i]);
+      // __lvosGet(document, "body").classList.remove(THEMES[i]);
     for (var base in BASE_THEMES) {
       if (BASE_THEMES.hasOwnProperty(base))
-        __lvosGet(document, "body").classList.remove(BASE_THEMES[base]);
+        // __lvosGet(document, "body").classList.remove(BASE_THEMES[base]);
     }
     if (theme !== "modern-blur")
       setTheme(theme);
@@ -5453,13 +5453,13 @@ function loadThemeSetting() {
   }
   var colorDebug = settings.get("color-debug");
   if (typeof colorDebug == "boolean") {
-    __lvosGet(document, "body").classList.toggle("color-debug", colorDebug);
+    // __lvosGet(document, "body").classList.toggle("color-debug", colorDebug);
     if (elements.colorDebug)
       elements.colorDebug.checked = colorDebug;
   }
   var squircles = settings.get("squircles");
   if (typeof squircles == "boolean") {
-    __lvosGet(document, "body").classList.toggle("squircles", squircles);
+    // __lvosGet(document, "body").classList.toggle("squircles", squircles);
     if (elements.squircles)
       elements.squircles.checked = squircles;
   }
