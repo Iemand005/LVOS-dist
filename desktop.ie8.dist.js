@@ -2642,7 +2642,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
       sizer = document.createElement("div");
     sizer.draggable = false;
     __lvosSet(sizer, "id", id.toString());
-    sizer.classList.add(sizerId);
+    // sizer.classList.add(sizerId);
     var pointerDown = function(ev) {
       if (!self2.activationHandler || !self2.activationHandler(ev, id))
         return;
@@ -5710,7 +5710,7 @@ function finishAppInstall() {
 }
 finishAppInstall();
 window.addEventListener("load", initApps, false);
-var bindConsole = true;
+var bindConsole = false;
 var ConsoleOutType = {
   Input: -1,
   Return: 0,
