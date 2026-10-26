@@ -2719,7 +2719,7 @@ Dialog.prototype.getOrCreateFrame = function(create) {
 __lvosDefineProperties(Dialog.prototype, {
   isOpen: {
     get: function() {
-      return Boolean(this.target && this.target.classList.contains("open"));
+      return false;
     },
     set: function(open) {
       this.toggleOpen(open);
