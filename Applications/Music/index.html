@@ -1,0 +1,162 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Music</title>
+    <link rel="stylesheet" href="./music.css">
+    <link rel="stylesheet" href="../../Styles/general.css">
+    <script src="../../Scripts/LegacyPolyfills.js"></script>
+    <script src="../../Scripts/Messenger.js"></script>
+    <script src="../../Scripts/WebAudioVisualizer/AudioVisualizer.js" defer></script>
+    <script src="../../Scripts/WebGraphics/Graphics.js" defer></script>
+    <script src="../../Scripts/WebGraphics/Graphics2D.js" defer></script>
+    <script src="../../Scripts/WebMedia/Media.js" defer></script>
+    <script src="../../Scripts/WebAura/Aura.js" defer></script>
+    <script src="../../Scripts/Messenger.js" defer></script>
+    <script src="./music.js" defer></script>
+
+    
+   
+</head>
+<body class="transparent">
+    <audio></audio>
+    <canvas id="canvas" style="width: 100%; height: 100%;"></canvas>
+    <canvas id="visualizer"></canvas>
+    <form id="options">
+        <section>
+            <input type="file" name="file" id="file" value="Open" accept="audio/*"> <!-- file -->
+            <button id="mic">Microphone</button>
+            <button id="display-audio">Display audio</button>
+            <button id="aura-button">Connect Aura</button>
+            <button id="aura-boom-button" aria-pressed="false" title="Fade keyboard to white on drums/booms">Aura Boom: OFF</button>
+            <label id="aura-boom-sens-label" for="aura-boom-sensitivity" style="display:none; font-size:12px; opacity:0.9; margin-left:6px;">Sens <span id="aura-boom-sens-val">1.0x</span></label>
+            <input id="aura-boom-sensitivity" type="range" min="0.4" max="2.0" step="0.1" value="1.0" style="display:none; width:90px; vertical-align:middle;" title="Boom sensitivity — lower = only hard drums go white">
+            <button id="pip-button">Open Picture In Picture</button>
+            <button id="fullscreen">Fullscreen</button>
+            <input min="5" step="1" max="15" type="range" name="fft" id="fft">
+            <select name="style" id="style">
+                <option value="bars">Bars</option>
+                <option value="circle">Circle</option>
+                <option value="intensity">Intensity Flash</option>
+                <option value="beatpulse">Beat Pulse</option>
+                <option value="spiral">Spiral</option>
+                <option value="waveform">Waveform</option>
+                <option value="bpmdebug">BPM Debug</option>
+                <option value="bpmshow">BPM Showcase</option>
+                <option value="ciphrd">Ciphrd Analysis</option>
+                <option value="cake">Cake</option>
+            </select>
+            <span id="bpm-pulse-wrap" style="display:inline-flex; align-items:center; gap:6px; margin-left:8px; vertical-align:middle;">
+                <span id="bpm-pulse-dot" title="Flashes white on each detected beat — if this is double-time, hit ½" style="width:14px; height:14px; border-radius:50%; background:#444; display:inline-block; box-shadow:0 0 0 0 rgba(255,255,255,0); transition: transform 70ms, background 70ms, box-shadow 70ms; flex-shrink:0;"></span>
+                <span id="bpm-pulse-label" style="font:12px monospace; opacity:0.85; min-width:64px;">-- BPM</span>
+                <button id="bpm-half" title="Halve BPM (fix double-time 125→62)" style="font-size:11px; padding:2px 6px; line-height:1;">½</button>
+                <button id="bpm-double" title="Double BPM" style="font-size:11px; padding:2px 6px; line-height:1;">2×</button>
+            </span>
+            <span id="ciphrd-sens-wrap" style="display:inline-flex; align-items:center; gap:4px; margin-left:8px; vertical-align:middle;">
+                <label for="ciphrd-sens" style="font-size:11px; opacity:0.85;">Ciphrd Sens</label>
+                <input id="ciphrd-sens" type="range" min="0.6" max="2.2" step="0.1" value="1.0" style="width:80px;" title="Higher = more sensitive (hits more often)">
+                <span id="ciphrd-sens-val" style="font:11px monospace; min-width:32px;">1.0x</span>
+            </span>
+            <span id="ciphrd-bands-wrap" style="display:inline-flex; align-items:center; gap:4px; margin-left:8px; vertical-align:middle;">
+                <label for="ciphrd-bands" style="font-size:11px; opacity:0.85;">Bands</label>
+                <input id="ciphrd-bands" type="range" min="4" max="16" step="1" value="12" style="width:70px;" title="Number of frequency bands (more = finer, even)">
+                <span id="ciphrd-bands-val" style="font:11px monospace; min-width:18px;">12</span>
+                <label for="ciphrd-range" style="font-size:11px; opacity:0.85; margin-left:6px;">Range</label>
+                <input id="ciphrd-range" type="range" min="0.25" max="1.0" step="0.05" value="0.45" style="width:70px;" title="Only lower X% of spectrum (0.45 = bass focus, 1.0 = all)">
+                <span id="ciphrd-range-val" style="font:11px monospace; min-width:28px;">45%</span>
+                <select id="ciphrd-spacing" style="font-size:11px; padding:1px 4px;" title="Band spacing: even (linear) vs quad (bass-heavy)">
+                    <option value="linear" selected>Even</option>
+                    <option value="quad">Quad</option>
+                </select>
+            </span>
+        </section>
+        <section id="playcontrols">
+            <section>
+                <label for="volume">🔊</label>
+                <input min="0" step="0.0000001" max="100" type="range" name="volume" id="volume">
+                <output id="volume-output"></output>
+            </section>
+            <button id="play">⏵︎</button>
+            <section>
+                <input min="0" step="0.0000001" max="0" type="range" name="seek" id="seek">
+                <output id="seek-output">&#8209;&#8209;:&#8209;&#8209;.&#8209;&#8209;</output> <!-- Non breaking hyphens! -->
+            </section>
+        </section>
+
+        <button id="toggle-imgui" onclick="toggleImGui()">Debug UI (F3)</button>
+    </form>
+
+
+    <script>
+      var canvasElement = document.getElementById("canvas"),
+        Module = {
+          print: (...e) => console.log(...e),
+          printErr: (...e) => console.error(...e),
+          canvas: canvasElement,
+          /**
+             * Intercepts and overrides paths for runtime dependencies (.wasm, .worker.js, etc.)
+             * @param {string} path - The default filename or relative path
+             * @param {string} prefix - The default folder prefix
+             * @returns {string} The final resolved URL/path
+             */
+            locateFile: function(path, prefix) {
+                return "https://iemand005.github.io/FenixWeb/Cake/" + path;
+            },
+          setStatus: function(text) {
+            if (text) console.log(text);
+          },
+          monitorRunDependencies(e) {},
+          onRuntimeInitialized: function() {
+            // Cake boots with its main loop running; enforce the dropdown's
+            // selection (default bars -> loop paused) once the module is up.
+            setTimeout(syncVisualizers, 250);
+          }
+        };
+
+      // Aura colour bridge: the wasm renderer forwards its requested colour
+      // here (Module.onAuraColor), and we hand it to the music app's WebAura
+      // instance. Module is certain to be declared at this point; the music app
+      // may still be loading, so look it up lazily when the event fires.
+      Module.onAuraColor = function (r, g, b) {
+        var app = window.musicApp;
+        if (app && typeof app.setAuraColor === 'function') app.setAuraColor(r, g, b);
+      };
+
+      // Visualizer switching: "cake" shows the wasm renderer on #canvas; bars
+      // and circle draw in 2D on the #visualizer via music.js. Only one canvas
+      // is visible at a time — the other gets display:none (Cake's surface has
+      // transparency, so it must be hidden behind the 2D one and vice versa).
+      function syncVisualizers() {
+        var style = document.getElementById('style');
+        if (!style) return;
+        var canvas = document.getElementById('canvas');
+        var visCanvas = document.getElementById('visualizer');
+        var isCake = style.value === 'cake';
+        if (canvas) canvas.style.display = isCake ? '' : 'none';
+        if (visCanvas) visCanvas.style.display = isCake ? 'none' : '';
+        if (isCake) {
+          if (typeof Module._ResumeMainLoop === 'function') Module._ResumeMainLoop();
+        } else {
+          if (typeof Module._PauseMainLoop === 'function') Module._PauseMainLoop();
+        }
+      }
+      var styleEl = document.getElementById('style');
+      if (styleEl) styleEl.addEventListener('change', syncVisualizers);
+      syncVisualizers();
+
+      window.onerror = () => {};
+
+      function toggleImGui() {
+        if (typeof Module._ToggleImGui === 'function') {
+          Module._ToggleImGui();
+          var btn = document.getElementById('toggle-imgui');
+          var visible = Module._IsImGuiVisible();
+          btn.classList.toggle('active', visible === 1);
+        }
+      }
+    </script>
+    <script async src="https://iemand005.github.io/FenixWeb/Cake/Cake.js"></script>
+</body>
+</html>

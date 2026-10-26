@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autostereogram maker</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="./WebGraphics/Graphics3D.js" defer></script>
+  <script src="index.js" defer></script>
+</head>
+<body>
+  <div class="controls" id="source-controls">
+    <label>
+      Pattern
+      <select id="pattern-source">
+        <option value="texture">HTML image</option>
+        <option value="generated">Generated</option>
+      </select>
+    </label>
+    <label>
+      Depth
+      <select id="depth-source">
+        <option value="image">Shark image</option>
+        <option value="generated">Generated cube</option>
+      </select>
+    </label>
+  </div>
+  <canvas id="autostereogram" width="800" height="600"></canvas>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <img id="pattern-image" src="texture.png" alt="Pattern texture">
+  <img id="depth-image" src="shark.png" alt="Depth map shark">
+</body>
+</html>
