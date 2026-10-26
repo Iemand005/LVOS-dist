@@ -2001,7 +2001,7 @@ function WindowSnap() {
   __lvosSet(this.element, "id", "window-snap");
   this._snapped = "";
   this._section = null;
-  this.element.classList.add("hidden");
+//   this.element.classList.add("hidden");
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
