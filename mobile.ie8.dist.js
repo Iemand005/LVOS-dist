@@ -104,7 +104,7 @@ function forEachIndexed(callbackfn, thisArg) {
     callbackfn.call(thisArg, this[i], i, this);
 }
 if (!Object.prototype.hasOwnProperty("forEach"))
-  Object.defineProperty(Object.prototype, "forEach", {
+  __lvosDefineProperty(Object.prototype, "forEach", {
     value: forEachIndexed,
     writable: true,
     configurable: true
