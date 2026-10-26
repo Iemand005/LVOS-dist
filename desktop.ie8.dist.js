@@ -821,8 +821,7 @@ function messageReceived(type, data, source) {
           if (!overlay)
             return;
           overlay.ontransitionend = null;
-          overlay.requestFullscreen().catch(function() {
-          });
+          
           if (__lvosGet(dialog, "body"))
             overlay.appendChild(__lvosGet(dialog, "body"));
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -2003,7 +2002,7 @@ function WindowSnap() {
   __lvosSet(this.element, "id", "window-snap");
   this._snapped = "";
   this._section = null;
-  this.element.classList.add("hidden");
+//   this.element.classList.add("hidden");
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
@@ -4907,7 +4906,7 @@ DesktopManager.prototype.clearWallpaperCache = function() {
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readwrite");
     var store = transaction.objectStore("wallpapers");
-    store.delete("current");
+    // store.delete("current");
   }, function() {
   });
 };
@@ -5236,6 +5235,7 @@ function applyStartButtonIcon(theme) {
   }
 }
 function setThemeOption(theme) {
+	return;
   var previous = settings.get("theme");
   var blurWasOn = previous === "blur" || previous === "glass" || previous === "modern-blur";
   var previousBase = BASE_THEMES[previous];
