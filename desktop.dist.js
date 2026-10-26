@@ -1893,6 +1893,35 @@ Transformable.prototype.rotate = function(x, y, z, animate) {
   }
   this.update(animate);
 };
+function ensureClassList(elem) {
+  if (elem.classList) return;
+  elem.classList = {
+    add: function(cls) {
+      if (!this.contains(cls)) {
+        elem.className = (elem.className ? elem.className + " " : "") + cls;
+      }
+    },
+    remove: function(cls) {
+      var classes = (elem.className || "").split(/\s+/);
+      for (var i = classes.length - 1; i >= 0; i--) {
+        if (classes[i] === cls) classes.splice(i, 1);
+      }
+      elem.className = classes.join(" ");
+    },
+    contains: function(cls) {
+      return new RegExp("(^|\\s+)" + cls + "(\\s+|$)").test(elem.className || "");
+    },
+    toggle: function(cls) {
+      if (this.contains(cls)) {
+        this.remove(cls);
+        return false;
+      } else {
+        this.add(cls);
+        return true;
+      }
+    }
+  };
+}
 function Dialog(object) {
   this._x = 0;
   this._y = 0;
@@ -2019,6 +2048,7 @@ function Dialog(object) {
   this.exchangeDialogMoveEvent = function(difference) {
     if (difference && self2.clickOffset) this.messageFrame("windowMove", self2.clickOffset.update(difference.x, difference.y));
   };
+  if (!this.target.classList) ensureClassList(this.target);
   var target = this.target;
   var buttons = target.getElementsByTagName("button");
   var createSizers = true;
