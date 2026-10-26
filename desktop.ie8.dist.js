@@ -976,7 +976,7 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       clearFlip(element);
   }
   var state = element._animationState = { timer: 0, frame: 0, handler: null, active: true, flip: !!flip2 };
-  if (!flags.useAnimations) {
+  if (!__lvosGet(flags, "useAnimations")) {
     if (onToggled)
       onToggled.call(boundContext);
     callEnd();
@@ -1070,7 +1070,7 @@ function WindowManager() {
       cancelDomEvent(event2);
       var isTouch = "pointerType" in event2 && event2.pointerType === "touch";
       self2.setPointerPosition(event2.clientX, event2.clientY);
-      if (flags.updateRateLimit) {
+      if (__lvosGet(flags, "updateRateLimit")) {
         self2._pendingDragEvent = event2;
         if (self2.ticking)
           return;
@@ -1458,7 +1458,7 @@ WindowManager.prototype.handleWindowDrag = function(newX, newY, isTouch) {
   if (!dialog || !dialog.clickOffset)
     return;
   if (__lvosGet(dialog, "maximized")) {
-    if (!flags.aeroSnap)
+    if (!__lvosGet(flags, "aeroSnap"))
       return;
     var snapSection = this.getSnapContainer(dialog);
     dialog.remapClickOffset(0, 0, this.snapWidth(snapSection), this.snapHeight(snapSection));
@@ -1590,7 +1590,7 @@ WindowManager.prototype.leaveHeightSnappedByResize = function(dialog) {
   }
 };
 WindowManager.prototype.getGestureSnapZone = function(dialog, direction, x, y) {
-  if (!flags.aeroSnap || __lvosGet(dialog, "heightSnapped") || this._heightSnapReleased)
+  if (!__lvosGet(flags, "aeroSnap") || __lvosGet(dialog, "heightSnapped") || this._heightSnapReleased)
     return "";
   var section = this.getSnapContainer(dialog);
   if (direction === 1 || direction === 3) {
@@ -2195,7 +2195,7 @@ ClickOffset.toggleDragEventHandler = function(enable, handler, cursor) {
     document.addEventListener(supportsPointer ? "pointermove" : "mousemove", handler, false);
   else
     document.removeEventListener(supportsPointer ? "pointermove" : "mousemove", handler, false);
-  if (!flags.useDragOverlay || !this._overlay) {
+  if (!__lvosGet(flags, "useDragOverlay") || !this._overlay) {
     windowManager.forEachWindow(function(dialog) {
       dialog.togglePointerEvents(!enable);
     });
@@ -2675,7 +2675,7 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
   this.toggleClassAnimated("open", forceOpen, function(a) {
     return a === "opacity";
   }, function(opened) {
-    if ((kill || flags.windowReaper) && !opened)
+    if ((kill || __lvosGet(flags, "windowReaper")) && !opened)
       self2.kill();
     if (opened)
       self2.reportState();
@@ -2683,7 +2683,7 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
     self2._stateOpen = opening;
     if (opening)
       self2.activate();
-    if (flags.windowReaper && !opening)
+    if (__lvosGet(flags, "windowReaper") && !opening)
       setTimeout(function() {
       }, 1e3);
   });
@@ -3480,7 +3480,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
     }, 1e3);
     return;
   }
-  if (!flags.useAnimations) {
+  if (!__lvosGet(flags, "useAnimations")) {
     target.classList.toggle("maximized", enable);
     target.classList.toggle("scaled-max", enable);
     target.style.pointerEvents = "";
@@ -3635,7 +3635,7 @@ Dialog.prototype.updatePosition = function() {
     this.updateTransform();
   else
     this.setInset(__lvosGet(this, "top"), __lvosGet(this, "left"), __lvosGet(this, "right"), __lvosGet(this, "bottom"));
-  if (flags.useSkewAnimations) {
+  if (__lvosGet(flags, "useSkewAnimations")) {
     var deltaX = __lvosGet(this, "x") - this._previousX, deltaY = __lvosGet(this, "y") - this._previousY;
     var intensity = 1;
     __lvosSet(this, "skew", -deltaX * intensity / 3);
@@ -3644,7 +3644,7 @@ Dialog.prototype.updatePosition = function() {
   windowManager.notifyExtensions("onWindowMove", this);
 };
 Dialog.prototype.broadcastState = function(overrides) {
-  if (!windowManager || !flags.broadcastWindowMoves || !document.hasFocus())
+  if (!windowManager || !__lvosGet(flags, "broadcastWindowMoves") || !document.hasFocus())
     return;
   if (!__lvosGet(this, "id"))
     return;
@@ -3653,7 +3653,7 @@ Dialog.prototype.broadcastState = function(overrides) {
 Dialog.prototype.move = function(x, y, update, animate) {
   if (this.fixed)
     return;
-  if (flags.useSkewAnimations) {
+  if (__lvosGet(flags, "useSkewAnimations")) {
     this._previousX = __lvosGet(this, "x");
     this._previousY = __lvosGet(this, "y");
   }
