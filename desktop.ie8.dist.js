@@ -3637,8 +3637,8 @@ Dialog.prototype.toggleFullButton = function(enable) {
 };
 Dialog.prototype.messageFrame = function(type, message) {
   var frame = __lvosGet(this, "frame");
-  if (frame)
-    LVMessenger.broadcastToChild(type, frame, message);
+//   if (frame)
+//     LVMessenger.broadcastToChild(type, frame, message);
 };
 Dialog.prototype.updateTransform = function(animate) {
   if (!(__lvosGet(this, "useTransform") && __lvosGet(this, "transform")))
