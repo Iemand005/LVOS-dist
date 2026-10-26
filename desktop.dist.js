@@ -2009,7 +2009,7 @@ function Dialog(object) {
       });
     }
   }
-  this.setMinSize(180, 250);
+  this.setMinSize(180, 250, false);
   this.toggleCloseButton(true);
   this.toggleFullButton(true);
   if (this.verifyEjectCapability()) this.toggleEjectButton(true);
@@ -3423,10 +3423,10 @@ Dialog.prototype.update = function() {
   this.move();
   this.resize();
 };
-Dialog.prototype.setMinSize = function(width, height) {
+Dialog.prototype.setMinSize = function(width, height, update) {
   this._minWidth = typeof width === "number" ? width : 180;
   this._minHeight = typeof height === "number" ? height : 200;
-  this.resize();
+  if (update !== false) this.resize();
 };
 Dialog.prototype.setMaxSize = function(width, height) {
   this._maxWidth = typeof width === "number" ? width : 180;
@@ -5399,7 +5399,7 @@ function init() {
       appManager.reloadWallpaper();
     }
   }
-  if (location.protocol === "file:") {
+  if (location.protocol === "file:") try {
     var scripts = document.querySelectorAll('script[type="module"]');
     scripts.forEach(function(s) {
       var replacement = document.createElement("script");
@@ -5409,6 +5409,7 @@ function init() {
       } catch (ex) {
       }
     });
+  } catch (ex) {
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
   if (window.__LVMessenger)

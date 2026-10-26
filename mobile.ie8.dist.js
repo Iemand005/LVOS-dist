@@ -1278,17 +1278,19 @@ function init() {
       appManager.reloadWallpaper();
     }
   }
-  if (location.protocol === "file:") {
-    var scripts = document.querySelectorAll('script[type="module"]');
-    scripts.forEach(function(s) {
-      var replacement = document.createElement("script");
-      replacement.src = s.src;
-      try {
-        s.replaceWith(replacement);
-      } catch (ex) {
-      }
-    });
-  }
+  if (location.protocol === "file:")
+    try {
+      var scripts = document.querySelectorAll('script[type="module"]');
+      scripts.forEach(function(s) {
+        var replacement = document.createElement("script");
+        replacement.src = s.src;
+        try {
+          s.replaceWith(replacement);
+        } catch (ex) {
+        }
+      });
+    } catch (ex) {
+    }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
   if (window.__LVMessenger)
     window.__LVMessenger.accent = window.metaThemeColor;
