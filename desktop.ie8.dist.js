@@ -3082,7 +3082,7 @@ __lvosDefineProperties(Dialog.prototype, {
   },
   heightSnapped: {
     get: function() {
-      return this.target.classList.contains("height-snapped");
+      return false;
     },
     set: function(snapped) {
       this.toggleHeightSnapped(snapped);
