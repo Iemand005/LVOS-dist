@@ -821,8 +821,6 @@ function messageReceived(type, data, source) {
           if (!overlay)
             return;
           overlay.ontransitionend = null;
-          overlay.requestFullscreen().catch(function() {
-          });
           if (__lvosGet(dialog, "body"))
             overlay.appendChild(__lvosGet(dialog, "body"));
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -4907,7 +4905,7 @@ DesktopManager.prototype.clearWallpaperCache = function() {
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readwrite");
     var store = transaction.objectStore("wallpapers");
-    store.delete("current");
+    // store.delete("current");
   }, function() {
   });
 };
