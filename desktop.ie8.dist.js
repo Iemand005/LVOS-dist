@@ -4064,7 +4064,7 @@ Dialog.prototype.refresh = function() {
 Dialog.prototype.launch = function() {
   if (!__lvosGet(this, "isOpen"))
     this.insertIntoDOM();
-  this.target.classList.remove("hidden");
+//   this.target.classList.remove("hidden");
   windowManager.notifyExtensions("onWindowLaunch", this);
   this.open();
 };
