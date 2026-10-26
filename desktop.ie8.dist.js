@@ -5432,7 +5432,7 @@ function loadThemeSetting() {
     for (var i = 0; i < THEMES.length; i++)
       // __lvosGet(document, "body").classList.remove(THEMES[i]);
     for (var base in BASE_THEMES) {
-      if (BASE_THEMES.hasOwnProperty(base))
+    //   if (BASE_THEMES.hasOwnProperty(base))
         // __lvosGet(document, "body").classList.remove(BASE_THEMES[base]);
     }
     if (theme !== "modern-blur")
@@ -5992,7 +5992,7 @@ function init() {
       appManager.reloadWallpaper();
     }
   }
-  if (location.protocol === "file:") {
+  if (location.protocol === "file:") try {
     var scripts = document.querySelectorAll('script[type="module"]');
     scripts.forEach(function(s) {
       var replacement = document.createElement("script");
@@ -6002,7 +6002,8 @@ function init() {
       } catch (ex) {
       }
     });
-  }
+  }catch (ex) {
+      }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
   if (window.__LVMessenger)
     window.__LVMessenger.accent = window.metaThemeColor;
