@@ -498,7 +498,7 @@ function toggleSquircles(enabled) {
 function setBorderSize(size) {
   settings.set("borderSize", size);
   if (typeof windowManager !== "undefined" && windowManager.windows) {
-    for (var index in windowManager.windows) windowManager.windows[index].borderSize = size;
+    for (var index in windowManager.windows) if (windowManager.windows.hasOwnProperty(index)) windowManager.windows[index].borderSize = size;
   }
 }
 function hexToRGB(hex) {
@@ -517,7 +517,7 @@ function setColor(color) {
   settings.set("color", elements.color.value = color);
   var isWhite = isColorDark(color);
   if (!("windowManager" in window)) return;
-  for (var index in windowManager.windows) {
+  for (var index in windowManager.windows) if (windowManager.windows.hasOwnProperty(index)) {
     var dialog = windowManager.windows[index];
     if (!dialog || !dialog.target) continue;
     var content = dialog.target.getElementsByTagName("content")[0];

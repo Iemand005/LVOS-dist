@@ -661,7 +661,8 @@ function setBorderSize(size) {
   settings.set("borderSize", size);
   if (typeof windowManager !== "undefined" && __lvosGet(windowManager, "windows")) {
     for (var index in __lvosGet(windowManager, "windows"))
-      __lvosGet(windowManager, "windows")[index].borderSize = size;
+      if (__lvosGet(windowManager, "windows").hasOwnProperty(index))
+        __lvosGet(windowManager, "windows")[index].borderSize = size;
   }
 }
 function hexToRGB(hex) {
@@ -685,16 +686,17 @@ function setColor(color) {
   var isWhite = isColorDark(color);
   if (!("windowManager" in window))
     return;
-  for (var index in __lvosGet(windowManager, "windows")) {
-    var dialog = __lvosGet(windowManager, "windows")[index];
-    if (!dialog || !dialog.target)
-      continue;
-    var content = dialog.target.getElementsByTagName("content")[0];
-    if (!(content instanceof HTMLElement))
-      continue;
-    content.style.backgroundColor = color;
-    content.style.color = isWhite ? "white" : "black";
-  }
+  for (var index in __lvosGet(windowManager, "windows"))
+    if (__lvosGet(windowManager, "windows").hasOwnProperty(index)) {
+      var dialog = __lvosGet(windowManager, "windows")[index];
+      if (!dialog || !dialog.target)
+        continue;
+      var content = dialog.target.getElementsByTagName("content")[0];
+      if (!(content instanceof HTMLElement))
+        continue;
+      content.style.backgroundColor = color;
+      content.style.color = isWhite ? "white" : "black";
+    }
   if (window.metaThemeColor)
     window.metaThemeColor.setAttribute("content", color);
 }

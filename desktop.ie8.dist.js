@@ -1129,11 +1129,12 @@ __lvosDefineProperties(WindowManager.prototype, {
   state: {
     get: function() {
       var state = {};
-      for (var id in __lvosGet(this, "windows")) {
-        var window2 = __lvosGet(this, "windows")[id];
-        if (window2)
-          state[id] = window2.getState();
-      }
+      for (var id in __lvosGet(this, "windows"))
+        if (__lvosGet(this, "windows").hasOwnProperty(id)) {
+          var window2 = __lvosGet(this, "windows")[id];
+          if (window2)
+            state[id] = window2.getState();
+        }
       return state;
     }
   },
@@ -1186,13 +1187,14 @@ WindowManager.prototype.loadState = function(dialog) {
       this.updateTopZ(__lvosGet(dialog, "z"));
     } else {
       for (var id in windowStates)
-        try {
-          var dialog = __lvosGet(this, "windows")[id];
-          if (dialog && windowStates[id])
-            dialog.loadState(windowStates[id]);
-        } catch (ex) {
-          console.log(ex);
-        }
+        if (windowStates.hasOwnProperty(id))
+          try {
+            var dialog = __lvosGet(this, "windows")[id];
+            if (dialog && windowStates[id])
+              dialog.loadState(windowStates[id]);
+          } catch (ex) {
+            console.log(ex);
+          }
       this.updateTopZ();
     }
   } catch (exception) {
@@ -1771,15 +1773,16 @@ WindowManager.prototype.reflowSnapGroup = function(section) {
     if (memberTile && __lvosGet(memberTile, "id"))
       members[__lvosGet(memberTile, "id")] = true;
   }
-  for (var id in __lvosGet(this, "windows")) {
-    var dialog = __lvosGet(this, "windows")[id];
-    if (!dialog || !dialog.target || members[id])
-      continue;
-    if (this.getSnapContainer(dialog) !== section)
-      continue;
-    dialog.target.style.removeProperty("flex");
-    dialog.target.style.removeProperty("order");
-  }
+  for (var id in __lvosGet(this, "windows"))
+    if (__lvosGet(this, "windows").hasOwnProperty(id)) {
+      var dialog = __lvosGet(this, "windows")[id];
+      if (!dialog || !dialog.target || members[id])
+        continue;
+      if (this.getSnapContainer(dialog) !== section)
+        continue;
+      dialog.target.style.removeProperty("flex");
+      dialog.target.style.removeProperty("order");
+    }
   var areaWidth = this.snapWidth(section);
   var areaHeight = this.snapHeight(section);
   var remaining = 1;
@@ -5285,7 +5288,8 @@ function setBorderSize(size) {
   settings.set("borderSize", size);
   if (typeof windowManager !== "undefined" && __lvosGet(windowManager, "windows")) {
     for (var index in __lvosGet(windowManager, "windows"))
-      __lvosSet(__lvosGet(windowManager, "windows")[index], "borderSize", size);
+      if (__lvosGet(windowManager, "windows").hasOwnProperty(index))
+        __lvosSet(__lvosGet(windowManager, "windows")[index], "borderSize", size);
   }
 }
 function hexToRGB(hex) {
@@ -5309,16 +5313,17 @@ function setColor(color) {
   var isWhite = isColorDark(color);
   if (!("windowManager" in window))
     return;
-  for (var index in __lvosGet(windowManager, "windows")) {
-    var dialog = __lvosGet(windowManager, "windows")[index];
-    if (!dialog || !dialog.target)
-      continue;
-    var content = dialog.target.getElementsByTagName("content")[0];
-    if (!(content instanceof HTMLElement))
-      continue;
-    content.style.backgroundColor = color;
-    content.style.color = isWhite ? "white" : "black";
-  }
+  for (var index in __lvosGet(windowManager, "windows"))
+    if (__lvosGet(windowManager, "windows").hasOwnProperty(index)) {
+      var dialog = __lvosGet(windowManager, "windows")[index];
+      if (!dialog || !dialog.target)
+        continue;
+      var content = dialog.target.getElementsByTagName("content")[0];
+      if (!(content instanceof HTMLElement))
+        continue;
+      content.style.backgroundColor = color;
+      content.style.color = isWhite ? "white" : "black";
+    }
   if (window.metaThemeColor)
     window.metaThemeColor.setAttribute("content", color);
 }

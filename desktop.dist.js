@@ -887,7 +887,7 @@ Object.defineProperties(WindowManager.prototype, {
   state: {
     get: function() {
       var state = {};
-      for (var id in this.windows) {
+      for (var id in this.windows) if (this.windows.hasOwnProperty(id)) {
         var window2 = this.windows[id];
         if (window2) state[id] = window2.getState();
       }
@@ -934,7 +934,7 @@ WindowManager.prototype.loadState = function(dialog) {
       dialog.loadState(windowStates[dialog.id]);
       this.updateTopZ(dialog.z);
     } else {
-      for (var id in windowStates) try {
+      for (var id in windowStates) if (windowStates.hasOwnProperty(id)) try {
         var dialog = this.windows[id];
         if (dialog && windowStates[id]) dialog.loadState(windowStates[id]);
       } catch (ex) {
@@ -1452,7 +1452,7 @@ WindowManager.prototype.reflowSnapGroup = function(section) {
     var memberTile = tiles[m];
     if (memberTile && memberTile.id) members[memberTile.id] = true;
   }
-  for (var id in this.windows) {
+  for (var id in this.windows) if (this.windows.hasOwnProperty(id)) {
     var dialog = this.windows[id];
     if (!dialog || !dialog.target || members[id]) continue;
     if (this.getSnapContainer(dialog) !== section) continue;
@@ -4753,7 +4753,7 @@ function toggleSquircles(enabled) {
 function setBorderSize(size) {
   settings.set("borderSize", size);
   if (typeof windowManager !== "undefined" && windowManager.windows) {
-    for (var index in windowManager.windows) windowManager.windows[index].borderSize = size;
+    for (var index in windowManager.windows) if (windowManager.windows.hasOwnProperty(index)) windowManager.windows[index].borderSize = size;
   }
 }
 function hexToRGB(hex) {
@@ -4772,7 +4772,7 @@ function setColor(color) {
   settings.set("color", elements.color.value = color);
   var isWhite = isColorDark(color);
   if (!("windowManager" in window)) return;
-  for (var index in windowManager.windows) {
+  for (var index in windowManager.windows) if (windowManager.windows.hasOwnProperty(index)) {
     var dialog = windowManager.windows[index];
     if (!dialog || !dialog.target) continue;
     var content = dialog.target.getElementsByTagName("content")[0];
