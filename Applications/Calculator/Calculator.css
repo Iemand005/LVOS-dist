@@ -1,0 +1,99 @@
+
+html, body {
+    margin:0;
+    height:100%;
+    background: transparent;
+}
+
+body > table {
+    border-collapse: collapse;
+}
+
+table {
+    width: 100%;
+    height: 100%;
+    border-collapse: separate;
+    table-layout: fixed;
+}
+
+.keys table {
+    
+    border-spacing: 6px;
+}
+
+/* display row stays minimal */
+
+
+/* display */
+input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 32px;
+    text-align: right;
+    border-radius: 5px;
+}
+
+/* buttonpad cells */
+table button {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+tr {
+    height: 20%;
+}
+
+table {
+    width: 100%;
+    height: 100%;
+    /* border-collapse: collapse; */
+}
+
+td {
+    padding: 0;
+    height: 20%;
+    cursor: pointer;
+}
+
+td button {
+    width: 100%;
+    height: 100%;
+    /* border: 0; */
+    background: transparent;
+}
+
+#displayRow, #displayRow td {
+    height: 1px;
+    padding: 0;
+}
+
+#displayRow td {
+    padding: 6px;
+    padding-bottom: 0;
+}
+
+.keys {
+    height: 100%;
+    padding: 0;
+}
+
+.keys table {
+    width: 100%;
+    height: 100%;
+}
+
+.keys td {
+    padding: 0;
+}
+
+.keys button {
+    width: 100%;
+    height: 100%;
+    /* border:1px solid black; */
+}
+
+button, input {
+    backdrop-filter: unset !important;
+}
