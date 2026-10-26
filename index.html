@@ -27,18 +27,11 @@
 
 	<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-	<link rel="shortcut icon" href="/favicon.ico" />
+	<link rel="shortcut icon" href="favicon.ico" />
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 	<meta name="apple-mobile-web-app-title" content="VulpOS" />
 
-	
-	
-	
-	
-	
-	
-	
-	
+	 <!-- No `defer`: IE11 runs deferred scripts *after* every blocking script below, so the polyfills have to execute first. -->
 	
 	
 	
@@ -50,9 +43,20 @@
 	
 	
 	
+		
+	
+	
+	<!-- Extensions -->
+	
+	
+	 <!-- The extensions of the window manager. Loaded after the window manager, which they register themselves with. -->
+	<!-- For screenshotting -->
 	
 	
 	
+	
+	
+	<!--  -->
 
 	<!-- Open Graph / Social embed info (Discord, Facebook, WhatsApp...) -->
 	<meta property="og:type" content="website" />
@@ -63,6 +67,10 @@
 	<meta property="og:image" content="https://iemand005.github.io/LVOS/icon-512.png" />
 	<meta property="og:image:alt" content="VulpOS - Lasses Virtual Operating System" />
 	<meta property="og:locale" content="en_US" />
+
+	<!--[if lt IE 1]>
+	
+	<![endif]-->
 
 	<!-- Twitter / X card -->
 	<meta name="twitter:card" content="summary" />
@@ -76,11 +84,17 @@
 	<!-- Structured data for search engines -->
 	
 
+<script nomodule src="./Scripts/LegacyPolyfills.js"></script>
 <script src="./desktop.dist.js" defer></script>
+<script src="./Scripts/WebGraphics/Graphics.js" defer></script>
+<script src="./Scripts/WebGraphics/Graphics3D.js" defer></script>
+<script src="./Scripts/WebGraphics/HTMLInCanvas.js" defer></script>
+<script src="./Scripts/WebGraphics/ScreenShooter.js" defer></script>
+<script src="./Scripts/Extensions/Mica.js" defer></script>
 </head>
 <!-- <body class="blur gnome"> -->
 <!-- <body class="gradient"> -->
-<body class="modern windows gnome desktop">
+<body class="modern windows gnome desktop exposé">
 	<header><h1>VulpOS - Lasses Virtual Operating System</h1></header>
 	<section class="seo-description" aria-label="About VulpOS">
 		<h2>Welcome to VulpOS, Virtual Operating System</h2>
@@ -93,8 +107,7 @@
 		</section>
 	</noscript>
 	<main>
-
-        <section id="desktop">
+		<section id="desktop">
 			<div id="desktop-area">
 				<section id="window-section">
 					<!-- <iframe src="./Applications/FrostedColours/index.html" id="wallpaper" frameborder="0"></iframe> -->
@@ -129,7 +142,7 @@
 									<!-- This is the client area! Here the application itself should be placed. -->
 								</article><!-- Adding a wrapper aound this allows the corners inside the window to be rounded too, in a similar way done on Windows 11. We can do it without wrapping with overflow hidden but that results in the scroll bars being rendered over top which looks ugly. Rounded corners also appear to break the experimental blur support on EdgeHTML 18 when a scrollbar appears as the blur layer then gets rendered to the screen after the border causing it to show a jagged inside lining of the quarter circle. I can't find any mentions of the bug online as it's a weird edge case (pun intended). Turns out, Edge Legacy is not the only browser that has problems here. Chrome has a very similar bug but it disappears upon resize (tested in Chrome 118), that would mean Edge Chromium, Opera, Brave and all other Chromium browsers likely have this weird effect too. I will thus not be implementing this! -->
 								<!-- This is the non-client area! -->
-							</content><!-- This unnecessary wrapping that is only here for EdgeHTML and WebView 1 compatibility. -->
+							</content><!-- This necessary wrapping that is only here for many uses. -->
 							<span class="backdrop-clip">
 								<div class="backdrop-filter"></div>
 							</span>
@@ -160,7 +173,6 @@
 					</section>
 					<div id="dock-area">
 						<section id="dock">
-							<section id="reflection"></section>
 						</section>
 						<section id="dockapplist"></section>
 					</div>
@@ -208,8 +220,6 @@
                 <input type="url" name="install-app-url" id="install-app-url" placeholder="https://example.com" autocomplete="off">
                 <button type="button" id="install-app-button">Install</button>
                 <button type="button" id="install-app-proxied-button">Install proxied</button>
-                <label for="blurtoggle">Blur: <input type="checkbox" id="blurtoggle" value="toggleblur"></label>
-                <label for="reflectiontoggle">Reflections: <input type="checkbox" id="reflectiontoggle" value="togglereflections"></label>
                 <label for="wallpaper-select">Wallpaper: </label>
                 <select name="wallpaper" id="wallpaper-select">
                     <option value="">None</option>

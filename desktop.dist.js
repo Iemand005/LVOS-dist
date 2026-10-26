@@ -1,417 +1,14 @@
 "use strict";
-if (typeof HTMLElement != "undefined") {
-  if (!HTMLElement.prototype.createAttribute) HTMLElement.prototype.createAttribute = function(attribute) {
-    this.setAttribute(attribute, null);
-  };
-  if (!HTMLElement.prototype.toggleAttribute) HTMLElement.prototype.toggleAttribute = function(attribute, force) {
-    if (typeof force == "undefined" ? force = !this.hasAttribute(attribute) : force) this.createAttribute(attribute);
-    else this.removeAttribute(attribute);
-    return !force;
-  };
-}
-if (!Array.prototype.fill) Array.prototype.fill = function(value, from, to) {
-  for (var index = typeof from != "undefined" ? Number(from) : 0; index < Number(typeof to != "undefined" ? to : this.length); index++) this[index] = value;
-  return this;
-};
-if (typeof MutationObserver == "undefined") window.MutationObserver = function(callback) {
-  this.observe = function(target, options) {
-    target.addEventListener("DOMNodeInserted", callback, false);
-  };
-  this.disconnect = function(target, options) {
-  };
-  this.takeRecords = function() {
-    return [];
-  };
-};
-function CompatibilityChecker() {
-  this.checkClasses = function() {
-    try {
-      eval("class c{}");
-    } catch (e) {
-      return false;
-    }
-    return true;
-  };
-}
-if (!Object.hasOwn) Object.hasOwn = function(o, v) {
-  return o.hasOwnProperty(v);
-};
-function forEachIn(callback) {
-  for (var i in this) if (Object.hasOwn(this, i)) callback(this[i], i, this);
-}
 function forEachIndexed(callbackfn, thisArg) {
-  for (var i = 0; i < this.length; ++i) callbackfn.call(thisArg, this[i], i, this);
+  if (typeof callbackfn !== "function") throw new TypeError(callbackfn + " is not a function");
+  var length = this == null || typeof this.length !== "number" ? 0 : this.length >>> 0;
+  for (var i = 0; i < length; ++i) callbackfn.call(thisArg, this[i], i, this);
 }
-if (!Array.prototype.forEach) Array.prototype.forEach = forEachIndexed;
-if (!NodeList.prototype.forEach) NodeList.prototype.forEach = forEachIndexed;
-if (!Object.defineProperty) {
-  Object.defineProperty = function(o, key, attributes) {
-    if (!attributes || !(o instanceof Object)) return;
-    if (attributes.get) o.__defineGetter__(key, attributes.get);
-    if (attributes.set) o.__defineSetter__(key, attributes.set);
-  };
-} else {
-  try {
-    Object.defineProperty({}, "__test__", { value: true });
-  } catch (ex) {
-    Object.defineProperty = function(o, key, attributes) {
-      if (!attributes || !(o instanceof Object)) return;
-      if ("value" in attributes) o[key] = attributes.value;
-    };
-  }
-}
-if (!document.querySelectorAll) document.querySelectorAll = function(selector) {
-  return document.getElementsByTagName(selector);
-};
-if (!document.querySelector) document.querySelector = function(selector) {
-  return document.querySelectorAll(selector)[0];
-};
-function getElementsByClassName() {
-  return function(className) {
-    var results = [];
-    var all = this.getElementsByTagName("*");
-    var pattern = new RegExp("(^|\\s)" + className + "(\\s|$)");
-    for (var i = 0; i < all.length; i++) {
-      if (pattern.test(all[i].className)) results.push(all[i]);
-    }
-    return results;
-  };
-}
-if (typeof document != "undefined" && !document.getElementsByClassName) {
-  document.getElementsByClassName = getElementsByClassName();
-}
-if (typeof Document != "undefined" && Document.prototype && !Document.prototype.getElementsByClassName) {
-  Document.prototype.getElementsByClassName = getElementsByClassName();
-}
-if (typeof Element != "undefined" && !Element.prototype.getElementsByClassName) {
-  Element.prototype.getElementsByClassName = function(className) {
-    var results = [];
-    var all = this.getElementsByTagName("*");
-    var pattern = new RegExp("(^|\\s)" + className + "(\\s|$)");
-    for (var i = 0; i < all.length; i++) {
-      if (pattern.test(all[i].className)) results.push(all[i]);
-    }
-    return results;
-  };
-}
-if (!Function.prototype.bind) Function.prototype.bind = function(thisArg) {
-  var fn = this;
-  var slice = Array.prototype.slice;
-  var args = slice.call(arguments, 1);
-  return function() {
-    var finalArgs = args.concat(slice.call(arguments));
-    return fn.apply(thisArg, finalArgs);
-  };
-};
-if (typeof console == "undefined") {
-  console = {
-    log: function(message) {
-    },
-    warn: function(message) {
-    },
-    error: function(message) {
-      alert("Error: " + message);
-    }
-  };
-}
-if (typeof HTMLElement != "undefined" && !("classList" in document.documentElement)) {
-  Object.defineProperty(HTMLElement.prototype, "classList", {
-    get: function() {
-      var self2 = this;
-      function getClassesArray() {
-        return self2.className.split(" ").filter(function(value) {
-          return value.length > 0;
-        });
-      }
-      var api = {
-        add: function(className) {
-          if (!api.contains(className)) {
-            self2.className += (self2.className ? " " : "") + className;
-          }
-        },
-        remove: function(className) {
-          var reg = new RegExp("(\\s|^)" + className + "(\\s|$)");
-          self2.className = self2.className.replace(reg, " ").replace(/^\s+|\s+$/g, "");
-        },
-        contains: function(className) {
-          return new RegExp("(\\s|^)" + className + "(\\s|$)").test(self2.className);
-        },
-        toggle: function(className) {
-          if (api.contains(className)) {
-            api.remove(className);
-          } else {
-            api.add(className);
-          }
-        }
-      };
-      Object.defineProperty(api, "length", {
-        get: function() {
-          return getClassesArray().length;
-        },
-        configurable: true,
-        enumerable: true
-      });
-      return api;
-    },
-    configurable: true,
-    enumerable: true
-  });
-}
-Object.defineProperty(Object.prototype, "forEach", { value: forEachIndexed });
-if (!Array.prototype.find) NodeList.prototype.find = Array.prototype.find = find;
-function find(callback) {
-  for (var index in this) if (this.hasOwnProperty(index) && callback(this[index], index, this)) return this[index];
-}
-if (typeof Document != "undefined" && Document.prototype && !Document.prototype.elementsFromPoint) {
-  Document.prototype.elementsFromPoint = Document.prototype.msElementsFromPoint || function(x, y) {
-    return this.msElementsFromPoint ? this.msElementsFromPoint(x, y) : [];
-  };
-}
-if (!navigator.getUserMedia) navigator.getUserMedia = navigator.webkitGetUserMedia;
-if (!String.prototype.repeat) String.prototype.repeat = function(e) {
-  if (typeof this == "undefined") throw new TypeError("String.prototype.repeat called on null or undefined");
-  var result = "";
-  for (var i = 0; i < e; i++) result += this;
-  return result;
-};
-if (typeof URLSearchParams == "undefined") {
-  window.URLSearchParams = function(search) {
-    var items = search.replace("?", "").split("&");
-    this._data = /* @__PURE__ */ new Map();
-    var self2 = this;
-    items.forEach(function(item) {
-      var kv = item.split("=");
-      if (kv.length != 2) return;
-      var key = kv[0];
-      var value = kv[1];
-      self2._data.set(key, value);
-    });
-  };
-  URLSearchParams.prototype.get = function(key) {
-    return this._data.get(key);
-  };
-  Object.defineProperty(URLSearchParams.prototype, "size", { get: function() {
-    return this._data.size;
-  } });
-}
-if (!document.elementsFromPoint) document.elementsFromPoint = function(point) {
-  console.log("Point", point);
-};
-if (typeof Array.from != "function") {
-  var arrayFromPolyfill = function(arrayLike) {
-    var newArray = [];
-    if (!arrayLike || typeof arrayLike.length != "number") return newArray;
-    for (var i = 0; i < arrayLike.length; i++) newArray.push(arrayLike[i]);
-    return newArray;
-  };
-  Array.from = arrayFromPolyfill;
-  try {
-    Object.defineProperty(Array, "from", {
-      value: arrayFromPolyfill,
-      configurable: true,
-      writable: true
-    });
-  } catch (ex) {
-    Array.from = arrayFromPolyfill;
-  }
-}
-(function() {
-  var lastTime = 0;
-  if (!window.requestAnimationFrame) window.requestAnimationFrame = function(callback, element) {
-    var currTime = (/* @__PURE__ */ new Date()).getTime();
-    var fps = 60;
-    var timeToCall = Math.max(0, 1e3 / fps - (currTime - lastTime));
-    var id = window.setTimeout(function() {
-      callback(currTime + timeToCall);
-    }, timeToCall);
-    lastTime = currTime + timeToCall;
-    return id;
-  };
-})();
-(function() {
-  if (typeof window.Promise == "function")
-    return;
-  var PENDING = 0;
-  var FULFILLED = 1;
-  var REJECTED = 2;
-  function ES3Promise(executor) {
-    if (typeof executor != "function") {
-      throw new TypeError("Promise resolver is geen functie");
-    }
-    var self2 = this;
-    self2._state = PENDING;
-    self2._value = void 0;
-    self2._deferreds = [];
-    function resolve(newValue) {
-      try {
-        if (newValue && (typeof newValue == "object" || typeof newValue == "function")) {
-          var then2 = newValue.then;
-          if (typeof then2 == "function") {
-            then2.call(newValue, resolve, reject);
-            return;
-          }
-        }
-        if (self2._state !== PENDING) return;
-        self2._state = FULFILLED;
-        self2._value = newValue;
-        self2._handleDeferreds();
-      } catch (e) {
-        reject(e);
-      }
-    }
-    function reject(reason) {
-      if (self2._state !== PENDING) return;
-      self2._state = REJECTED;
-      self2._value = reason;
-      self2._handleDeferreds();
-    }
-    try {
-      executor(resolve, reject);
-    } catch (err) {
-      reject(err);
-    }
-  }
-  ES3Promise.prototype._handleDeferreds = function() {
-    var self2 = this;
-    if (self2._state === PENDING) return;
-    setTimeout(function() {
-      while (self2._deferreds.length > 0) {
-        var deferred = self2._deferreds.shift();
-        var callback = self2._state === FULFILLED ? deferred.onFulfilled : deferred.onRejected;
-        if (typeof callback != "function") {
-          if (self2._state === FULFILLED) {
-            deferred.resolve(self2._value);
-          } else {
-            deferred.reject(self2._value);
-          }
-          continue;
-        }
-        try {
-          var ret = callback(self2._value);
-          deferred.resolve(ret);
-        } catch (err) {
-          deferred.reject(err);
-        }
-      }
-    }, 0);
-  };
-  ES3Promise.prototype["then"] = function(onFulfilled, onRejected) {
-    var self2 = this;
-    return new ES3Promise(function(resolve, reject) {
-      self2._deferreds.push({
-        onFulfilled,
-        onRejected,
-        resolve,
-        reject
-      });
-      self2._handleDeferreds();
-    });
-  };
-  ES3Promise.prototype["catch"] = function(onRejected) {
-    return this["then"](null, onRejected);
-  };
-  ES3Promise.resolve = function(value) {
-    return new ES3Promise(function(resolve) {
-      resolve(value);
-    });
-  };
-  ES3Promise.reject = function(reason) {
-    return new ES3Promise(function(resolve, reject) {
-      reject(reason);
-    });
-  };
-  window.Promise = ES3Promise;
-})();
-(function() {
-  if (window.addEventListener) return;
-  function patch(target) {
-    if (!target) return;
-    if (!target._ieListeners) {
-      target._ieListeners = [];
-    }
-    target.addEventListener = function(type, listener) {
-      var self2 = this;
-      var eventType = "on" + type;
-      var wrapped = function() {
-        var event2 = window.event;
-        if (!event2.target) {
-          event2.target = event2.srcElement;
-        }
-        if (!event2.preventDefault) {
-          event2.preventDefault = function() {
-            event2.returnValue = false;
-          };
-        }
-        if (!event2.stopPropagation) {
-          event2.stopPropagation = function() {
-            event2.cancelBubble = true;
-          };
-        }
-        if (typeof listener == "function") {
-          listener.apply(self2, [event2]);
-        } else {
-          self2._currentListener = listener;
-          self2._currentListener(event2);
-          self2._currentListener = null;
-        }
-      };
-      this._ieListeners.push({
-        type,
-        original: listener,
-        wrapped
-      });
-      this.attachEvent(eventType, wrapped);
-    };
-    target.removeEventListener = function(type, listener) {
-      var eventType = "on" + type;
-      if (!this._ieListeners) return;
-      for (var i = 0; i < this._ieListeners.length; i++) {
-        var item = this._ieListeners[i];
-        if (item.type === type && item.original === listener) {
-          this.detachEvent(eventType, item.wrapped);
-          this._ieListeners.splice(i, 1);
-          return;
-        }
-      }
-    };
-  }
-  patch(window);
-  patch(document);
-  patch(Element.prototype);
-})();
-(function() {
-  if (Element.prototype.getBoundingClientRect) {
-    return;
-  }
-  function getRect2(el) {
-    var x = 0;
-    var y = 0;
-    var w = el.offsetWidth || 0;
-    var h = el.offsetHeight || 0;
-    var node = el;
-    while (node) {
-      x += node.offsetLeft || 0;
-      y += node.offsetTop || 0;
-      node = node.offsetParent;
-    }
-    x -= document.body.scrollLeft || document.documentElement.scrollLeft || 0;
-    y -= document.body.scrollTop || document.documentElement.scrollTop || 0;
-    return {
-      left: x,
-      top: y,
-      right: x + w,
-      bottom: y + h,
-      width: w,
-      height: h
-    };
-  }
-  Element.prototype.getBoundingClientRect = function() {
-    return getRect2(this);
-  };
-})();
-if (typeof window.HTMLElement == "undefined") window.HTMLElement = Element;
-if (typeof window.HTMLTemplateElement == "undefined") window.HTMLTemplateElement = function() {
-};
+if (!Object.prototype.hasOwnProperty("forEach")) Object.defineProperty(Object.prototype, "forEach", {
+  value: forEachIndexed,
+  writable: true,
+  configurable: true
+});
 function Vector(x, y) {
   if (typeof x != "number") x = 0, y = 0;
   else if (typeof y != "number") y = x;
@@ -491,17 +88,6 @@ Rectangle.prototype = {
     return this.position.y = value;
   }
 };
-function YouTubeParser(url) {
-  this.url = url;
-}
-YouTubeParser.prototype = {
-  get embedURL() {
-    var url = new URL(this.url);
-    url.pathname = "/embed/" + url.searchParams.get("v");
-    url.searchParams.delete("v");
-    return url;
-  }
-};
 "use strict";
 function LVMessenger() {
 }
@@ -565,7 +151,7 @@ LVMessenger.registerThemeChangeHandler = function() {
   });
 };
 function Launchpad() {
-  this.launchpad = null;
+  this.element = null;
   this.list = document.createElement("ul");
   this._isMobile = true;
 }
@@ -595,7 +181,10 @@ MobileFrameManager.prototype._showFrame = function(id) {
   var keys = Object.keys(this._frames);
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
-    this._frames[key].style.display = key === id ? "block" : "none";
+    if (key) {
+      var frame = this._frames[key];
+      if (frame) frame.style.display = key === id ? "block" : "none";
+    }
   }
   this._activeId = id;
   this._container.classList.add("open");
@@ -622,26 +211,26 @@ MobileFrameManager.prototype.getActiveId = function() {
 };
 var mobileFrameManager = new MobileFrameManager();
 window.mobileFrameManager = mobileFrameManager;
-Launchpad.prototype.init = function(launchpad2) {
+Launchpad.prototype.init = function(element) {
   var closeButton = document.createElement("button");
   var self2 = this;
   closeButton.onclick = function() {
     self2.close();
   };
   closeButton.textContent = "Close";
-  launchpad2.appendChild(closeButton);
-  launchpad2.appendChild(this.list);
-  this.launchpad = launchpad2;
+  element.appendChild(closeButton);
+  element.appendChild(this.list);
+  this.element = element;
   var container = document.getElementById("main-frame");
   if (container) mobileFrameManager.init(container);
 };
 Launchpad.prototype.open = function() {
-  if (!this.launchpad) return;
-  this.launchpad.classList.add("open");
+  if (!this.element) return;
+  this.element.classList.add("open");
 };
 Launchpad.prototype.close = function() {
-  if (!this.launchpad) return;
-  this.launchpad.classList.remove("open");
+  if (!this.element) return;
+  this.element.classList.remove("open");
 };
 Launchpad.prototype._createMobileButton = function(app) {
   var title = app && app.title || "?";
@@ -662,12 +251,11 @@ Launchpad.prototype._createMobileButton = function(app) {
 };
 Launchpad.prototype.addApp = function(app) {
   var appElement = document.createElement("li");
+  var openButton;
   if ("createOpenButton" in app) {
-    var openButton = app.createOpenButton();
-    appElement.appendChild(openButton);
+    openButton = app.createOpenButton();
   } else {
-    var openButton = this._createMobileButton(app);
-    appElement.appendChild(openButton);
+    openButton = this._createMobileButton(app);
     openButton.onclick = function() {
       mobileFrameManager.open(app);
     };
@@ -675,6 +263,7 @@ Launchpad.prototype.addApp = function(app) {
     appLabel.textContent = app && app.title || "Unknown";
     appElement.appendChild(appLabel);
   }
+  appElement.appendChild(openButton);
   this.list.appendChild(appElement);
 };
 Object.defineProperty(Launchpad.prototype, "isMobile", {
@@ -731,12 +320,8 @@ AppManager.prototype.addApp = function(app) {
   }
 };
 AppManager.prototype.addApps = function() {
-  for (var i = 0; i < arguments.length; i++) {
-    var arr = arguments[i];
-    if (arr instanceof Array)
-      for (var j = 0; j < arr.length; j++)
-        this.addApp(arr[j]);
-  }
+  for (var i = 0; i < arguments.length; i++)
+    if (arguments[i] instanceof Array) arguments[i].forEach(this.addApp, this);
 };
 AppManager.prototype.getApp = function(id) {
   if (!id) return null;
@@ -746,38 +331,35 @@ AppManager.prototype.removeApp = function(id) {
   if (!id) return;
   delete this._apps[id];
 };
-AppManager.prototype.forEachApp = function(callback) {
+AppManager.prototype._forEach = function(map, callback) {
   if (typeof callback !== "function") return;
-  for (var id in this._apps)
-    if (this._apps.hasOwnProperty(id)) {
-      var app = this._apps[id];
-      if (app) callback(app, id);
-    }
+  for (var id in map)
+    if (map.hasOwnProperty(id) && map[id]) callback(map[id], id);
+};
+AppManager.prototype.forEachApp = function(callback) {
+  this._forEach(this._apps, callback);
 };
 AppManager.prototype.forEachWallpaper = function(callback) {
-  if (typeof callback !== "function") return;
-  for (var id in this._wallpapers)
-    if (this._wallpapers.hasOwnProperty(id)) {
-      var app = this._wallpapers[id];
-      if (app) callback(app, id);
-    }
+  this._forEach(this._wallpapers, callback);
 };
-Object.defineProperty(AppManager.prototype, "apps", {
-  get: function() {
-    return this._apps;
-  }
-});
-Object.defineProperty(AppManager.prototype, "installedApps", {
-  get: function() {
-    if (!hasLocalStorage) return [];
-    try {
-      var string = localStorage.getItem("installedApps");
-      if (string === null) return [];
-      var apps = JSON.parse(string);
-      return apps instanceof Array ? apps : [];
-    } catch (exception) {
-      if (exception instanceof Error) console.error(exception.message);
-      return [];
+Object.defineProperties(AppManager.prototype, {
+  apps: {
+    get: function() {
+      return this._apps;
+    }
+  },
+  installedApps: {
+    get: function() {
+      if (!hasLocalStorage) return [];
+      try {
+        var string = localStorage.getItem("installedApps");
+        if (string === null) return [];
+        var apps = JSON.parse(string);
+        return apps instanceof Array ? apps : [];
+      } catch (exception) {
+        if (exception instanceof Error) console.error(exception.message);
+        return [];
+      }
     }
   }
 });
@@ -786,9 +368,9 @@ AppManager.prototype.saveApp = function(app) {
   if (!app || typeof app !== "object" || !app.id) return;
   try {
     var apps = this.installedApps;
-    for (var i = 0; i < apps.length; i++) {
-      if (apps[i].id === app.id) return;
-    }
+    if (apps.some(function(existing) {
+      return existing.id === app.id;
+    })) return;
     apps.push(app);
     localStorage.setItem("installedApps", JSON.stringify(apps));
   } catch (exception) {
@@ -799,11 +381,9 @@ AppManager.prototype.loadApps = function() {
   if (!canSave || !hasLocalStorage) return;
   var self2 = this;
   try {
-    var apps = this.installedApps;
-    for (var i = 0; i < apps.length; i++) {
-      var app = apps[i];
+    this.installedApps.forEach(function(app) {
       if (app && app.src) self2.addApp(app);
-    }
+    });
   } catch (exception) {
     handleStorageException(exception);
   }
@@ -828,8 +408,7 @@ AppManager.prototype.setWallpaper = function(id) {
   wallpaperFrame.src = isLocal ? app.src : app.distSrc || app.src;
 };
 AppManager.prototype.openAppInIFrame = function(id, frame, onLoad2) {
-  var self2 = this;
-  let timeout = -1;
+  var timeout = -1;
   var src = null;
   frame.onload = function() {
     clearTimeout(timeout);
@@ -840,7 +419,7 @@ AppManager.prototype.openAppInIFrame = function(id, frame, onLoad2) {
   var baseUrls = [application.src, application.distSrc];
   if (!isLocal) baseUrls.reverse();
   var fallbackUrls = baseUrls.concat(application.altUrls);
-  let index = 0;
+  var index = 0;
   function tryNext() {
     var url = fallbackUrls[index++];
     if (index >= fallbackUrls.length || !frame || !url) return;
@@ -859,30 +438,30 @@ var appManager = new AppManager();
 window.appManager = appManager;
 "use strict";
 var useTransform = true, useScale = false;
-var supportsPointer = typeof window !== "undefined" && ("PointerEvent" in window || "MSPointerEvent" in window);
+var isBlink = "chrome" in window;
+var isIE = typeof window !== "undefined" && typeof document !== "undefined" && !!window.MSInputMethodContext && document.documentMode === 11;
+var supportsPointer = typeof window !== "undefined" && "PointerEvent" in window && !isIE && !("MSPointerEvent" in window);
 var supportsObjectFit = Boolean(document.documentElement && document.documentElement.style && typeof document.documentElement.style.objectFit !== "undefined");
 var supportsTransitions = false;
 var supportsTransform = false;
-var isBlink = "chrome" in window;
-var isIE = typeof window !== "undefined" && typeof document !== "undefined" && !!window.MSInputMethodContext && document.documentMode === 11;
 var isLocal = location.protocol === "file:" || location.hostname === "localhost";
 (function() {
   var style = document.createElement("div").style;
   supportsTransitions = "transition" in style || "WebkitTransition" in style || "MozTransition" in style || "OTransition" in style || "msTransition" in style;
   supportsTransform = "transform" in style || "webkitTransform" in style || "msTransform" in style || "mozTransform" in style || "OTransform" in style;
 })();
-if (supportsPointer) console.log("Supports pointer events!");
-var transitionEndEvent = "webkitTransition" in document.documentElement.style ? "webkitTransitionEnd" : "transitionend";
+var transitionEndEvent = "transition" in document.documentElement.style ? "transitionend" : "webkitTransition" in document.documentElement.style ? "webkitTransitionEnd" : "transitionend";
 if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
 var flags = {
   useSkewAnimations: false,
   aeroSnap: true,
-  updateRateLimit: isBlink,
+  updateRateLimit: true,
   useDragOverlay: true,
-  broadcastWindowMoves: true,
+  broadcastWindowMoves: !document.documentMode,
   _useTransform: useTransform,
   useAnimations: true,
+  ieDropCompatibleMode: true,
   get useTransform() {
     return this._useTransform;
   },
@@ -917,17 +496,26 @@ var flags = {
     document.body.classList.toggle("preserve-aspect", !!value);
     this._preserveMaximizeAspect = value;
   },
-  _useMica: false,
-  get useMica() {
-    return this._useMica;
-  },
-  set useMica(value) {
-    if (!windowManager) return;
-    windowManager.toggleMica(value);
-    this._useMica = value;
-  },
   windowReaper: false,
-  verboseLogs: false
+  verboseLogs: false,
+  _exposeAndDesktops: true,
+  get exposeAndDesktops() {
+    return this._exposeAndDesktops;
+  },
+  set exposeAndDesktops(value) {
+    this._exposeAndDesktops = value;
+    if (window.desktopManager && typeof window.desktopManager.setExpos\u00E9Enabled === "function")
+      window.desktopManager.setExpos\u00E9Enabled(value);
+  },
+  _enableExtensions: true,
+  get enableExtensions() {
+    return this._enableExtensions;
+  },
+  set enableExtensions(value) {
+    window.windowManager.extensions.forEach(function(ext) {
+      window.windowManager.setExtensionEnabled(ext, value);
+    });
+  }
 };
 function cancelDomEvent(event2) {
   if (typeof event2.preventDefault === "function") event2.preventDefault();
@@ -951,63 +539,44 @@ function getSiteName(url) {
   if (!name) return null;
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
-function isDialog(element) {
-  return element && element.classList && element.classList.contains("window");
-}
-function isElement(object) {
-  return object && "nodeType" in object;
-}
+Helpers.isElement = function(object) {
+  return object && "nodeType" in object || false;
+};
 function getWindowChromeHeight(window2) {
   return window2.outerHeight - window2.innerHeight;
 }
-function transformElementOld(element, x, y, skew, scaleX, scaleY, rotation) {
-  var transform = "translate(" + Math.floor(x) + "px," + Math.floor(y) + "px)";
-  if (skew) transform += " skewX(" + skew + "deg)";
-  if (scaleX === 1) scaleX = void 0;
-  if (scaleY === 1) scaleY = void 0;
-  if (scaleX && scaleY) transform += "scale(" + scaleX + "," + scaleY + ")";
-  else {
-    if (scaleX) transform += "scaleX(" + scaleX + ")";
-    if (scaleY) transform += "scaleY(" + scaleY + ")";
-  }
-  if (rotation) transform += "rotate(" + rotation + "deg)";
-  else {
-    element.style.transform = transform;
-  }
-}
+Helpers.translateElement = function(element, x, y) {
+  transformElement(element, { x, y });
+};
 function transformElement(element, t) {
   var transform = "";
-  if (t.x && t.y) transform += "translate(" + toPixels(t.x) + "," + toPixels(t.y) + ")";
-  else if (t.x) transform += "translateX(" + toPixels(t.x) + ")";
-  else if (t.y) transform += "translatey(" + toPixels(t.y) + ")";
-  if (t.skewX) transform += " skewX(" + toDegrees(t.skewX) + ")";
+  if (t.x && t.y) transform += "translate(" + Helpers.toPixels(t.x) + "," + Helpers.toPixels(t.y) + ")";
+  else if (t.x) transform += "translateX(" + Helpers.toPixels(t.x) + ")";
+  else if (t.y) transform += "translateY(" + Helpers.toPixels(t.y) + ")";
+  if (t.skewX) transform += " skewX(" + Helpers.toDegrees(t.skewX) + ")";
   if (t.scaleX === 1) t.scaleX = void 0;
   if (t.scaleY === 1) t.scaleY = void 0;
   if (t.scaleX && t.scaleY) transform += "scale(" + t.scaleX + "," + t.scaleY + ")";
   else if (t.scaleX) transform += "scaleX(" + t.scaleX + ")";
   else if (t.scaleY) transform += "scaleY(" + t.scaleY + ")";
-  if (t.rotate) transform += "rotate(" + toDegrees(t.rotate) + ")";
-  if (t.rotateX) transform += "rotateX(" + toDegrees(t.rotateX) + ")";
-  if (t.rotateY) transform += "rotateY(" + toDegrees(t.rotateY) + ")";
-  if (t.rotateZ) transform += "rotateZ(" + toDegrees(t.rotateZ) + ")";
-  element.style.transform = transform;
+  if (t.rotate) transform += "rotate(" + Helpers.toDegrees(t.rotate) + ")";
+  if (t.rotateX) transform += "rotateX(" + Helpers.toDegrees(t.rotateX) + ")";
+  if (t.rotateY) transform += "rotateY(" + Helpers.toDegrees(t.rotateY) + ")";
+  if (t.rotateZ) transform += "rotateZ(" + Helpers.toDegrees(t.rotateZ) + ")";
+  if ("msTransform" in element.style) element.style.msTransform = transform;
+  else element.style.transform = transform;
 }
 function insetElement(element, top, left, right, bottom) {
   if ("inset" in element.style)
-    if (typeof left === "undefined") element.style.inset = toPixels(top);
-    else element.style.inset = toPixels(top) + " " + toPixels(right || 0) + " " + toPixels(bottom || 0) + " " + toPixels(left);
+    if (typeof left === "undefined") element.style.inset = Helpers.toPixels(top);
+    else element.style.inset = Helpers.toPixels(top) + " " + Helpers.toPixels(right || 0) + " " + Helpers.toPixels(bottom || 0) + " " + Helpers.toPixels(left);
   else {
     if (typeof left === "undefined") left = top, right = top, bottom = top;
-    element.style.top = toPixels(top);
-    element.style.left = toPixels(left);
-    if (typeof right !== "undefined") element.style.right = toPixels(right);
-    if (typeof bottom !== "undefined") element.style.bottom = toPixels(bottom);
+    element.style.top = Helpers.toPixels(top);
+    element.style.left = Helpers.toPixels(left);
+    if (typeof right !== "undefined") element.style.right = Helpers.toPixels(right);
+    if (typeof bottom !== "undefined") element.style.bottom = Helpers.toPixels(bottom);
   }
-}
-function skewElement(element, skew) {
-  var transform = " skewX(" + toDegrees(skew) + ")";
-  element.style.transform = transform;
-  element.style.webkitTransform = transform;
 }
 function setClass(element, className, enabled) {
   var re = new RegExp("(^|\\s)" + className + "(\\s|$)");
@@ -1019,8 +588,11 @@ function setClass(element, className, enabled) {
   return element.className.indexOf(className) !== -1;
 }
 function getRect(element, index) {
-  if (!element) return null;
+  if (!element) return;
   return index ? element.getClientRects()[index] : element.getBoundingClientRect();
+}
+function getOverlay() {
+  return document.getElementById("overlay");
 }
 function messageReceived(type, data, source) {
   if (source && windowManager) {
@@ -1029,7 +601,7 @@ function messageReceived(type, data, source) {
     if (type === "window-size") dialog.resizeBody(data.width, data.height);
     switch (type) {
       case "launchOverlay":
-        var overlay = bodyCrawler.getOverlay();
+        var overlay = getOverlay();
         if (!overlay) break;
         overlay.ontransitionend = function() {
           if (!dialog) return;
@@ -1041,8 +613,7 @@ function messageReceived(type, data, source) {
           }
           if (!overlay) return;
           overlay.ontransitionend = null;
-          overlay.requestFullscreen().then(function() {
-            console.log("Ok I did full screen boy");
+          if (typeof overlay.requestFullscreen === "function") overlay.requestFullscreen()["catch"](function() {
           });
           if (dialog.body) overlay.appendChild(dialog.body);
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -1050,19 +621,18 @@ function messageReceived(type, data, source) {
         overlay.classList.toggle("open");
         break;
       case "readyToLaunchOverlay":
-        var overlay1 = bodyCrawler.getOverlay();
+        var overlay1 = getOverlay();
         if (!overlay1) break;
         if (dialog.body) overlay1.appendChild(dialog.body);
         window.setTimeout(overlay1.classList.add.bind(overlay1.classList, "shown"), 500);
         break;
       case "pip":
-        dialog.moveElementIntoPipById(data.id);
+        dialog.moveElementIntoPipById(data.id, data.stylesheet);
         break;
       case "visualizers":
         dialog.messageFrame("visualizers", windowManager.getVisualizerApps());
         break;
     }
-    console.log("Received message " + type);
   }
 }
 function swapMetroBody() {
@@ -1070,7 +640,8 @@ function swapMetroBody() {
   windowManager.activeDialogToMetro();
 }
 function flip(enable) {
-  var desktop = bodyCrawler.getDesktop();
+  var desktop = document.getElementById("desktop");
+  ;
   if (!desktop) return;
   desktop.toggleAttribute("flipped", enable);
   flipHandler(desktop.classList.toggle("flipped", enable));
@@ -1086,61 +657,55 @@ var windowButtons = {
   full: 1,
   close: 2
 };
-function stringifyDialogProperties(properties) {
-  return JSON ? JSON.stringify(properties).replace(/true/g, "yes").replace(/false/g, "no").replace(/:/g, "=").replace(/[}{"]/g, "") : "No JSON!";
+function Helpers() {
+  this.ok = false;
 }
-function getViewBoxPosition() {
+Helpers.stringifyWindowOpenProperties = function(properties) {
+  return JSON.stringify(properties).replace(/true/g, "yes").replace(/false/g, "no").replace(/:/g, "=").replace(/[}{"]/g, "");
+};
+Helpers.getViewBoxPosition = function() {
   return { x: window.screenLeft, y: window.screenTop };
-}
-function toPixels(value) {
-  return Math.round(value) + "px";
-}
-function toPercent(value) {
-  return Math.round(value * 100) + "%";
-}
-function toDegrees(value) {
+};
+Helpers.toPixels = function(value) {
+  return Math.round(value || 0) + "px";
+};
+Helpers.toDegrees = function(value) {
   return Math.round(value) + "deg";
-}
-function pixelsToCentimeters(pixels) {
+};
+Helpers.pixelsToCentimeters = function(pixels) {
   return pixels * 2.54 / 96 * (window.devicePixelRatio || 1);
-}
-function fromPixels(text) {
+};
+Helpers.fromPixels = function(text) {
   if (text !== null) try {
     return typeof text === "number" ? text : parseInt(text.replace("px", ""));
   } catch (ex) {
     console.warn("Failed to parse pixels:", ex);
   }
   return 0;
-}
+};
 function handleStorageException(exception) {
-  console.error(exception);
-  console.warn("A problem occurred, window state saving has been disabled for this session! The stored window state will be reset in an attempt to recover from this issue.");
-  console.log("If you wish to save the window state before reset, copy this and put it somewhere else:", localStorage.windowState);
   localStorage.windowState = null;
   windowManager.canSave = false;
+  console.warn(exception);
 }
 function getDialogTemplate() {
   var template = document.querySelector("template") || document.getElementById("window-template");
-  if (!template) return void console.warn("Couldn't find template!");
+  if (!template) return;
   var content = template;
   if (template instanceof HTMLTemplateElement) return template.content.children[0];
-  return content.children ? content.children[0] : content.getElementsByClassName("window")[0];
+  return content.children[0];
 }
-function createDialog() {
-  var container = bodyCrawler.getDialogsContainer();
+function createDialogElement() {
   var template = getDialogTemplate();
-  if (!template) return null;
-  var clone = template.cloneNode(true);
-  if (container && clone instanceof Element) {
-    var dialogElement = container.appendChild(removeComments(clone));
-    if (isElement(dialogElement)) return dialogElement;
-  }
-  return null;
+  if (!template) throw new Error("Can't find dialog template!");
+  var clone = removeComments(template.cloneNode(true));
+  if (!(clone instanceof HTMLElement)) throw new Error("Cloned dialog is not an element");
+  return clone;
 }
 function removeComments(element) {
   element.childNodes.forEach(function(child) {
     if (child.nodeName === "#comment") element.removeChild(child);
-    else if (isElement(child)) removeComments(child);
+    else if (Helpers.isElement(child)) removeComments(child);
   });
   return element;
 }
@@ -1155,7 +720,7 @@ function flipElement(element, onToggled, thisArg) {
   var scaleX = last.width ? first.width / last.width : 1;
   var scaleY = last.height ? first.height / last.height : 1;
   element.style.transformOrigin = "top left";
-  element.style.translate = toPixels(dx) + " " + toPixels(dy);
+  element.style.translate = Helpers.toPixels(dx) + " " + Helpers.toPixels(dy);
   element.style.scale = scaleX + " " + scaleY;
   void element.offsetWidth;
   element.style.transition = previousTransition;
@@ -1199,7 +764,7 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
     callEnd();
     return;
   }
-  state.timer = timeout && setTimeout(callEnd, timeout);
+  state.timer = timeout && setTimeout(callEnd, timeout) || 0;
   if (supportsTransitions) {
     if (flip2) {
       flipElement(element, onToggled, boundContext);
@@ -1209,7 +774,6 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       if (typeof onTransitionEnd === "string") {
         if (event2.propertyName !== onTransitionEnd) return;
       } else if (!onTransitionEnd(event2.propertyName)) return;
-      console.log("Aborting animation over " + event2.propertyName + ". Took: ", event2.elapsedTime, "seconds. Reported by: ", event2.target);
       element.removeEventListener(transitionEndEvent, animationHandler, false);
       clearTimeout(state.timer);
       callEnd();
@@ -1228,7 +792,6 @@ function WindowManager() {
   this._windows = {};
   this._windowStates = null;
   this._isBlurEnabled = true;
-  this._isMicaEnabled = false;
   this._isWindowUpdatesEnabled = false;
   this.isDragging = false;
   this.dragAction = new DragAction();
@@ -1255,16 +818,15 @@ function WindowManager() {
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
-  this.channel = new BroadcastChannel("lvos");
+  this.channel = BroadcastChannel && new BroadcastChannel("lvos");
   this.channel.onmessage = function(ev) {
     var data = ev.data;
     if (typeof data === "string") try {
       data = JSON.parse(data);
     } catch (ex) {
-      return;
+      return console.warn(ex);
     }
     if (!data || typeof data !== "object" || typeof data.type !== "string") return;
-    if (flags.verboseLogs) console.log("Got a broadcast from another tab!", data);
     windowManager.handleBroadcast(data.type, data.data, data.id);
   };
   var self2 = this;
@@ -1275,7 +837,7 @@ function WindowManager() {
   };
   this.windowDragEvent = function(event2) {
     try {
-      if (event2 && event2.buttons === 0 && self2.isDragging) {
+      if (event2 && !event2.which && !event2.button && event2.buttons === 0 && self2.isDragging) {
         self2.disableDialogDrag();
         return;
       }
@@ -1296,78 +858,64 @@ function WindowManager() {
         });
       } else windowManager.handleWindowDrag(event2.clientX, event2.clientY, isTouch);
     } catch (ex) {
-      console.error(ex);
+      console.warn(ex);
     }
   };
   this.windowSnap = new WindowSnap();
   this.snapGroups = /* @__PURE__ */ new Map();
+  this.extensions = [];
 }
-Object.defineProperty(WindowManager.prototype, "windows", {
-  get: function() {
-    return this._windows;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "windowStates", {
-  get: function() {
-    if (!this._windowStates && localStorage)
-      try {
-        var string = localStorage.getItem("windowState");
-        if (string === null) return null;
-        this._windowStates = JSON.parse(string);
-      } catch (ex) {
-        if (ex instanceof Error) console.error(ex.message);
-      }
-    return this._windowStates;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "state", {
-  get: function() {
-    var state = {};
-    for (var id in this.windows) {
-      var window2 = this.windows[id];
-      if (window2) state[id] = window2.getState();
+Object.defineProperties(WindowManager.prototype, {
+  windows: {
+    get: function() {
+      return this._windows;
     }
-    return state;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "isBlurEnabled", {
-  get: function() {
-    return this._isBlurEnabled;
   },
-  set: function(value) {
-    if (typeof value === "boolean") this._isBlurEnabled = value;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "isMicaEnabled", {
-  get: function() {
-    return this._isMicaEnabled;
+  windowStates: {
+    get: function() {
+      if (!this._windowStates && localStorage)
+        try {
+          var string = localStorage.getItem("windowState");
+          if (string === null) return null;
+          this._windowStates = JSON.parse(string);
+        } catch (ex) {
+          console.log(ex);
+        }
+      return this._windowStates;
+    }
   },
-  set: function(value) {
-    if (typeof value !== "boolean") return;
-    document.body.classList.toggle("mica", value);
-    windowManager.forEachWindow(function(window2) {
-      window2.mica = value;
-    });
-    this._isMicaEnabled = value;
-  }
-});
-Object.defineProperty(WindowManager.prototype, "isWindowUpdatesEnabled", {
-  /**
-     * @this {WindowManager}
-     */
-  get: function() {
-    return this._isWindowUpdatesEnabled;
+  state: {
+    get: function() {
+      var state = {};
+      for (var id in this.windows) if (this.windows.hasOwnProperty(id)) {
+        var window2 = this.windows[id];
+        if (window2) state[id] = window2.getState();
+      }
+      return state;
+    }
   },
-  set: function(value) {
-    if (value) window.addEventListener("resize", this.resizeHandler, false);
-    else window.removeEventListener("resize", this.resizeHandler, false);
-    this._isWindowUpdatesEnabled = value;
+  isBlurEnabled: {
+    get: function() {
+      return this._isBlurEnabled;
+    },
+    set: function(value) {
+      if (typeof value === "boolean") this._isBlurEnabled = value;
+    }
+  },
+  isWindowUpdatesEnabled: {
+    get: function() {
+      return this._isWindowUpdatesEnabled;
+    },
+    set: function(value) {
+      if (value) window.addEventListener("resize", this.resizeHandler, false);
+      else window.removeEventListener("resize", this.resizeHandler, false);
+      this._isWindowUpdatesEnabled = value;
+    }
   }
 });
 WindowManager.prototype.saveState = function() {
   if (!this.loaded) return;
   if (window.top !== window.self) return;
-  if (flags.verboseLogs) console.log("Saving window state.");
   try {
     if (this.canSave && typeof localStorage !== "undefined")
       localStorage.setItem("windowState", JSON.stringify(this.state));
@@ -1376,34 +924,22 @@ WindowManager.prototype.saveState = function() {
   }
 };
 WindowManager.prototype.loadState = function(dialog) {
-  console.log("Loading window state.");
-  if (!this.canSave) {
-    console.log("Storage access is disabled for this session!");
-    return;
-  }
+  if (!this.canSave) return;
   try {
-    if (!localStorage) return;
+    if (!("localStorage" in window)) return;
     var windowStates = this.windowStates;
-    if (!windowStates) {
-      this.loaded = true;
-      return;
-    }
     this.loaded = true;
+    if (!windowStates) return;
     if (dialog && dialog.id) {
       dialog.loadState(windowStates[dialog.id]);
       this.updateTopZ(dialog.z);
     } else {
-      var fails = [];
-      for (var id in windowStates) try {
-        var window2 = this.windows[id];
-        if (window2 && windowStates[id])
-          window2.loadState(windowStates[id]);
+      for (var id in windowStates) if (windowStates.hasOwnProperty(id)) try {
+        var dialog = this.windows[id];
+        if (dialog && windowStates[id]) dialog.loadState(windowStates[id]);
       } catch (ex) {
-        fails.push(ex);
+        console.log(ex);
       }
-      fails.forEach(function(fail) {
-        console.error("Failed to load a window.", fail);
-      });
       this.updateTopZ();
     }
   } catch (exception) {
@@ -1416,11 +952,6 @@ WindowManager.prototype.forEachWindow = function(callback) {
     if (dialog) callback(dialog, id);
   }
 };
-WindowManager.prototype.killAll = function() {
-  this.forEachWindow(function(dialog) {
-    dialog.kill();
-  });
-};
 WindowManager.prototype.synchronizeStates = function() {
   this.forEachWindow(function(dialog) {
     dialog.reportState();
@@ -1429,11 +960,28 @@ WindowManager.prototype.synchronizeStates = function() {
 WindowManager.prototype.loadApp = function(app) {
   try {
     var dialog = new Dialog(app);
-    dialog.mica = this.isMicaEnabled || false;
     this._windows[app.id] = dialog;
     if (!(app instanceof HTMLElement)) appManager.addApp(app);
+    return dialog;
   } catch (ex) {
     console.warn("App load failed", ex);
+    return null;
+  }
+};
+WindowManager.prototype.spawnApp = function(application) {
+  if (!application || !application.id) return null;
+  var id = application.id, n = 1;
+  while (this._windows[id]) id = application.id + "#" + ++n;
+  var instance = {};
+  for (var key in application) if (application.hasOwnProperty(key)) instance[key] = application[key];
+  instance.id = id;
+  try {
+    var dialog = new Dialog(instance);
+    this._windows[id] = dialog;
+    return dialog;
+  } catch (ex) {
+    console.warn("App spawn failed", ex);
+    return null;
   }
 };
 WindowManager.prototype.installApp = function(url, title, id, iconUrl) {
@@ -1454,8 +1002,8 @@ Object.defineProperty(WindowManager.prototype, "installedApps", {
       if (string === null) return [];
       var apps = JSON.parse(string);
       return apps instanceof Array ? apps : [];
-    } catch (exception) {
-      if (exception instanceof Error) console.error(exception.message);
+    } catch (ex) {
+      console.log(ex);
       return [];
     }
   }
@@ -1488,38 +1036,25 @@ WindowManager.prototype.installAppProxied = function(url, proxyUrl) {
 };
 WindowManager.prototype.dropApplication = function(application, x, y, offset, state) {
   if (!application || !application.id) return null;
-  var dialog = this.windows[application.id];
-  if (!dialog) {
-    this.loadApp(application);
+  var dialog;
+  if (application.multiple) {
+    dialog = this.spawnApp(application);
+  } else {
     dialog = this.windows[application.id];
-  }
-  if (!dialog) return null;
-  dialog.loadState(state || {});
-  dialog.launch();
-  dialog.setZ();
-  if (typeof x === "number" && typeof y === "number") {
-    var grabX = offset ? offset.x : 0;
-    var grabY = offset ? offset.y : 0;
-    dialog.moveToCenter(x - grabX, y - grabY);
-  }
-  if (dialog.target) {
-    try {
-      dialog.resize();
-      if (typeof dialog.update === "function") dialog.update();
-      if (typeof dialog.syncGeometry === "function") dialog.syncGeometry();
-      var rect = getRect(dialog.target);
-      if (rect) {
-        var bw = rect.width, bh = rect.height;
-        if (Math.abs(bw - dialog.width) > 1 || Math.abs(bh - dialog.height) > 1) {
-          dialog._width = bw;
-          dialog._height = bh;
-          if (typeof dialog.broadcastState === "function") dialog.broadcastState({ width: bw, height: bh });
-        }
-      }
-      dialog.resize();
-    } catch (exception) {
+    if (!dialog) {
+      this.loadApp(application);
+      dialog = this.windows[application.id];
     }
   }
+  if (!dialog) return null;
+  dialog.target.classList.remove("animating");
+  if (typeof x === "number" && typeof y === "number")
+    dialog.moveCenterTo(x - (offset ? offset.x : 0), y - (offset ? offset.y : 0), false);
+  void dialog.target.offsetLeft;
+  if (!state) state = {};
+  state.x = dialog.x;
+  state.y = dialog.y;
+  dialog.loadState(state || {});
   return dialog;
 };
 WindowManager.prototype.toggleDragging = function(enabled) {
@@ -1538,13 +1073,6 @@ WindowManager.prototype.injectApplications = function() {
     arguments[i].forEach(windowManager.loadApp, windowManager);
   windowManager.loadState();
 };
-WindowManager.prototype.closeApp = function(appId) {
-  var window2 = windowManager.windows[appId];
-  if (window2) window2.kill();
-};
-WindowManager.prototype.toggleMica = function(enabled) {
-  this.isMicaEnabled = typeof enabled === "undefined" ? enabled : !this.isMicaEnabled;
-};
 WindowManager.windowBoundsInset = { top: 0, left: -100, right: -100, bottom: -100 };
 WindowManager._windowBounds = { top: 0, left: 0, right: 0, bottom: 0 };
 WindowManager.recalculateWindowBounds = function() {
@@ -1554,8 +1082,6 @@ WindowManager.recalculateWindowBounds = function() {
   WindowManager._windowBounds.right = inset.right !== null ? window.innerWidth - inset.right : Infinity;
   WindowManager._windowBounds.bottom = inset.bottom !== null ? window.innerHeight - inset.bottom : Infinity;
 };
-window.addEventListener("resize", WindowManager.recalculateWindowBounds, false);
-window.addEventListener("load", WindowManager.recalculateWindowBounds, false);
 Object.defineProperty(WindowManager, "windowBounds", {
   get: function() {
     return WindowManager._windowBounds;
@@ -1564,7 +1090,7 @@ Object.defineProperty(WindowManager, "windowBounds", {
 WindowManager.prototype.focusDialog = function(dialog) {
   if (this.focusedDialog !== null && this.focusedDialog.target)
     this.focusedDialog.target.removeAttribute("focus");
-  if (dialog.target) dialog.target.setAttribute("focus", String(true));
+  dialog.target.setAttribute("focus", String(true));
   this.focusedDialog = dialog;
 };
 WindowManager.prototype.activeDialogToMetro = function() {
@@ -1576,22 +1102,31 @@ WindowManager.prototype.initializeDialogs = function() {
     self2.disableDialogDrag();
   };
   var event2 = supportsPointer ? "pointerup" : "mouseup";
-  document.addEventListener(event2, stop, false);
-  window.addEventListener(event2, stop, false);
+  if (typeof document !== "undefined") document.addEventListener(event2, stop, false);
+  if (typeof window !== "undefined") window.addEventListener(event2, stop, false);
+  if (!supportsPointer && typeof document !== "undefined") {
+    document.addEventListener("mouseup", stop, false);
+  }
+  if (!supportsPointer && typeof window !== "undefined") {
+    window.addEventListener("mouseup", stop, false);
+  }
   this.dragAction.set(0);
-  var dialogs = bodyCrawler.getAllDialogs();
-  Array.from(dialogs).forEach(function(dialog) {
-    if (isElement(dialog))
-      self2.loadApp(dialog);
-  });
+  if (typeof document !== "undefined") {
+    var dialogs = document.getElementsByClassName("window");
+    for (var i = 0; i < dialogs.length; i++) {
+      var dialog = dialogs[i];
+      if (Helpers.isElement(dialog))
+        self2.loadApp(dialog);
+    }
+  }
   this.loadState();
-  this.windowSnap.init();
+  if (this.windowSnap && typeof this.windowSnap.init === "function") this.windowSnap.init();
 };
 WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
   try {
     var node = event2 && (event2.target || event2.srcElement);
     var isInteractive = false;
-    while (node && isElement(node) && node.nodeType === 1) {
+    while (node && Helpers.isElement(node) && node.nodeType === 1) {
       var tn = (node.tagName || "").toLowerCase();
       if (tn === "input" || tn === "textarea" || tn === "select" || tn === "button" || tn === "a" || tn === "label" || tn === "output") {
         isInteractive = true;
@@ -1607,25 +1142,25 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
       try {
         dialog.focus();
       } catch (ex) {
-        console.warn(ex);
+        console.log(ex);
       }
       return dialog;
     }
   } catch (ex) {
-    console.warn(ex);
+    console.log(ex);
   }
   cancelDomEvent(event2);
   if (window.desktopManager && window.desktopManager.isExpos\u00E9) {
     var root = document.querySelector("main");
     if (root) {
-      var section = dialog.target && dialog.target.closest ? dialog.target.closest("#window-section, .window-section") : null;
+      var section = dialog.target.closest("#window-section, .window-section");
       var origin = -1;
-      if (section) {
-        for (var i = 0; i < window.desktopManager.desktops.length; i++)
-          if (window.desktopManager.desktops[i].target === section) {
-            origin = i;
-            break;
-          }
+      if (section) for (var i = 0; i < window.desktopManager.desktops.length; i++) {
+        var desktop = window.desktopManager.desktops[i];
+        if (desktop && desktop.target === section) {
+          origin = i;
+          break;
+        }
       }
       dialog._exposeOrigin = origin >= 0 ? { index: origin, x: dialog.x, y: dialog.y } : null;
       dialog.detachToRootKeepingVisual(root);
@@ -1635,10 +1170,9 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
     try {
       event2.target.setPointerCapture(event2.pointerId);
     } catch (ex) {
-      console.warn(ex);
+      console.log(ex);
     }
   }
-  if (flags.verboseLogs) console.log("Activating window", dialog);
   this.activeDialog = dialog;
   this.isTouchDrag = event2 && "pointerType" in event2 && event2.pointerType === "touch";
   this.enableDialogDrag();
@@ -1651,6 +1185,7 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
   return dialog;
 };
 WindowManager.prototype.handleWindowDrag = function(newX, newY, isTouch) {
+  if (!this.isDragging) return;
   var dialog = this.activeDialog;
   if (!dialog || !dialog.clickOffset) return;
   if (dialog.maximized) {
@@ -1668,7 +1203,7 @@ WindowManager.prototype.handleWindowDrag = function(newX, newY, isTouch) {
     var gestureDirection = this.dragAction.direction;
     if (gestureDirection === 0) {
       if (difference.y > this.heightSnapReleaseThreshold) dialog.toggleHeightSnapped(false);
-    } else if (this.isVerticalResizeDirection(gestureDirection)) {
+    } else if (gestureDirection && this.isVerticalResizeDirection(gestureDirection)) {
       this.leaveHeightSnappedByResize(dialog);
     }
   }
@@ -1684,7 +1219,7 @@ WindowManager.prototype.handleWindowDrag = function(newX, newY, isTouch) {
   this.dragAction.execute(dialog, dialog.clickOffset, dragScale === 1 ? difference : { x: difference.x / dragScale, y: difference.y / dragScale });
   this.setPointerPosition(newX, newY);
   var snap = !(window.desktopManager && window.desktopManager.isExpos\u00E9);
-  if (snap) {
+  if (snap && this.dragAction.direction) {
     var snapZone = this.getGestureSnapZone(dialog, this.dragAction.direction, newX, newY);
     if (snapZone) {
       if (snapZone !== this._snapZone) {
@@ -1710,7 +1245,9 @@ WindowManager.prototype.updateExpos\u00E9DragScale = function(dialog, x, y) {
   var index = desktopManager.getDesktopIndexAt(x, y);
   var k = 1;
   if (index >= 0) {
-    var desktopTarget = desktopManager.desktops[index].target;
+    var desktop = desktopManager.desktops[index];
+    if (!desktop) return;
+    var desktopTarget = desktop.target;
     var area = desktopTarget.getBoundingClientRect();
     if (area.width && desktopTarget.offsetWidth) k = area.width / desktopTarget.offsetWidth;
   }
@@ -1732,7 +1269,7 @@ WindowManager.prototype.updateExpos\u00E9DragScale = function(dialog, x, y) {
   if (!rendered.width || !targetRect.width) return;
   var renderedScale = dialog._exposeVisualWidth ? rendered.width / dialog._exposeVisualWidth : k;
   if (!renderedScale) return;
-  content.style.transform = "translate(" + toPixels((x - grab.x * renderedScale - targetRect.left) / renderedScale) + "," + toPixels((y - grab.y * renderedScale - targetRect.top) / renderedScale) + ")";
+  content.style.transform = "translate(" + Helpers.toPixels((x - grab.x * renderedScale - targetRect.left) / renderedScale) + "," + Helpers.toPixels((y - grab.y * renderedScale - targetRect.top) / renderedScale) + ")";
 };
 WindowManager.prototype.getSnapZone = function(x, y, section) {
   var area = section || this.getSnapContainer();
@@ -1750,7 +1287,7 @@ WindowManager.prototype.isVerticalResizeDirection = function(direction) {
 };
 WindowManager.prototype.leaveHeightSnappedByResize = function(dialog) {
   var drawnHeight = this.snapHeight(this.getSnapContainer(dialog));
-  if (dialog.target) setClass(dialog.target, "height-snapped", false);
+  setClass(dialog.target, "height-snapped", false);
   dialog._snappingOut = false;
   dialog._snappingOutState = null;
   this._heightSnapReleased = true;
@@ -1851,7 +1388,7 @@ WindowManager.prototype.fitSnapGaps = function(section, tiles, side) {
   var dialog = this.windows[firstTile.id];
   if (!side && dialog && dialog.target) {
     var rect = dialog.target.getBoundingClientRect();
-    var origin = section ? section.getBoundingClientRect() : rect;
+    var origin = section.getBoundingClientRect();
     side = rect.left - origin.left <= origin.width / 2 ? "left" : "right";
   }
   tiles.splice(side === "right" ? 0 : 1, 0, { gap: true, width: this.snapGapWidth });
@@ -1899,7 +1436,6 @@ WindowManager.prototype.getSnapSpacer = function(section) {
   return group.spacer;
 };
 WindowManager.prototype.reflowSnapGroup = function(section) {
-  if (!section) return;
   var group = this.getSnapGroup(section);
   var tiles = (
     /** @type {WindowTile[]} */
@@ -1916,7 +1452,7 @@ WindowManager.prototype.reflowSnapGroup = function(section) {
     var memberTile = tiles[m];
     if (memberTile && memberTile.id) members[memberTile.id] = true;
   }
-  for (var id in this.windows) {
+  for (var id in this.windows) if (this.windows.hasOwnProperty(id)) {
     var dialog = this.windows[id];
     if (!dialog || !dialog.target || members[id]) continue;
     if (this.getSnapContainer(dialog) !== section) continue;
@@ -1960,7 +1496,15 @@ WindowManager.prototype.reflowSnapGroup = function(section) {
   }
 };
 WindowManager.prototype.disableDialogDrag = function() {
+  if (this.activeDialog) this.activeDialog._ctrlDrag = false;
   if (!this.isDragging) return;
+  if (this._pendingDragEvent && this.activeDialog) {
+    var pending = this._pendingDragEvent;
+    this._pendingDragEvent = null;
+    this.ticking = false;
+    var pendingTouch = "pointerType" in pending && pending.pointerType === "touch";
+    this.handleWindowDrag(pending.clientX, pending.clientY, pendingTouch);
+  }
   var dragDirection = this.dragAction.direction;
   this.dragAction.set();
   this.toggleDragging(false);
@@ -1968,7 +1512,7 @@ WindowManager.prototype.disableDialogDrag = function() {
   if (!this.activeDialog) return;
   if (this.isTouchDrag) this.activeDialog.setDragScale(1, 1);
   var snap = !(window.desktopManager && window.desktopManager.isExpos\u00E9);
-  if (snap) {
+  if (snap && dragDirection) {
     var snapZone = this.getGestureSnapZone(this.activeDialog, dragDirection, this.pointerPosition.x, this.pointerPosition.y);
     if (snapZone) this.snapDialog(this.activeDialog, snapZone);
     if (this.isTouchDrag) {
@@ -2051,12 +1595,57 @@ WindowManager.prototype.getWindowOwningElement = function(el) {
   });
   return foundDialog;
 };
+WindowManager.prototype.registerExtension = function(ext) {
+  if (!ext || typeof ext !== "object") return null;
+  if (typeof ext.enabled !== "boolean") ext.enabled = true;
+  if (ext.id) {
+    var existing = this.getExtension(ext.id);
+    if (existing) this.extensions.splice(this.extensions.indexOf(existing), 1);
+  }
+  this.extensions.push(ext);
+  if (ext.enabled) this.notifyExtension(ext, "onEnable");
+  if (ext.flags) Object.defineProperties(flags, ext.flags);
+  return ext;
+};
+WindowManager.prototype.getExtension = function(id) {
+  for (var i = 0; i < this.extensions.length; i++) {
+    var ext = this.extensions[i];
+    if (ext && ext.id === id) return ext;
+  }
+  return null;
+};
+WindowManager.prototype.setExtensionEnabled = function(ext, enabled) {
+  if (!ext || typeof ext !== "object") return false;
+  var value = !!enabled;
+  if (!!ext.enabled === value) return value;
+  ext.enabled = value;
+  this.notifyExtension(ext, value ? "onEnable" : "onDisable");
+  return value;
+};
+WindowManager.prototype.notifyExtension = function(ext, hook, dialog) {
+  if (!ext || typeof ext !== "object") return;
+  var callback = ext[hook];
+  if (typeof callback !== "function") return;
+  try {
+    callback.call(ext, dialog);
+  } catch (ex) {
+    console.warn("Extension '" + (ext.id || "unknown") + "' failed on " + hook + ":", ex);
+  }
+};
+WindowManager.prototype.notifyExtensions = function(hook, dialog) {
+  for (var i = 0; i < this.extensions.length; i++) {
+    var ext = this.extensions[i];
+    if (!ext || !ext.enabled) continue;
+    this.notifyExtension(ext, hook, dialog);
+  }
+};
 WindowSnap.margin = 15;
 function WindowSnap() {
   this.element = document.createElement("div");
   this.element.id = "window-snap";
   this._snapped = "";
   this._section = null;
+  if (document.documentMode && document.documentMode < 9) return;
   this.element.classList.add("hidden");
 }
 Object.defineProperty(WindowSnap.prototype, "hidden", {
@@ -2074,7 +1663,6 @@ WindowSnap.prototype.init = function() {
   snapParent.insertBefore(this.element, snapParent.firstChild);
 };
 WindowSnap.prototype.attachTo = function(dialog) {
-  if (!windowManager) return;
   var section = windowManager.getSnapContainer(dialog);
   if (!section) return;
   this._section = section;
@@ -2083,7 +1671,7 @@ WindowSnap.prototype.attachTo = function(dialog) {
 };
 WindowSnap.prototype.moveToDialog = function(dialog, outset, direction, noAnimation, isTouch, preserveSnapped) {
   outset = outset || 0;
-  if (dialog) this.attachTo(dialog);
+  this.attachTo(dialog);
   this.hidden = !outset;
   if (!preserveSnapped) this._snapped = "";
   if (!direction) outset = 0;
@@ -2153,7 +1741,6 @@ WindowSnap.prototype.snap = function(type, dialog) {
   this.hidden = false;
   if (dialog) this.element.style.zIndex = dialog.z.toString();
   animateElement(this.element, function() {
-    console.log("snapping", type);
     switch (type) {
       case "maximize":
         this.setInset(WindowSnap.margin);
@@ -2199,8 +1786,9 @@ function ClickOffset() {
 }
 ClickOffset._overlay = document.createElement("div");
 ClickOffset._overlay.className = "drag-overlay";
+ClickOffset._overlay.style.display = "block";
 ClickOffset.disableOverlay = function(ev) {
-  if (ev && ev.buttons) return;
+  if (ev && (ev.buttons || ev.which || ev.button || window.windowManager && window.windowManager.isDragging)) return;
   if (ClickOffset._overlay.remove) ClickOffset._overlay.remove();
   else if (ClickOffset._overlay.parentNode) ClickOffset._overlay.parentNode.removeChild(ClickOffset._overlay);
 };
@@ -2210,7 +1798,6 @@ window.addEventListener("mouseout", ClickOffset.disableOverlay, false);
 ClickOffset.dragStopTimer = 0;
 ClickOffset.handleMouseDrag = function(ev) {
   ClickOffset.disableOverlay(ev);
-  ClickOffset._overlay.style.display = "block";
   clearTimeout(ClickOffset.dragStopTimer);
   ClickOffset.dragStopTimer = setTimeout(function() {
   }, 50);
@@ -2251,7 +1838,6 @@ ClickOffset.prototype.init = function(x, y, width, height, startX, startY) {
 ClickOffset.toggleDragEventHandler = function(enable, handler, cursor) {
   if (enable) document.addEventListener(supportsPointer ? "pointermove" : "mousemove", handler, false);
   else document.removeEventListener(supportsPointer ? "pointermove" : "mousemove", handler, false);
-  if (flags.verboseLogs) console.log(enable ? "Starting drag" : "Ending drag");
   if (!flags.useDragOverlay || !this._overlay) {
     windowManager.forEachWindow(function(dialog) {
       dialog.togglePointerEvents(!enable);
@@ -2277,15 +1863,15 @@ Object.defineProperty(Transformable.prototype, "perspective", {
   },
   set: function(value) {
     var parent = this.target.parentElement;
-    if (parent) parent.style.perspective = toPixels(this._perspective = value);
+    if (parent) parent.style.perspective = Helpers.toPixels(this._perspective = value);
   }
 });
+Transformable.prototype.applyTransform = function() {
+  transformElement(this.target, this._transform);
+};
 Transformable.prototype.update = function(animate) {
-  if (animate) animateElement(this.target, function() {
-    transformElement(this.target, this._transform);
-  }, "transform", function() {
-  }, this, 1e3);
-  else transformElement(this.target, this._transform);
+  if (animate) animateElement(this.target, this.applyTransform, "transform", void 0, this, 1e3);
+  else this.applyTransform();
 };
 Transformable.prototype.move = function(x, y, animate) {
   this._transform.x = x;
@@ -2307,7 +1893,7 @@ Transformable.prototype.rotate = function(x, y, z, animate) {
   }
   this.update(animate);
 };
-function Dialog(object, create) {
+function Dialog(object) {
   this._x = 0;
   this._y = 0;
   this._z = 0;
@@ -2330,7 +1916,6 @@ function Dialog(object, create) {
   this._aspectRatioEnabled = false;
   this._constrainAspectRatioInner = false;
   this._constrainAspectRatioLine = false;
-  this._mica = flags.useMica;
   this._useTransform = useTransform;
   this._useScale = useScale;
   this._skew = 0;
@@ -2348,12 +1933,11 @@ function Dialog(object, create) {
   this._bodyOffset = { width: 0, height: 0, x: 0, y: 0 };
   this._animationProps = { _fsTimeout: 0, _fsRaf: null, _fsToken: null, _fsTokenAtStart: null };
   if (!object) return;
-  if (!create) create = false;
-  this.target = null;
   var id = object.id;
   this.application = null;
-  if (!isElement(object))
+  if (!Helpers.isElement(object))
     this.application = object;
+  else this.target = object;
   if (!id) id = object.title;
   if (object.title) this._title = object.title;
   else {
@@ -2363,19 +1947,18 @@ function Dialog(object, create) {
   }
   this._id = id;
   this.buttons = [];
-  this.originalBody = this.body;
   this.clickOffset = new ClickOffset();
-  if (!this.scroll && this.body) this.body.style.overflow = "hidden";
   var appList = document.getElementById("applist");
   if (appList) appList.appendChild(this.createOpenButton());
-  var metroAppList2 = document.getElementById("metroapplist");
-  if (metroAppList2) metroAppList2.appendChild(this.createOpenButton());
-  if (create || isElement(object)) this.initWithObject(object);
+  var metroAppList = document.getElementById("metroapplist");
+  if (metroAppList) metroAppList.appendChild(this.createOpenButton());
   this._popupPositionInterval = 0;
   this.dragging = false;
+  this._ctrlDrag = false;
   this._appIcon = null;
   var self2 = this;
   this.activationHandler = function(ev, id2) {
+    self2._ctrlDrag = !!ev.ctrlKey;
     if (ev.ctrlKey) {
       ev.stopImmediatePropagation();
       return;
@@ -2385,36 +1968,27 @@ function Dialog(object, create) {
     windowManager.windowActivationEvent(ev, self2, id2);
     return true;
   };
-}
-Dialog.prototype.getElementByTagOrClassName = function(name, parent) {
-  var target = parent || this.target;
-  if (!target) return null;
-  var elements2 = target.getElementsByTagName(name);
-  if (!elements2 || !elements2.length) elements2 = target.getElementsByClassName(name);
-  var element = elements2.length ? elements2[0] : null;
-  if (isElement(element)) return element;
-  return null;
-};
-Dialog.prototype.initWithObject = function(object) {
-  if (!object) return;
   if (object instanceof Dialog) {
-    if (object.target) return;
-    else if (object.application) object = object.application;
+    if (object.application) object = object.application;
   }
+  this.target;
+  this.moveEvents = false;
+  this.scroll = false;
   if (!(object instanceof Dialog)) {
-    if (isElement(object)) {
-      if (!isDialog(object)) console.warn("This is not a dialog element");
+    if (Helpers.isElement(object)) {
       this.target = object;
       if (this.target.parentElement && this.target.parentElement.nodeName === "TEMPLATE") return;
       this.close();
     } else {
-      this.application = object;
       if (object.exists) {
-        this.target = document.getElementById(object.id);
-        var doc = this.contentDocument;
-        if (doc && doc.readyState !== "complete") this.openUrl(this.application.src);
+        var element = document.getElementById(object.id);
+        if (element && this.application) {
+          this.target = element;
+          var doc = this.contentDocument;
+          if (doc && doc.readyState !== "complete") this.openUrl(this.application.src);
+        }
       } else {
-        this.target = createDialog();
+        this.target = createDialogElement();
         this.openUrl(object.src);
       }
       if (this.windowTarget) this.windowTarget.dialog = this;
@@ -2425,7 +1999,7 @@ Dialog.prototype.initWithObject = function(object) {
       }
       this.setTitle(object.title);
       this.fixed = object.fixed || false;
-      this.scroll = object.scroll;
+      this.scroll = object.scroll || false;
       if (this.frame) {
         if (object.microphone || object.camera) this.frame.setAttribute("allow", "camera; microphone");
         this.frame.setAttribute("allow", "fullscreen");
@@ -2436,9 +2010,7 @@ Dialog.prototype.initWithObject = function(object) {
       });
     }
   }
-  this.setMinSize(180, 250);
-  this.originalBody = this.body;
-  if (!this.scroll && this.body) this.body.style.overflow = "hidden";
+  this.setMinSize(180, 250, false);
   this.toggleCloseButton(true);
   this.toggleFullButton(true);
   if (this.verifyEjectCapability()) this.toggleEjectButton(true);
@@ -2448,75 +2020,109 @@ Dialog.prototype.initWithObject = function(object) {
     if (difference && self2.clickOffset) this.messageFrame("windowMove", self2.clickOffset.update(difference.x, difference.y));
   };
   var target = this.target;
-  if (target && this.activationHandler) {
-    var buttons = target.getElementsByTagName("button");
-    var createSizers = true;
-    if (this.resizable && createSizers) this._createSizers();
-    target.addEventListener("selectstart", cancelDomEvent, false);
-    var body = this.body;
-    if (body) body.addEventListener("load", function() {
-      try {
-        self2.verifyEjectCapability();
-      } catch (exception) {
-        console.warn("Failed to verify eject capability" + exception);
-        if (buttons[0]) buttons[0].style.display = "none";
-      }
-    }, false);
-    var header = this.titleBar;
-    if (header)
-      header.addEventListener("dblclick", this.toggleMaximized.bind(this, void 0), false);
-    if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
-    else target.addEventListener("mousedown", this.activationHandler, false);
-    var ejectButton = buttons[windowButtons.eject];
-    if (ejectButton)
-      ejectButton.addEventListener("click", this.eject.bind(this), false);
-    var closeButton = buttons[windowButtons.close];
-    if (closeButton)
-      closeButton.addEventListener("click", this.close.bind(this), false);
-    var fullscreenButton = buttons[windowButtons.full];
-    if (fullscreenButton)
-      fullscreenButton.addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
-    this.toggleOpen(false);
-    target.addEventListener("dragstart", function(event2) {
-      if (!event2.ctrlKey || !event2.dataTransfer || !self2.application) {
-        event2.preventDefault();
-        return;
-      }
-      var dragState = {
-        state: self2.getState(),
-        app: self2.application
-      };
-      var rect = getRect(self2.target);
-      if (rect) dragState.offset = {
-        x: event2.clientX - (rect.left + rect.width / 2),
-        y: event2.clientY - (rect.top + rect.height / 2)
-      };
-      var data = JSON.stringify(dragState);
-      event2.dataTransfer.setData("application/json", data);
-      event2.dataTransfer.setData("text/plain", self2.src || self2.title || self2.id);
-      if (self2.src) event2.dataTransfer.setData("text/uri-list", self2.src);
-      event2.dataTransfer.setData(
-        "text/html",
-        data
-      );
-    });
-  }
+  var buttons = target.getElementsByTagName("button");
+  var createSizers = true;
+  if (this.resizable && createSizers) this._createSizers();
+  target.addEventListener("selectstart", function(event2) {
+    if (self2._ctrlDrag) return;
+    cancelDomEvent(event2);
+  }, false);
+  var body = this.body;
+  if (body) body.addEventListener("load", function() {
+    try {
+      self2.verifyEjectCapability();
+    } catch (exception) {
+      console.log(exception);
+      if (buttons[0]) buttons[0].style.display = "none";
+    }
+  }, false);
+  var header = this.titleBar;
+  if (header) target.addEventListener("dblclick", function(event2) {
+    var rect = getRect(header);
+    if (!rect || event2.clientX < rect.left || event2.clientX > rect.right || event2.clientY < rect.top || event2.clientY > rect.bottom) return;
+    var node = event2.target instanceof HTMLElement ? event2.target : null;
+    while (node && node !== header) {
+      if (node.nodeName && node.nodeName.toLowerCase() === "button") return;
+      node = node.parentElement;
+    }
+    self2.toggleMaximized();
+  }, false);
+  if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
+  else target.addEventListener("mousedown", this.activationHandler, false);
+  var ejectButton = buttons[windowButtons.eject];
+  if (ejectButton)
+    ejectButton.addEventListener("click", this.eject.bind(this), false);
+  var closeButton = buttons[windowButtons.close];
+  if (closeButton)
+    closeButton.addEventListener("click", this.close.bind(this), false);
+  var fullscreenButton = buttons[windowButtons.full];
+  if (fullscreenButton)
+    fullscreenButton.addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
+  this.toggleOpen(false);
+  target.addEventListener("dragstart", function(event2) {
+    if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
+      event2.preventDefault();
+      return;
+    }
+    var dragState = {
+      state: self2.getState(),
+      app: self2.application
+    };
+    var rect = getRect(self2.target);
+    if (rect) dragState.offset = {
+      x: event2.clientX - (rect.left + rect.width / 2),
+      y: event2.clientY - (rect.top + rect.height / 2)
+    };
+    var data = JSON.stringify(dragState);
+    var transfer = event2.dataTransfer;
+    try {
+      transfer.setData("application/json", data);
+      if (flagsieDropCompatibleMode) {
+        transfer.setData("Text", data);
+        transfer.setData("text/plain", data);
+      } else transfer.setData("text/plain", self2.src || self2.title || self2.id);
+      if (self2.src) transfer.setData("text/uri-list", self2.src);
+      transfer.setData("text/html", data);
+      transfer.setData("URL", self2.src + "\n" + data);
+    } catch (ex) {
+      console.warn(ex);
+      transfer.setData("Text", data);
+      if (self2.src) transfer.setData("URL", self2.src);
+      transfer.setData("URL", "https://example.com");
+    }
+    transfer.effectAllowed = "copyMove";
+    self2.target.classList.add("hidden");
+  }, false);
+  target.addEventListener("dragend", function() {
+    self2._ctrlDrag = false;
+  }, false);
   if (this.id) windowManager.windows[this.id] = this;
   this.updateUseTransform(this.useTransform);
   this.updateScale(this.useScale);
   this.update();
-  if (!isElement(object))
+  if (!Helpers.isElement(object))
     if (object instanceof Dialog)
       this.move(object.x, object.y);
-    else this.moveToCenter(window.innerWidth / 2, window.innerHeight / 2);
-  if (this.application && this.application.launch) this.launch();
+    else this.moveCenterTo(window.innerWidth / 2, window.innerHeight / 2);
   if (this.frame) this.frame.addEventListener("load", function() {
     self2._loaded = true;
-  });
+  }, false);
+  if (!this.scroll && this.body) this.body.style.overflow = "hidden";
+  this.originalBody = this.body;
+  if (!this.scroll && this.body) this.body.style.overflow = "hidden";
+}
+;
+Dialog.prototype.getElementByTagOrClassName = function(name, parent) {
+  var target = parent || this.target;
+  if (!target) return null;
+  var elements2 = target.getElementsByTagName(name);
+  if (!elements2 || !elements2.length) elements2 = target.getElementsByClassName(name);
+  var element = elements2.length ? elements2[0] : null;
+  if (Helpers.isElement(element)) return element;
+  return null;
 };
 Dialog.prototype.setParentElement = function(element) {
   var target = this.target;
-  if (!target || !element) return;
   if (target.parentNode === element) return;
   if (typeof element.moveBefore === "function" && target.isConnected) try {
     return element.moveBefore(target, null);
@@ -2534,7 +2140,6 @@ Dialog.prototype.moveToDesktop = function(i) {
 };
 Dialog.prototype.detachToRootKeepingVisual = function(root) {
   var target = this.target;
-  if (!target || !root) return;
   var before = target.getBoundingClientRect();
   this.setParentElement(root);
   var after = target.getBoundingClientRect();
@@ -2545,7 +2150,7 @@ Dialog.prototype.detachToRootKeepingVisual = function(root) {
   content.style.transformOrigin = "0 0";
   content.style.scale = String(scale);
   var measured = content.getBoundingClientRect();
-  content.style.transform = "translate(" + toPixels((before.left - measured.left) / scale) + "," + toPixels((before.top - measured.top) / scale) + ")";
+  content.style.transform = "translate(" + Helpers.toPixels((before.left - measured.left) / scale) + "," + Helpers.toPixels((before.top - measured.top) / scale) + ")";
   this._exposeVisualScale = scale;
   this._exposeContentScale = scale;
   this._exposeVisualWidth = after.width;
@@ -2573,22 +2178,16 @@ Dialog.prototype.dropIntoDesktop = function(i) {
   var visualLeft = null, visualTop = null, unscaledWidth = this._exposeVisualWidth;
   if (this.content) {
     var rendered = this.content.getBoundingClientRect();
-    if (rendered.width) {
-      visualLeft = rendered.left;
-      visualTop = rendered.top;
-    }
+    if (rendered.width) visualLeft = rendered.left, visualTop = rendered.top;
   }
   this.moveToDesktop(i);
   this.clearExpos\u00E9Visual();
-  if (visualLeft === null || !this.target || !unscaledWidth) return;
+  if (visualLeft === null || visualTop === null || !this.target || !unscaledWidth) return;
   var placed = this.target.getBoundingClientRect();
   if (!placed.width) return;
   var desktopScale = placed.width / unscaledWidth;
   if (!desktopScale) return;
-  this.move(
-    this.x + (visualLeft - placed.left) / desktopScale,
-    this.y + (visualTop - placed.top) / desktopScale
-  );
+  this.move(this.x + (visualLeft - placed.left) / desktopScale, this.y + (visualTop - placed.top) / desktopScale);
 };
 Dialog.prototype.flyBackToExpos\u00E9Origin = function() {
   var origin = this._exposeOrigin;
@@ -2608,7 +2207,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
     if (!target || !self2.activationHandler) return;
     var sizerId = "sizer-" + id;
     var sizer = self2.getElementByTagOrClassName(sizerId);
-    if (!sizer || !isElement(sizer)) sizer = document.createElement("div");
+    if (!sizer || !Helpers.isElement(sizer)) sizer = document.createElement("div");
     sizer.draggable = false;
     sizer.id = id.toString();
     sizer.classList.add(sizerId);
@@ -2630,7 +2229,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
     if (createTouchSizers) {
       var touchSizerId = "touch-sizer-" + id;
       var touchSizer = self2.getElementByTagOrClassName(touchSizerId);
-      if (!touchSizer || !isElement(touchSizer)) touchSizer = document.createElement("div");
+      if (!touchSizer || !Helpers.isElement(touchSizer)) touchSizer = document.createElement("div");
       touchSizer.draggable = false;
       touchSizer.id = "touch-" + id;
       touchSizer.classList.add(touchSizerId);
@@ -2651,8 +2250,6 @@ Dialog.prototype.reportState = function() {
   windowManager.broadcastTheme();
 };
 Dialog.prototype.toggleOpen = function(forceOpen, kill) {
-  var target = this.target;
-  if (!target) return;
   var self2 = this;
   var wasOpen = this._stateOpen;
   this._stateOpen = forceOpen || false;
@@ -2676,380 +2273,371 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   if (frame || !create || !this.body) return frame;
   return this.body.appendChild(document.createElement("iframe"));
 };
-Object.defineProperty(Dialog.prototype, "isOpen", {
-  get: function() {
-    return Boolean(this.target && this.target.classList.contains("open"));
-  },
-  set: function(open) {
-    this.toggleOpen(open);
-  }
-});
-Object.defineProperty(Dialog.prototype, "frame", {
-  get: function() {
-    return this.target && this.target.getElementsByTagName("iframe")[0] || null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "resizable", {
-  get: function() {
-    return !this.application ? true : this.application.resizable !== false;
-  },
-  set: function(v) {
-    if (v) this._createSizers();
-  }
-});
-Object.defineProperty(Dialog.prototype, "src", {
-  get: function() {
-    return this._src || this.application && this.application.src;
-  },
-  set: function(url) {
-    this.openUrl(url);
-  }
-});
-Object.defineProperty(Dialog.prototype, "body", {
-  get: function() {
-    var content = this.content;
-    if (!content) return null;
-    return this.getElementByTagOrClassName("article", content);
-  }
-});
-Object.defineProperty(Dialog.prototype, "titleBar", {
-  get: function() {
-    return this.getElementByTagOrClassName("header");
-  }
-});
-Object.defineProperty(Dialog.prototype, "contentDocument", {
-  get: function() {
-    var frame = this.frame;
-    return frame && frame.contentDocument;
-  }
-});
-Object.defineProperty(Dialog.prototype, "contentWindow", {
-  get: function() {
-    var frame = this.frame;
-    return frame ? frame.contentWindow : null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "mica", {
-  get: function() {
-    return this._mica;
-  },
-  set: function(mica) {
-    if (mica) this._mica = this.injectMica();
-    else this._mica = this.removeMica();
-    this.move();
-  }
-});
-Object.defineProperty(Dialog.prototype, "x", {
-  get: function() {
-    return this._x * window.innerWidth;
-  },
-  set: function(x) {
-    if (typeof x === "number") this.move(x, this.y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "y", {
-  get: function() {
-    return this._y * window.innerHeight;
-  },
-  set: function(y) {
-    if (typeof y === "number") this.move(this.x, y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "z", {
-  get: function() {
-    return this._z;
-  },
-  set: function(z) {
-    if (typeof z === "number") this.setZ(z);
-  }
-});
-Object.defineProperty(Dialog.prototype, "width", {
-  get: function() {
-    return this._width;
-  },
-  set: function(width) {
-    this.setWidth(width);
-  }
-});
-Object.defineProperty(Dialog.prototype, "height", {
-  get: function() {
-    return this._height;
-  },
-  /** @param {number} height */
-  set: function(height) {
-    this.setHeight(height);
-  }
-});
-Object.defineProperty(Dialog.prototype, "minWidth", {
-  get: function() {
-    return this._minWidth;
-  },
-  set: function(width) {
-    this.setMinSize(width);
-  }
-});
-Object.defineProperty(Dialog.prototype, "minHeight", {
-  get: function() {
-    return this._minHeight;
-  },
-  set: function(height) {
-    this.setMinSize(this.minWidth, height);
-  }
-});
-Object.defineProperty(Dialog.prototype, "maxWidth", {
-  get: function() {
-    return this._maxWidth;
-  },
-  set: function(width) {
-    this.setMaxSize(width);
-  }
-});
-Object.defineProperty(Dialog.prototype, "maxHeight", {
-  get: function() {
-    return this._maxHeight;
-  },
-  set: function(height) {
-    this.setMaxSize(this.maxWidth, height);
-  }
-});
-Object.defineProperty(Dialog.prototype, "position", {
-  get: function() {
-    return new Vector(this.x, this.y);
-  },
-  set: function(position) {
-    if (position instanceof Vector)
-      this.move(position.x, position.y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "size", {
-  get: function() {
-    return new Vector(this.width, this.height);
-  },
-  set: function(size) {
-    if (typeof size.x !== "number" || typeof size.y !== "number") return;
-    this.resize(size.x, size.y);
-  }
-});
-Object.defineProperty(Dialog.prototype, "aspectRatio", {
-  get: function() {
-    return this.width / this.height;
-  },
-  set: function(aspect) {
-    this.width = this.height * aspect;
-  }
-});
-Object.defineProperty(Dialog.prototype, "aspectRatioConstraint", {
-  get: function() {
-    return this._aspectRatio;
-  },
-  set: function(aspect) {
-    this._aspectRatio = typeof aspect === "number" && aspect > 0 ? aspect : 0;
-  }
-});
-Object.defineProperty(Dialog.prototype, "constrainAspectRatio", {
-  get: function() {
-    return this._aspectRatioEnabled;
-  },
-  set: function(enabled) {
-    if (!this._aspectRatio) this._aspectRatio = this.aspectRatio;
-    this._aspectRatioEnabled = !!enabled;
-  }
-});
-Object.defineProperty(Dialog.prototype, "constrainAspectRatioInner", {
-  get: function() {
-    return this._constrainAspectRatioInner;
-  },
-  set: function(enabled) {
-    this._constrainAspectRatioInner = !!enabled;
-  }
-});
-Object.defineProperty(Dialog.prototype, "constrainAspectRatioLine", {
-  get: function() {
-    return this._constrainAspectRatioLine;
-  },
-  set: function(enabled) {
-    this._constrainAspectRatioLine = !!enabled;
-  }
-});
-Object.defineProperty(Dialog.prototype, "minAspectRatio", {
-  get: function() {
-    return this._minAspectRatio;
-  },
-  set: function(aspect) {
-    this.width = this.height * aspect;
-  }
-});
-Object.defineProperty(Dialog.prototype, "maxAspectRatio", {
-  get: function() {
-    return this._maxAspectRatio;
-  },
-  set: function(aspect) {
-    this.width = this.height * aspect;
-  }
-});
-Object.defineProperty(Dialog.prototype, "top", {
-  get: function() {
-    return this.y;
-  },
-  set: function(top) {
-    var bounds = WindowManager.windowBounds;
-    var bottom = this.bottomFromTop;
-    if (bounds.bottom !== Infinity && bottom >= bounds.bottom - 0.5) bottom = bounds.bottom;
-    if (top < bounds.top) top = bounds.top;
-    var height = Math.max(Math.min(bottom - top, this.maxHeight), this.minHeight);
-    top = bottom - height;
-    this._height = height;
-    this._y = top / window.innerHeight;
-    if (this.useTransform) {
-      if (this.target) this.target.style.height = toPixels(height);
-      this.updateTransform();
-    } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
-    this._isMinHeight = height === this.minHeight;
-  }
-});
-Object.defineProperty(Dialog.prototype, "left", {
-  get: function() {
-    return this.x;
-  },
-  set: function(left) {
-    var bounds = WindowManager.windowBounds;
-    var right = this.rightFromLeft;
-    if (bounds.right !== Infinity && right >= bounds.right - 0.5) right = bounds.right;
-    if (left < bounds.left) left = bounds.left;
-    var width = Math.max(Math.min(right - left, this.maxWidth), this.minWidth);
-    left = right - width;
-    this._width = width;
-    this._x = left / window.innerWidth;
-    if (this.useTransform) {
-      if (this.target) this.target.style.width = toPixels(width);
-      if (this.useTransform) this.updateTransform();
-    } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
-    this._isMinWidth = width === this.minWidth;
-  }
-});
-Object.defineProperty(Dialog.prototype, "rightFromLeft", {
-  get: function() {
-    return this.x + this.width;
-  },
-  set: function(right) {
-    this.width = right - this.x;
-  }
-});
-Object.defineProperty(Dialog.prototype, "right", {
-  get: function() {
-    return window.innerWidth - this.rightFromLeft;
-  },
-  set: function(right) {
-    if (typeof right === "number") {
-      var bounds = WindowManager.windowBounds;
-      if (right > bounds.right) right = bounds.right;
-      if (right < bounds.left) right = bounds.left;
-      this.width = window.innerWidth - right - this.x;
+Object.defineProperties(Dialog.prototype, {
+  isOpen: {
+    get: function() {
+      return Boolean(this.target && this.target.classList.contains("open"));
+    },
+    set: function(open) {
+      this.toggleOpen(open);
     }
-  }
-});
-Object.defineProperty(Dialog.prototype, "bottomFromTop", {
-  get: function() {
-    return this.y + this.height;
   },
-  set: function(bottom) {
-    this.height = bottom - this.y;
-  }
-});
-Object.defineProperty(Dialog.prototype, "bottom", {
-  get: function() {
-    return window.innerHeight - this.bottomFromTop;
-  },
-  set: function(bottom) {
-    if (typeof bottom === "number") {
-      var bounds = WindowManager.windowBounds;
-      if (bottom > bounds.bottom) bottom = bounds.bottom;
-      if (bottom < bounds.top) bottom = bounds.top;
-      this.height = window.innerHeight - bottom - this.y;
+  frame: {
+    get: function() {
+      return this.target && this.target.getElementsByTagName("iframe")[0] || null;
     }
-  }
-});
-Object.defineProperty(Dialog.prototype, "inset", {
-  get: function() {
-    return (this.bottom + this.right + this.left + this.top) / 4;
   },
-  set: function(inset) {
-    this.bottom = this.right = this.left = this.top = inset;
-  }
-});
-Object.defineProperty(Dialog.prototype, "isMinWidth", {
-  get: function() {
-    return this._isMinWidth;
-  }
-});
-Object.defineProperty(Dialog.prototype, "isMinHeight", {
-  get: function() {
-    return this._isMinHeight;
-  }
-});
-Object.defineProperty(Dialog.prototype, "useTransform", {
-  get: function() {
-    return this._useTransform;
+  resizable: {
+    get: function() {
+      return !this.application ? true : this.application.resizable !== false;
+    },
+    set: function(v) {
+      if (v) this._createSizers();
+    }
   },
-  set: function(useTransform2) {
-    this.updateUseTransform(useTransform2);
-  }
-});
-Object.defineProperty(Dialog.prototype, "useScale", {
-  get: function() {
-    return this._useScale;
+  src: {
+    get: function() {
+      return this._src || this.application && this.application.src;
+    },
+    set: function(url) {
+      this.openUrl(url);
+    }
   },
-  set: function(useScale2) {
-    this.updateScale(useScale2);
-  }
-});
-Object.defineProperty(Dialog.prototype, "title", {
-  get: function() {
-    if (this._title) return this._title;
-    var titleElement = this.getTitleElement();
-    if (titleElement && titleElement.innerHTML) return titleElement.innerHTML;
-    return this.id;
+  body: {
+    get: function() {
+      var content = this.content;
+      if (!content) return null;
+      return this.getElementByTagOrClassName("article", content);
+    }
   },
-  set: function(title) {
-    this.setTitle(title);
-  }
-});
-Object.defineProperty(Dialog.prototype, "maximized", {
-  get: function() {
-    if (!this.target) return false;
-    return this.target.classList.contains("maximized");
+  titleBar: {
+    get: function() {
+      return this.getElementByTagOrClassName("header");
+    }
   },
-  set: function(maximized) {
-    this.toggleMaximized(maximized);
-  }
-});
-Object.defineProperty(Dialog.prototype, "snapped", {
-  get: function() {
-    if (!this.target) return false;
-    return this.target.classList.contains("snapped");
+  contentDocument: {
+    get: function() {
+      var frame = this.frame;
+      return frame && frame.contentDocument;
+    }
   },
-  set: function(snapped) {
-    this.toggleSnapped(snapped);
-  }
-});
-Object.defineProperty(Dialog.prototype, "heightSnapped", {
-  get: function() {
-    if (!this.target) return false;
-    return this.target.classList.contains("height-snapped");
+  contentWindow: {
+    get: function() {
+      var frame = this.frame;
+      return frame ? frame.contentWindow : null;
+    }
   },
-  set: function(snapped) {
-    this.toggleHeightSnapped(snapped);
-  }
-});
-Object.defineProperty(Dialog.prototype, "windowTarget", {
-  get: function() {
-    var target = this.target;
-    if (target && "dialog" in target)
-      return (
-        /** @type {WindowElement} */
-        target
-      );
-    return null;
+  x: {
+    get: function() {
+      return this._x * window.innerWidth;
+    },
+    set: function(x) {
+      if (typeof x === "number") this.move(x, this.y);
+    }
+  },
+  y: {
+    get: function() {
+      return this._y * window.innerHeight;
+    },
+    set: function(y) {
+      if (typeof y === "number") this.move(this.x, y);
+    }
+  },
+  z: {
+    get: function() {
+      return this._z;
+    },
+    set: function(z) {
+      if (typeof z === "number") this.setZ(z);
+    }
+  },
+  width: {
+    get: function() {
+      return this._width;
+    },
+    set: function(width) {
+      this.setWidth(width);
+    }
+  },
+  height: {
+    get: function() {
+      return this._height;
+    },
+    /** @param {number} height */
+    set: function(height) {
+      this.setHeight(height);
+    }
+  },
+  minWidth: {
+    get: function() {
+      return this._minWidth;
+    },
+    set: function(width) {
+      this.setMinSize(width);
+    }
+  },
+  minHeight: {
+    get: function() {
+      return this._minHeight;
+    },
+    set: function(height) {
+      this.setMinSize(this.minWidth, height);
+    }
+  },
+  maxWidth: {
+    get: function() {
+      return this._maxWidth;
+    },
+    set: function(width) {
+      this.setMaxSize(width);
+    }
+  },
+  maxHeight: {
+    get: function() {
+      return this._maxHeight;
+    },
+    set: function(height) {
+      this.setMaxSize(this.maxWidth, height);
+    }
+  },
+  position: {
+    get: function() {
+      return new Vector(this.x, this.y);
+    },
+    set: function(position) {
+      if (position instanceof Vector)
+        this.move(position.x, position.y);
+    }
+  },
+  size: {
+    get: function() {
+      return new Vector(this.width, this.height);
+    },
+    set: function(size) {
+      if (typeof size.x !== "number" || typeof size.y !== "number") return;
+      this.resize(size.x, size.y);
+    }
+  },
+  aspectRatio: {
+    get: function() {
+      return this.width / this.height;
+    },
+    set: function(aspect) {
+      this.width = this.height * aspect;
+    }
+  },
+  aspectRatioConstraint: {
+    get: function() {
+      return this._aspectRatio;
+    },
+    set: function(aspect) {
+      this._aspectRatio = typeof aspect === "number" && aspect > 0 ? aspect : 0;
+    }
+  },
+  constrainAspectRatio: {
+    get: function() {
+      return this._aspectRatioEnabled;
+    },
+    set: function(enabled) {
+      if (!this._aspectRatio) this._aspectRatio = this.aspectRatio;
+      this._aspectRatioEnabled = !!enabled;
+    }
+  },
+  constrainAspectRatioInner: {
+    get: function() {
+      return this._constrainAspectRatioInner;
+    },
+    set: function(enabled) {
+      this._constrainAspectRatioInner = !!enabled;
+    }
+  },
+  constrainAspectRatioLine: {
+    get: function() {
+      return this._constrainAspectRatioLine;
+    },
+    set: function(enabled) {
+      this._constrainAspectRatioLine = !!enabled;
+    }
+  },
+  minAspectRatio: {
+    get: function() {
+      return this._minAspectRatio;
+    },
+    set: function(aspect) {
+      this.width = this.height * aspect;
+    }
+  },
+  maxAspectRatio: {
+    get: function() {
+      return this._maxAspectRatio;
+    },
+    set: function(aspect) {
+      this.width = this.height * aspect;
+    }
+  },
+  top: {
+    get: function() {
+      return this.y;
+    },
+    set: function(top) {
+      var bounds = WindowManager.windowBounds;
+      var bottom = this.bottomFromTop;
+      if (bounds.bottom !== Infinity && bottom >= bounds.bottom - 0.5) bottom = bounds.bottom;
+      if (top < bounds.top) top = bounds.top;
+      var height = Math.max(Math.min(bottom - top, this.maxHeight), this.minHeight);
+      top = bottom - height;
+      this._height = height;
+      this._y = top / window.innerHeight;
+      if (this.useTransform) {
+        this.target.style.height = Helpers.toPixels(height);
+        this.updateTransform();
+      } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
+      this._isMinHeight = height === this.minHeight;
+    }
+  },
+  left: {
+    get: function() {
+      return this.x;
+    },
+    set: function(left) {
+      var bounds = WindowManager.windowBounds;
+      var right = this.rightFromLeft;
+      if (bounds.right !== Infinity && right >= bounds.right - 0.5) right = bounds.right;
+      if (left < bounds.left) left = bounds.left;
+      var width = Math.max(Math.min(right - left, this.maxWidth), this.minWidth);
+      left = right - width;
+      this._width = width;
+      this._x = left / window.innerWidth;
+      if (this.useTransform) {
+        this.target.style.width = Helpers.toPixels(width);
+        this.updateTransform();
+      } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
+      this._isMinWidth = width === this.minWidth;
+    }
+  },
+  rightFromLeft: {
+    get: function() {
+      return this.x + this.width;
+    },
+    set: function(right) {
+      this.width = right - this.x;
+    }
+  },
+  right: {
+    get: function() {
+      var rfl = this.rightFromLeft;
+      return typeof rfl === "number" && rfl === rfl ? window.innerWidth - rfl : 0;
+    },
+    set: function(right) {
+      if (typeof right === "number") {
+        var bounds = WindowManager.windowBounds;
+        if (right > bounds.right) right = bounds.right;
+        if (right < bounds.left) right = bounds.left;
+        this.width = window.innerWidth - right - this.x;
+      }
+    }
+  },
+  bottomFromTop: {
+    get: function() {
+      return this.y + this.height;
+    },
+    set: function(bottom) {
+      this.height = bottom - this.y;
+    }
+  },
+  bottom: {
+    get: function() {
+      var bft = this.bottomFromTop;
+      return typeof bft === "number" && bft === bft ? window.innerHeight - bft : 0;
+    },
+    set: function(bottom) {
+      if (typeof bottom === "number") {
+        var bounds = WindowManager.windowBounds;
+        if (bottom > bounds.bottom) bottom = bounds.bottom;
+        if (bottom < bounds.top) bottom = bounds.top;
+        this.height = window.innerHeight - bottom - this.y;
+      }
+    }
+  },
+  inset: {
+    get: function() {
+      return (this.bottom + this.right + this.left + this.top) / 4;
+    },
+    set: function(inset) {
+      this.bottom = this.right = this.left = this.top = inset;
+    }
+  },
+  isMinWidth: {
+    get: function() {
+      return this._isMinWidth;
+    }
+  },
+  isMinHeight: {
+    get: function() {
+      return this._isMinHeight;
+    }
+  },
+  useTransform: {
+    get: function() {
+      return this._useTransform;
+    },
+    set: function(useTransform2) {
+      this.updateUseTransform(useTransform2);
+    }
+  },
+  useScale: {
+    get: function() {
+      return this._useScale;
+    },
+    set: function(useScale2) {
+      this.updateScale(useScale2);
+    }
+  },
+  title: {
+    get: function() {
+      if (this._title) return this._title;
+      var titleElement = this.getTitleElement();
+      if (titleElement && titleElement.innerHTML) return titleElement.innerHTML;
+      return this.id;
+    },
+    set: function(title) {
+      this.setTitle(title);
+    }
+  },
+  maximized: {
+    get: function() {
+      return this.target.classList.contains("maximized");
+    },
+    set: function(maximized) {
+      this.toggleMaximized(maximized);
+    }
+  },
+  snapped: {
+    get: function() {
+      return this.target.classList.contains("snapped");
+    },
+    set: function(snapped) {
+      this.toggleSnapped(snapped);
+    }
+  },
+  heightSnapped: {
+    get: function() {
+      return this.target.classList.contains("height-snapped");
+    },
+    set: function(snapped) {
+      this.toggleHeightSnapped(snapped);
+    }
+  },
+  windowTarget: {
+    get: function() {
+      var target = this.target;
+      if (target && "dialog" in target)
+        return (
+          /** @type {WindowElement} */
+          target
+        );
+      return null;
+    }
   }
 });
 Dialog.prototype.setTitle = function(title) {
@@ -3057,123 +2645,90 @@ Dialog.prototype.setTitle = function(title) {
   var titleElement = this.getTitleElement();
   if (titleElement) titleElement.innerHTML = title;
 };
-Object.defineProperty(Dialog.prototype, "id", {
-  get: function() {
-    return this._id || this.target && this.target.id || "unk";
-  },
-  set: function(id) {
-    this._id = id;
-    windowManager.windows[id] = this;
-    if (this.target) this.target.setAttribute("id", id);
-  }
-});
-Object.defineProperty(Dialog.prototype, "content", {
-  get: function() {
-    if (!this.target) return null;
-    return this.getElementByTagOrClassName("content");
-  }
-});
-Object.defineProperty(Dialog.prototype, "contentTransform", {
-  /** @type {()=>Transformable | null} */
-  get: function() {
-    if (this._contentTransform) return this._contentTransform;
-    var content = this.content;
-    if (!content) return null;
-    return this._contentTransform = new Transformable(content);
-  }
-});
-Object.defineProperty(Dialog.prototype, "transform", {
-  /** @type {()=>Transformable | null} */
-  get: function() {
-    if (this._transform) return this._transform;
-    var self2 = this;
-    (function() {
-    });
-    var target = this.target;
-    if (!target) return null;
-    this._transform = new Transformable(target);
-    return this._transform;
-  }
-});
-Object.defineProperty(Dialog.prototype, "killable", {
-  get: function() {
-    return this.application !== null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "borderSize", {
-  set: function(value) {
-    if (!this.content) return;
-    this.content.style.padding = toPixels(value);
-    this.content.style.border = toPixels(value);
-    this.content.style.borderRadius = toPixels(value);
-  },
-  get: function() {
-    return this.content && fromPixels(this.content.style.padding);
-  }
-});
-Object.defineProperty(Dialog.prototype, "popup", {
-  get: function() {
-    return this._popupWindow;
-  }
-});
-Object.defineProperty(Dialog.prototype, "micaElement", {
-  get: function() {
-    try {
-      if (!this.target) return null;
-      var clipElem = this.target.getElementsByClassName("backdrop-filter");
-      if (!clipElem.length) return null;
-      var clip = clipElem[0];
-      if (isElement(clip)) return clip;
-    } catch (ex) {
-      if (ex instanceof Error) console.log(ex.message);
+Object.defineProperties(Dialog.prototype, {
+  id: {
+    get: function() {
+      return this._id || this.target && this.target.id || "unk";
+    },
+    set: function(id) {
+      this._id = id;
+      windowManager.windows[id] = this;
+      this.target.setAttribute("id", id);
     }
-    return null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "micaBackdrop", {
-  get: function() {
-    try {
-      var micaElement = this.micaElement;
-      if (!micaElement) return null;
-      var backdrop = micaElement.children[0];
-      if (isElement(backdrop)) return backdrop;
-    } catch (ex) {
-      if (ex instanceof Error) console.log(ex.message);
-    }
-    return null;
-  }
-});
-Object.defineProperty(Dialog.prototype, "skew", {
-  set: function(skew) {
-    this.setSkew(skew);
-  }
-});
-Object.defineProperty(Dialog.prototype, "scaleY", {
-  set: function(scaleY) {
-    this.setScaleY(scaleY);
-  }
-});
-Object.defineProperty(Dialog.prototype, "rotation", {
-  set: function(rotation) {
-    this.setRotation(rotation);
-  }
-});
-Object.defineProperty(Dialog.prototype, "opacity", {
-  set: function(opacity) {
-    this.target && (this.target.style.opacity = String(opacity));
   },
-  get: function() {
-    return this.target && this.target.style.opacity !== "" ? Number(this.target.style.opacity) : 1;
-  }
-});
-Object.defineProperty(Dialog.prototype, "icon", {
-  get: function() {
-    return this._appIcon;
-  }
-});
-Object.defineProperty(Dialog.prototype, "iconUrl", {
-  get: function() {
-    return this.getIconUrl();
+  content: {
+    get: function() {
+      return this.getElementByTagOrClassName("content");
+    }
+  },
+  contentTransform: {
+    /** @type {()=>Transformable | null} */
+    get: function() {
+      if (this._contentTransform) return this._contentTransform;
+      var content = this.content;
+      if (!content) return null;
+      return this._contentTransform = new Transformable(content);
+    }
+  },
+  transform: {
+    /** @type {()=>Transformable | null} */
+    get: function() {
+      return this._transform || (this._transform = new Transformable(this.target));
+    }
+  },
+  killable: {
+    get: function() {
+      return this.application !== null;
+    }
+  },
+  borderSize: {
+    set: function(value) {
+      if (!this.content) return;
+      this.content.style.padding = Helpers.toPixels(value);
+      this.content.style.border = Helpers.toPixels(value);
+      this.content.style.borderRadius = Helpers.toPixels(value);
+    },
+    get: function() {
+      return this.content && Helpers.fromPixels(this.content.style.padding);
+    }
+  },
+  popup: {
+    get: function() {
+      return this._popupWindow;
+    }
+  },
+  skew: {
+    set: function(skew) {
+      this.setSkew(skew);
+    }
+  },
+  scaleY: {
+    set: function(scaleY) {
+      this.setScaleY(scaleY);
+    }
+  },
+  rotation: {
+    set: function(rotation) {
+      this.setRotation(rotation);
+    }
+  },
+  opacity: {
+    set: function(opacity) {
+      this.target && (this.target.style.opacity = String(opacity));
+    },
+    get: function() {
+      return this.target && this.target.style.opacity !== "" ? Number(this.target.style.opacity) : 1;
+    }
+  },
+  icon: {
+    get: function() {
+      return this._appIcon;
+    }
+  },
+  iconUrl: {
+    get: function() {
+      return this.getIconUrl();
+    }
   }
 });
 Dialog.prototype.getIconUrl = function() {
@@ -3189,7 +2744,6 @@ Dialog.prototype.getMiniIconUrl = function() {
   return getFaviconUrl(this.application.src);
 };
 Dialog.prototype.setIcon = function(iconUrl, onError) {
-  if (!this.target) return;
   if (!iconUrl) {
     if (onError) onError();
     return;
@@ -3200,21 +2754,18 @@ Dialog.prototype.setIcon = function(iconUrl, onError) {
   if (!this._appIcon) return;
   var self2 = this;
   this._appIcon.onload = function() {
-    console.log("App icon loaded!!");
     if (self2._appIcon) self2._appIcon.className = "loaded";
   };
   this._appIcon.onerror = function(e) {
-    console.warn("App icon error!", e);
     if (self2._appIcon) self2._appIcon.className = "";
+    console.warn(e);
     if (onError) onError();
   };
   this._appIcon.src = iconUrl;
 };
 Dialog.prototype.setSkew = function(skew) {
   this._skew = skew;
-  if (this.useTransform)
-    this.updateTransform();
-  else if (this.target) skewElement(this.target, skew);
+  if (this.useTransform) this.updateTransform();
 };
 Dialog.prototype.setScale = function(scaleX, scaleY, update, noAnimation) {
   if (this.transform) this.transform.scale(scaleX, scaleY, update !== false, !noAnimation);
@@ -3239,10 +2790,6 @@ Dialog.prototype.setDragScale = function(scaleX, scaleY) {
   this._scaleX = nextX;
   this._scaleY = nextY;
 };
-Dialog.prototype.setScaleX = function(scaleX) {
-  this._scaleX = scaleX;
-  this.updateTransform();
-};
 Dialog.prototype.setScaleY = function(scaleY) {
   this._scaleY = scaleY;
   this.updateTransform();
@@ -3263,9 +2810,6 @@ Dialog.prototype.activate = function() {
 Dialog.prototype.getTitleElement = function() {
   return this.getElementByTagOrClassName("h1");
 };
-Dialog.prototype.toggleTitleBar = function(force) {
-  return this.titleBar && !this.titleBar.classList.toggle("hidden", typeof force !== "undefined" ? !force : void 0);
-};
 Dialog.prototype.open = function() {
   return this.toggleOpen(true);
 };
@@ -3285,7 +2829,16 @@ Dialog.prototype.createOpenButton = function() {
   var openButton = document.createElement("button");
   this.buttons.unshift(openButton);
   openButton.appendChild(document.createTextNode(this.title || "?"));
-  openButton.onclick = this.launch.bind(this);
+  var application = this.application;
+  if (application && application.multiple) {
+    openButton.onclick = function() {
+      if (!application) return;
+      var instance = windowManager.spawnApp(application);
+      if (instance) instance.launch();
+    };
+  } else {
+    openButton.onclick = this.launch.bind(this);
+  }
   return openButton;
 };
 Dialog.prototype.setClickOffset = function(x, y) {
@@ -3308,7 +2861,6 @@ Object.defineProperty(Dialog.prototype, "href", { get: function() {
 } });
 Dialog.prototype.togglePointerEvents = function(enable) {
   var target = this.target;
-  if (!target) return;
   if (enable === null) enable = target.style.pointerEvents === "none";
   if (enable) while (target.classList.contains("dragging")) target.className = target.className.replace("dragging", "");
   else if (!target.classList.contains("dragging")) target.className = target.className + " dragging";
@@ -3335,16 +2887,16 @@ Dialog.prototype.stopAnimating = function() {
     return;
   }
   if (this._dragScaleAnimating) return;
-  if (this.target) this.target.classList.remove("animating");
+  this.target.classList.remove("animating");
 };
 Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd, timeout, flip2) {
-  if (this.target) animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
+  animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
 };
 Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled, timeout) {
   var self2 = this;
   var enabled = false;
   this.animate(function() {
-    if (self2.target) enabled = setClass(self2.target, className, force);
+    enabled = setClass(self2.target, className, force);
     if (onToggled) onToggled.call(self2, enabled);
   }, onTransitionEnd, function() {
     if (onEnd) onEnd.call(self2, enabled);
@@ -3354,15 +2906,14 @@ Dialog.prototype.toggleClassFlip = function(className, force, onTransitionEnd, o
   var self2 = this;
   var enabled = false;
   this.animate(function() {
-    if (self2.target) enabled = setClass(self2.target, className, force);
+    enabled = setClass(self2.target, className, force);
   }, onTransitionEnd, function() {
     if (onEnd) onEnd.call(self2, enabled);
   }, timeout, true);
 };
 Dialog.prototype.toggleSnapped = function(enable) {
   var target = this.target;
-  if (!target) return;
-  if (enable == null) enable = !target.classList.contains("snapped");
+  if (enable === null) enable = !target.classList.contains("snapped");
   if (target.classList.contains("snapped") === enable) return;
   this._snappingOut = !enable;
   this._snappingOutState = null;
@@ -3376,8 +2927,7 @@ Dialog.prototype.toggleSnapped = function(enable) {
 };
 Dialog.prototype.toggleHeightSnapped = function(enable) {
   var target = this.target;
-  if (!target) return;
-  if (enable == null) enable = !target.classList.contains("height-snapped");
+  if (enable === null) enable = !target.classList.contains("height-snapped");
   if (target.classList.contains("height-snapped") === enable) return;
   if (enable) this.move(this.x, 0);
   this._snappingOut = !enable;
@@ -3392,83 +2942,30 @@ Dialog.prototype.toggleHeightSnapped = function(enable) {
   target._animationState;
 };
 Dialog.prototype.toggleMaximized = function(enable) {
-  if (enable == null) enable = !this.maximized;
+  if (typeof enable !== "boolean") enable = !this.maximized;
   if (this.maximized === enable) return;
-  if (!this.target) return;
   if (enable && this.snapped && windowManager) windowManager.unsnapDialog(this);
   if (enable && this.heightSnapped) this.toggleHeightSnapped(false);
   var self2 = this;
+  var target = this.target;
   var content = this.content;
   this.setZ();
   this.broadcastState({ maximized: enable === true });
   this.maximizeAnimations++;
   if (flags.useViewTransitionMaximize && this.windowTarget)
     return this.windowTarget.toggleMaximizedVT(enable);
-  if (supportsTransitions) !flags.compositorResize ? this.toggleClassAnimated("maximized", enable, function(name) {
-    return name === "transform" || name === "width";
-  }, void 0, function(isMaximized) {
-    if (this.useTransform && this.target) this.toggleMinSizeConstraints(isMaximized);
-    self2.maximizeAnimations--;
-  }) : this.toggleClassAnimated("scaled-max", enable, function(name) {
-    return name === "transform";
-  }, function onEnd(enabled) {
-    if (self2._animationProps._fsTimeout) clearTimeout(self2._animationProps._fsTimeout);
-    var target2 = this.target;
-    if (!target2) return;
-    target2.classList.toggle("maximized", enabled);
-    this.setScale(1, 1);
-    if (!content) return;
-    transformElementOld(content, 0, 0, 0, 1, 1);
-    content.style.width = "";
-    content.style.height = "";
-    this.maximizeAnimations--;
-  }, function onToggled(enabled) {
-    var timeOffsetMs = 50;
-    var totalDuration = 280;
-    var invertDurationOnShrink = false;
-    var target2 = this.target;
-    if (!target2) return;
-    this._maximizing = enabled;
-    var startWidth = this.width;
-    var startHeight = this.height;
-    var windowSection = windowManager.getSnapContainer(this);
-    var height = windowSection ? windowSection.clientHeight : window.innerHeight;
-    var scaleX = window.innerWidth / startWidth;
-    var scaleY = height / startHeight;
-    target2.style.transformOrigin = enabled ? "top left" : "";
-    target2.style.pointerEvents = "none";
-    if (!enabled) {
-      if (invertDurationOnShrink) timeOffsetMs = totalDuration - timeOffsetMs;
-      scaleX = 1 / scaleX;
-      scaleY = 1 / scaleY;
-    }
-    this.setScale(scaleX, scaleY);
-    var targetWidth = enabled ? window.innerWidth : self2.width;
-    var targetHeight = enabled ? height : self2.height;
-    self2._animationProps._fsTimeout = setTimeout(function() {
-      requestAnimationFrame(function() {
-        if (!content) return;
-        content.style.width = toPixels(targetWidth);
-        content.style.height = toPixels(targetHeight);
-        void content.offsetWidth;
-        transformElementOld(content, 0, 0, 0, 1 / scaleX, 1 / scaleY);
-      });
-    }, timeOffsetMs);
-  });
-  else {
+  if (!supportsTransitions) {
     var startPos = self2.position;
     var startSize = self2.size;
-    var target = self2.target;
-    if (!target) return;
     enable = !target.classList.contains("maximized");
-    var toggleMaximized = function() {
+    var toggleMaximizedFallback = function() {
       self2.x = startPos.x;
       self2.y = startPos.y;
       self2.width = startSize.x;
       self2.height = startSize.y;
-      if (self2.target) self2.target.classList.toggle("maximized", enable);
+      self2.target.classList.toggle("maximized", enable);
     };
-    if (!enable) toggleMaximized();
+    if (!enable) toggleMaximizedFallback();
     Anim.animate(300, function(t) {
       var ease = Anim.easeSharpCenterStrong;
       if (enable) {
@@ -3483,7 +2980,132 @@ Dialog.prototype.toggleMaximized = function(enable) {
         self2.height = Anim.lerp(window.innerHeight, startSize.y, ease(t));
       }
     }, function() {
-      if (enable) toggleMaximized();
+      if (enable) toggleMaximizedFallback();
+      self2.maximizeAnimations--;
+    });
+    return;
+  }
+  if (!flags.compositorResize || !this.useTransform) {
+    this.toggleClassAnimated("maximized", enable, function(name) {
+      return name === "transform" || name === "width";
+    }, void 0, function(isMaximized) {
+      if (this.useTransform && this.target) this.toggleMinSizeConstraints(isMaximized);
+      self2.maximizeAnimations--;
+    }, 1e3);
+    return;
+  }
+  if (!flags.useAnimations) {
+    target.classList.toggle("maximized", enable);
+    target.classList.toggle("scaled-max", enable);
+    target.style.pointerEvents = "";
+    this._maximizing = enable;
+    this.setScale(1, 1, void 0, true);
+    this.updateTransform();
+    this.toggleMinSizeConstraints(enable);
+    this.maximizeAnimations--;
+    return;
+  }
+  if (this._compositorMaxState) {
+    this._compositorMaxState.cancel();
+    this._compositorMaxState = null;
+  }
+  var windowSection = windowManager.getSnapContainer(this);
+  var endWidth = windowSection ? windowSection.clientWidth : window.innerWidth;
+  var endHeight = windowSection ? windowSection.clientHeight : window.innerHeight;
+  var startWidth = this.width || target.offsetWidth || 300;
+  var startHeight = this.height || target.offsetHeight || 200;
+  var startX = this.x;
+  var startY = this.y;
+  var scaleX = startWidth > 0 ? endWidth / startWidth : 1;
+  var scaleY = startHeight > 0 ? endHeight / startHeight : 1;
+  var isSlow = document.body && document.body.classList.contains("slow-animations");
+  var duration = isSlow ? 3e3 : 280;
+  var toTransform = function(x, y, sx, sy) {
+    return "translate(" + Helpers.toPixels(x) + "," + Helpers.toPixels(y) + ") scale(" + sx + "," + sy + ")";
+  };
+  var state = {
+    active: true,
+    raf: 0,
+    timer: 0,
+    /** @type {((e: TransitionEvent) => void) | null} */
+    endHandler: null,
+    cancel: function() {
+      if (!this.active) return;
+      this.active = false;
+      if (this.raf) cancelAnimationFrame(this.raf);
+      if (this.timer) clearTimeout(this.timer);
+      if (this.endHandler) target.removeEventListener("transitionend", this.endHandler, false);
+      target.style.removeProperty("transition");
+      target.style.transformOrigin = "";
+      target.style.pointerEvents = "";
+      target.classList.remove("animating");
+      if (content) {
+        content.style.width = "";
+        content.style.height = "";
+      }
+      self2.maximizeAnimations--;
+    }
+  };
+  this._compositorMaxState = state;
+  var finishCompositorMaximize = function() {
+    if (!state.active) return;
+    state.active = false;
+    if (state.timer) clearTimeout(state.timer);
+    if (state.endHandler) target.removeEventListener("transitionend", state.endHandler, false);
+    self2._compositorMaxState = null;
+    target.classList.remove("animating");
+    target.style.removeProperty("transition");
+    target.style.transformOrigin = "";
+    target.style.pointerEvents = "";
+    if (content) {
+      content.style.width = "";
+      content.style.height = "";
+    }
+    if (enable) {
+      target.classList.add("maximized", "scaled-max");
+      self2._maximizing = true;
+    } else {
+      target.classList.remove("maximized", "scaled-max");
+      self2._maximizing = false;
+    }
+    self2.setScale(1, 1, void 0, true);
+    self2.updateTransform();
+    if (self2.useTransform && target) self2.toggleMinSizeConstraints(enable);
+    self2.maximizeAnimations--;
+  };
+  state.endHandler = function(e) {
+    if (e.target === target && (e.propertyName === "transform" || !e.propertyName)) {
+      finishCompositorMaximize();
+    }
+  };
+  target.addEventListener("transitionend", state.endHandler, false);
+  state.timer = setTimeout(finishCompositorMaximize, duration + 100);
+  target.style.transformOrigin = "top left";
+  target.style.pointerEvents = "none";
+  if (enable) {
+    target.classList.add("scaled-max");
+    target.classList.remove("maximized");
+    target.style.setProperty("transition", "none", "important");
+    target.style.transform = toTransform(startX, startY, 1, 1);
+    void target.offsetWidth;
+    state.raf = requestAnimationFrame(function() {
+      state.raf = 0;
+      if (!state.active) return;
+      target.classList.add("animating");
+      target.style.removeProperty("transition");
+      target.style.transform = toTransform(0, 0, scaleX, scaleY);
+    });
+  } else {
+    target.classList.add("maximized", "scaled-max");
+    target.style.setProperty("transition", "none", "important");
+    target.style.transform = toTransform(0, 0, 1, 1);
+    void target.offsetWidth;
+    state.raf = requestAnimationFrame(function() {
+      state.raf = 0;
+      if (!state.active) return;
+      target.classList.add("animating");
+      target.style.removeProperty("transition");
+      target.style.transform = toTransform(startX, startY, 1 / scaleX, 1 / scaleY);
     });
   }
 };
@@ -3509,7 +3131,6 @@ Dialog.prototype.updateTransform = function(animate) {
   else this.transform.move(this.x, this.y, animate);
 };
 Dialog.prototype.updatePosition = function() {
-  if (!this.target) return;
   if (this.useTransform) this.updateTransform();
   else this.setInset(this.top, this.left, this.right, this.bottom);
   if (flags.useSkewAnimations) {
@@ -3518,22 +3139,7 @@ Dialog.prototype.updatePosition = function() {
     this.skew = -deltaX * intensity / 3;
     this.scaleY = 1 - deltaY * intensity / 100;
   }
-  if (!flags.useMica) return;
-  var micaElement = this.micaElement;
-  if (micaElement) try {
-    var backdrop = micaElement.firstChild;
-    var wallpaperP = document.getElementById("wallpaper");
-    if (!wallpaperP) return;
-    var wallpaperImage = wallpaperP.children[0];
-    if (!isElement(backdrop) || !wallpaperImage) return;
-    transformElementOld(backdrop, -this.x, -this.y);
-    var wallpaperWidth = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientWidth ? wallpaperImage.clientWidth : wallpaperP.clientWidth;
-    var wallpaperHeight = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientHeight ? wallpaperImage.clientHeight : wallpaperP.clientHeight;
-    backdrop.style.width = toPixels(wallpaperWidth);
-    backdrop.style.height = toPixels(wallpaperHeight);
-  } catch (ex) {
-    console.warn(ex);
-  }
+  windowManager.notifyExtensions("onWindowMove", this);
 };
 Dialog.prototype.broadcastState = function(overrides) {
   if (!windowManager || !flags.broadcastWindowMoves || !document.hasFocus()) return;
@@ -3572,12 +3178,9 @@ Dialog.prototype.move = function(x, y, update, animate) {
     this.broadcastState(state);
   }
 };
-Dialog.prototype.moveBy = function(deltaX, deltaY) {
-  this.move(this.x + deltaX, this.y + deltaY);
-};
-Dialog.prototype.moveToCenter = function(centerX, centerY) {
+Dialog.prototype.moveCenterTo = function(centerX, centerY, animate) {
   if (typeof centerX !== "number" || typeof centerY !== "number") return;
-  this.move(centerX - this.width / 2, centerY - this.height / 2);
+  this.move(centerX - this.width / 2, centerY - this.height / 2, true, animate);
 };
 Dialog.prototype.setZ = function(z) {
   if (this.fixed) return;
@@ -3585,58 +3188,53 @@ Dialog.prototype.setZ = function(z) {
   if (typeof z === "undefined") {
     if (this._z !== windowManager.topZ) this._z = ++windowManager.topZ;
   } else this._z = z;
-  if (isElement(this.target))
+  if (Helpers.isElement(this.target))
     this.target.style.zIndex = String(this._z);
   if (previous !== this._z) this.broadcastState({ z: this._z });
 };
 Dialog.prototype.updateWidth = function() {
-  if (!this.target) return;
-  if (this.useTransform) this.target.style.width = toPixels(this._width);
-  else this.target.style.right = toPixels(this.right);
+  if (this.useTransform) this.target.style.width = Helpers.toPixels(this._width);
+  else this.target.style.right = Helpers.toPixels(this.right);
 };
 Dialog.prototype.updateHeight = function() {
-  if (!this.target) return;
-  if (this.useTransform) this.target.style.height = toPixels(this._height);
-  else this.target.style.bottom = toPixels(this.bottom);
+  if (this.useTransform) this.target.style.height = Helpers.toPixels(this._height);
+  else this.target.style.bottom = Helpers.toPixels(this.bottom);
 };
-Dialog.prototype.setWidth = function(width, update, animate) {
-  if (typeof width !== "number") return;
+Dialog.prototype._setSize = function(axis, size, update, animate) {
+  if (typeof size !== "number" || axis === "height" && !this.target) return;
+  var isWidth = axis === "width";
   var bounds = WindowManager.windowBounds;
-  if (bounds.right !== Infinity) {
-    var overflow = this.x + width - bounds.right;
+  var far = isWidth ? bounds.right : bounds.bottom;
+  var near = isWidth ? bounds.left : bounds.top;
+  var pos = isWidth ? this.x : this.y;
+  if (far !== Infinity) {
+    var overflow = pos + size - far;
     if (overflow > 0) {
-      var newX = this.x - overflow;
-      if (bounds.left !== void 0 && newX < bounds.left) newX = bounds.left;
-      this.move(newX);
+      var newPos = pos - overflow;
+      if (near !== void 0 && newPos < near) newPos = near;
+      if (isWidth) this.move(newPos);
+      else this.move(this.x, newPos);
     }
+    size = Math.min(size, far - (isWidth ? this.x : this.y));
   }
-  if (bounds.right !== Infinity) width = Math.min(width, bounds.right - this.x);
-  this._width = Math.max(Math.min(width, this.maxWidth), this.minWidth);
-  this._isMinWidth = this._width === this.minWidth;
+  if (isWidth) {
+    this._width = Math.max(Math.min(size, this.maxWidth), this.minWidth);
+    this._isMinWidth = this._width === this.minWidth;
+  } else {
+    this._height = Math.max(Math.min(size, this.maxHeight), this.minHeight);
+    this._isMinHeight = this._height === this.minHeight;
+  }
   if (update !== false) {
-    if (animate) this.animate(this.updateWidth);
-    else this.updateWidth();
-  }
-};
-Dialog.prototype.setHeight = function(height, update, animate) {
-  if (typeof height !== "number" || !this.target) return;
-  var bounds = WindowManager.windowBounds;
-  if (bounds.bottom !== Infinity) {
-    var overflow = this.y + height - bounds.bottom;
-    if (overflow > 0) {
-      var newY = this.y - overflow;
-      if (bounds.top !== void 0 && newY < bounds.top) newY = bounds.top;
-      this.move(this.x, newY);
-    }
-  }
-  var finalHeight = height;
-  if (bounds.bottom !== Infinity) finalHeight = Math.min(finalHeight, bounds.bottom - this.y);
-  this._height = Math.max(Math.min(finalHeight, this.maxHeight), this.minHeight);
-  this._isMinHeight = this._height === this.minHeight;
-  if (update !== false) {
-    if (animate) this.animate(this.updateHeight);
+    if (animate) this.animate(isWidth ? this.updateWidth : this.updateHeight);
+    else if (isWidth) this.updateWidth();
     else this.updateHeight();
   }
+};
+Dialog.prototype.setWidth = function(width, update, animate) {
+  this._setSize("width", width, update, animate);
+};
+Dialog.prototype.setHeight = function(height, update, animate) {
+  this._setSize("height", height, update, animate);
 };
 Dialog.prototype.resize = function(width, height, direction) {
   if (this.fixed) return;
@@ -3652,6 +3250,15 @@ Dialog.prototype.resize = function(width, height, direction) {
     if (oldHeight !== this.height) state.height = this.height;
     this.broadcastState(state);
   }
+};
+Dialog.prototype._commitResize = function(newW, newH, newX, newY, oldX, oldY, minW, minH) {
+  this._width = newW;
+  this._height = newH;
+  this._isMinWidth = newW === minW;
+  this._isMinHeight = newH === minH;
+  if (newX !== oldX || newY !== oldY) this.move(newX, newY);
+  this.updateWidth();
+  this.updateHeight();
 };
 Dialog.prototype._resizeFree = function(width, height, direction) {
   var oldX = this.x, oldY = this.y;
@@ -3686,13 +3293,7 @@ Dialog.prototype._resizeFree = function(width, height, direction) {
       newY = oldY + oldH - newH;
       break;
   }
-  this._width = newW;
-  this._height = newH;
-  this._isMinWidth = newW === minW;
-  this._isMinHeight = newH === minH;
-  if (newX !== oldX || newY !== oldY) this.move(newX, newY);
-  this.updateWidth();
-  this.updateHeight();
+  this._commitResize(newW, newH, newX, newY, oldX, oldY, minW, minH);
 };
 Dialog.prototype._resizeWithAspect = function(width, height, direction) {
   var ratio = this._aspectRatio;
@@ -3825,18 +3426,14 @@ Dialog.prototype.update = function() {
   this.move();
   this.resize();
 };
-Dialog.prototype.setMinSize = function(width, height) {
+Dialog.prototype.setMinSize = function(width, height, update) {
   this._minWidth = typeof width === "number" ? width : 180;
   this._minHeight = typeof height === "number" ? height : 200;
-  this.resize();
+  if (update !== false) this.resize();
 };
 Dialog.prototype.setMaxSize = function(width, height) {
   this._maxWidth = typeof width === "number" ? width : 180;
   this._maxHeight = typeof height === "number" ? height : 200;
-  this.resize();
-};
-Dialog.prototype.setMinAspectRatio = function(ratio) {
-  this._minAspectRatio = ratio;
   this.resize();
 };
 Dialog.prototype.updateBodyOffset = function() {
@@ -3856,14 +3453,14 @@ Dialog.prototype.moveBody = function(x, y) {
   this.move(x + this._bodyOffset.x, y + this._bodyOffset.y);
 };
 Dialog.prototype.setInset = function(top, left, right, bottom) {
-  if (this.useScale) right = void 0, bottom = void 0;
-  if (this.target) insetElement(this.target, top, left, right, bottom);
+  if (this.useScale) insetElement(this.target, top, left);
+  else insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
   var frame = this.getOrCreateFrame(true);
   if (!frame) return;
   var self2 = this;
-  let timeout = -1;
+  var timeout = -1;
   frame.onload = function() {
     clearTimeout(timeout);
     self2.reportState();
@@ -3872,38 +3469,27 @@ Dialog.prototype.openUrl = function(url) {
   var baseUrls = [url || this.src, this.application.distSrc];
   if (!isLocal) baseUrls.reverse();
   var fallbackUrls = baseUrls.concat(this.application.altUrls);
-  let index = 0;
+  var index = 0;
   function tryNext() {
-    var url2 = fallbackUrls[index++];
-    if (!url2) {
-      tryNext();
-      return;
-    }
-    if (index >= fallbackUrls.length || !frame) return;
+    var url2;
+    while (index < fallbackUrls.length && !(url2 = fallbackUrls[index++])) ;
+    if (!url2 || !frame) return;
     frame.src = url2;
     self2._src = url2;
     clearTimeout(timeout);
     timeout = setTimeout(tryNext, 3e3);
   }
-  frame.addEventListener("error", tryNext);
+  frame.addEventListener("error", tryNext, false);
   tryNext();
 };
 Dialog.prototype.refresh = function() {
   if (this.frame) this.openUrl(this.frame.src);
 };
-Dialog.prototype.loadFrame = function() {
-  if (!this.application) return;
-  var frame = this.getOrCreateFrame(true);
-  if (frame) appManager.openAppInIFrame(this.application.id, frame);
-};
 Dialog.prototype.launch = function() {
-  if (!this.isOpen) this.initWithObject(this);
-  if (this.mica) this.injectMica();
+  if (!this.isOpen) this.insertIntoDOM();
+  this.target.classList.remove("hidden");
+  windowManager.notifyExtensions("onWindowLaunch", this);
   this.open();
-};
-Dialog.prototype.relaunch = function() {
-  this.close();
-  this.launch();
 };
 Dialog.prototype.kill = function() {
   var parent = this.target && this.target.parentElement;
@@ -3919,8 +3505,8 @@ Dialog.prototype.createPopOut = function() {
   if (!body || !this.href) return;
   var rect = body.getBoundingClientRect();
   var titleBarHeight = titleBar && titleBar.getBoundingClientRect().height || 0;
-  var viewBoxPosition = getViewBoxPosition();
-  this._popupWindow = window.open(this.href, this.title || "LVOS", stringifyDialogProperties({
+  var viewBoxPosition = Helpers.getViewBoxPosition();
+  this._popupWindow = window.open(this.href, this.title || "LVOS", Helpers.stringifyWindowOpenProperties({
     scrollbars: true,
     resizable: true,
     status: false,
@@ -3952,14 +3538,12 @@ Dialog.prototype.createPopOut = function() {
     height = Math.round(height);
     if (outerX !== prevRect.x || outerY !== prevRect.y) {
       var x = outerX - window.screenX, y = outerY - window.screenY - windowChromeHeight + chromeHeight;
-      console.log("pos:", outerX, outerY);
       self2.moveBody(x, y);
       prevRect.x = outerX;
       prevRect.y = outerY;
     }
     if (width !== prevRect.width || height !== prevRect.height) {
       self2.resizeBody(width, height);
-      console.log("size:", width, width);
       prevRect.width = width;
       prevRect.height = height;
     }
@@ -3971,7 +3555,6 @@ Dialog.prototype.inspect = function() {
 Dialog.prototype.updateUseTransform = function(useTransform2) {
   this._useTransform = useTransform2;
   var target = this.target;
-  if (!target) return;
   if (useTransform2) {
     target.style.top = "";
     target.style.left = "";
@@ -3987,75 +3570,25 @@ Dialog.prototype.updateUseTransform = function(useTransform2) {
 Dialog.prototype.updateScale = function(useScale2) {
   this._useScale = useScale2;
   var target = this.target;
-  if (!target) return;
   if (useScale2) {
     target.style.right = "";
     target.style.bottom = "";
     this.toggleMinSizeConstraints(this.maximized);
   } else {
-    if (this.useTransform) return console.warn("Cannot disable scale if using transform");
-    target.style.right = toPixels(this.right);
-    target.style.bottom = toPixels(this.bottom);
+    if (this.useTransform) return;
+    var right = this.right, bottom = this.bottom;
+    if (right === right) target.style.right = Helpers.toPixels(right);
+    if (bottom === bottom) target.style.bottom = Helpers.toPixels(bottom);
   }
   target.classList.toggle("use-scale", useScale2);
   this.update();
 };
 Dialog.prototype.toggleMinSizeConstraints = function(isMaximized) {
-  if (!this.target) return;
-  this.target.style.minWidth = isMaximized ? "100%" : toPixels(this.minWidth);
-  this.target.style.minHeight = isMaximized ? "100%" : toPixels(this.minHeight);
-};
-Dialog.prototype.injectMica = function() {
-  try {
-    if (!this.useTransform) console.warn("Dude you still gotta fix the mica here for oh right but can you possible even do that??");
-    if (!this.target) return false;
-    var wallpaper2 = document.getElementById("wallpaper");
-    if (!wallpaper2) return false;
-    var wallpaperSrc = wallpaper2.getAttribute("data-wallpaper-src") || "";
-    var blurredSrc = wallpaper2.getAttribute("data-blurred-src") || "";
-    var preBlurredImage = blurredSrc !== null;
-    var clip = this.micaElement;
-    if (!clip) return false;
-    while (clip.firstChild) clip.removeChild(clip.firstChild);
-    var micaWallpaper = null;
-    if (isElement(wallpaper2.children[0])) {
-      micaWallpaper = wallpaper2.children[0].cloneNode(true);
-      if (!isElement(micaWallpaper)) return false;
-      if (supportsObjectFit) {
-        micaWallpaper.removeAttribute("style");
-        micaWallpaper.className = "mica-backdrop";
-        if (preBlurredImage && micaWallpaper instanceof HTMLIFrameElement && blurredSrc)
-          micaWallpaper.src = blurredSrc;
-      } else {
-        micaWallpaper.className = "mica-backdrop legacy-wallpaper-image";
-        micaWallpaper.style.backgroundImage = "url('" + (blurredSrc || wallpaperSrc).replace(/'/g, "\\'") + "')";
-      }
-    } else {
-      micaWallpaper = document.createElement("img");
-      micaWallpaper.className = "mica-backdrop legacy-wallpaper-image";
-      micaWallpaper.style.backgroundImage = "url('" + (blurredSrc || wallpaperSrc).replace(/'/g, "\\'") + "')";
-    }
-    clip.appendChild(micaWallpaper);
-    this.target.classList.add("mica");
-    return true;
-  } catch (ex) {
-    console.warn(ex);
-  }
-  return false;
-};
-Dialog.prototype.removeMica = function() {
-  if (!this.target) return false;
-  this.target.classList.remove("mica");
-  var clip = this.micaElement;
-  if (!clip) return false;
-  while (clip.firstChild) clip.firstChild.remove();
-  return false;
+  this.target.style.minWidth = isMaximized ? "100%" : Helpers.toPixels(this.minWidth);
+  this.target.style.minHeight = isMaximized ? "100%" : Helpers.toPixels(this.minHeight);
 };
 Dialog.prototype.flip = function(enable) {
   this.toggleClassAnimated("flipped", enable);
-};
-Dialog.prototype.makeWallpaper = function() {
-  if (this.id) appManager.setWallpaper(this.id);
 };
 Dialog.prototype.getState = function() {
   return {
@@ -4070,14 +3603,13 @@ Dialog.prototype.getState = function() {
   };
 };
 Dialog.prototype.loadState = function(state) {
-  if (!state) return;
   if ("open" in state) {
     if (state.open) this.launch();
-    else if (this.target) this.toggleOpen(false);
+    else this.toggleOpen(false);
   }
   if ("title" in state) this.title = state.title;
   if ("x" in state || "y" in state)
-    this.move("x" in state ? state.x : this.x, "y" in state ? state.y : this.y);
+    this.move("x" in state ? state.x : this.x, "y" in state ? state.y : this.y, true, false);
   if ("z" in state && typeof state.z === "number") this.setZ(state.z);
   if ("width" in state || "height" in state)
     this.resize("width" in state ? state.width : this.width, "height" in state ? state.height : this.height);
@@ -4086,25 +3618,26 @@ Dialog.prototype.loadState = function(state) {
 Dialog.prototype.exportDialogBodyToMetro = function() {
 };
 Dialog.prototype.getElementById = function(id) {
-  console.log("Element ID to pull out of my guts: " + id);
   var doc = this.contentDocument;
   return doc && doc.getElementById(id);
 };
-Dialog.prototype.moveElementIntoPipById = function(id) {
+Dialog.prototype.insertIntoDOM = function() {
+  var container = document.getElementById("window-section");
+  if (container) container.appendChild(this.target);
+};
+Dialog.prototype.moveElementIntoPipById = function(id, stylesheet) {
   var targetElement = this.getElementById(id);
-  console.log("Ripped out element:", targetElement);
   if (targetElement && Modern) Modern.toggleElementPip(targetElement, function(window2) {
     window2.onresize = function() {
       if (!(targetElement instanceof HTMLCanvasElement)) return;
       targetElement.width = targetElement.clientWidth;
       targetElement.height = targetElement.clientHeight;
     };
-  });
+  }, stylesheet);
 };
 Dialog.prototype.screenshot = function() {
-  var target = this.target;
-  if (!target) return;
-  if (screenShooter) screenShooter.screenshotElement(target);
+  var shooter = getScreenShooter();
+  if (shooter) shooter.screenshotElement(this.target);
 };
 function DragAction() {
   this.execute = function() {
@@ -4145,95 +3678,26 @@ DragAction.prototype.set = function(direction) {
   this.execute = this.resizeFunctions[this.direction] || function() {
   };
 };
-function DocumentCrawler(customDocument) {
-  this.document = customDocument || document;
-}
-DocumentCrawler.prototype.getMetro = function() {
-  return this.document.getElementById("metrobody");
-};
-DocumentCrawler.prototype.getMetroBody = function() {
-  var metro = this.getMetro();
-  return metro && metro.firstChild;
-};
-DocumentCrawler.prototype.getAllDialogs = function() {
-  return this.document.getElementsByClassName("window");
-};
-DocumentCrawler.prototype.getDialogsContainer = function() {
-  return this.document.getElementById("window-section");
-};
-DocumentCrawler.prototype.getOverlay = function() {
-  return document.getElementById("overlay");
-};
-DocumentCrawler.prototype.getDesktop = function() {
-  return document.getElementById("desktop");
-};
+window.addEventListener("resize", WindowManager.recalculateWindowBounds, false);
+window.addEventListener("load", WindowManager.recalculateWindowBounds, false);
 window.addEventListener(supportsPointer ? "pointermove" : "mousemove", ClickOffset.handleMouseDrag, false);
 window.addEventListener("unload", function() {
-  windowManager.saveState();
+  windowManager && windowManager.saveState();
 }, false);
-window.addEventListener("dragover", function(e) {
-  console.log(e);
-  cancelDomEvent(e);
-}, false);
+window.addEventListener("dragover", cancelDomEvent, false);
 window.addEventListener("drop", function(e) {
-  console.log(e);
   e.preventDefault();
-  if (!e.dataTransfer) return;
-  var files = e.dataTransfer.files;
-  if (files.length > 0)
-    console.log("File dropped anywhere in window:", files[0].name);
 }, false);
 var windowManager = new WindowManager();
-windowManager = windowManager;
+window.windowManager = windowManager;
 windowManager.isWindowUpdatesEnabled = true;
-var bodyCrawler = new DocumentCrawler();
 window.__LVMessengerReceive = messageReceived;
 window.__LVMessenger = {};
-function genericTyped(type) {
-  return type;
-}
-const hey = genericTyped(document.createElement("button"));
-const meow = document.createElement("applet");
-"use strict";
-function Reflector(element) {
-  this.element = element;
-  this.observer;
-  this.clones = [];
-}
-Reflector.prototype.reflect = function(target) {
-  try {
-    var reflection = target.cloneNode(true);
-    if (!isElement(reflection)) return null;
-    var refElement = reflection;
-    refElement.id += "reflection";
-    this.clones.push(refElement);
-    this.element.appendChild(refElement);
-    this.observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.type === "attributes" && mutation.target instanceof HTMLElement) {
-          var rect = target.getBoundingClientRect();
-          refElement.style.top = toPixels(rect.top - dock.offsetTop + dock.offsetHeight * 0);
-          refElement.style.left = toPixels(rect.left - dock.offsetLeft + dock.offsetWidth / 2);
-          refElement.style.width = toPixels(rect.width);
-          refElement.style.height = toPixels(rect.height);
-          refElement.style.zIndex = mutation.target.style.zIndex;
-        }
-      });
-    });
-    this.observer.observe(target, { attributes: true });
-    return refElement;
-  } catch (ex) {
-    console.warn(ex);
-  }
-  return null;
-};
 function ElementPicker(options) {
-  options = options;
   this.active = false;
   this.onSelect = options.onSelect || function(el) {
     console.log("Selected:", el);
   };
-  this.box = null;
   this.statusEl = null;
   this.hovered = null;
   this.prevOutline = "";
@@ -4259,7 +3723,6 @@ ElementPicker.prototype.register = function() {
 };
 ElementPicker.prototype.start = function() {
   this.active = true;
-  this.createBox();
   document.body.style.cursor = "crosshair";
   document.addEventListener("mousemove", this.boundMove, true);
   document.addEventListener("click", this.boundClick, true);
@@ -4270,7 +3733,6 @@ ElementPicker.prototype.start = function() {
 ElementPicker.prototype.stop = function() {
   this.active = false;
   document.body.style.cursor = "";
-  if (this.box) this.box.style.display = "none";
   document.removeEventListener("mousemove", this.boundMove, true);
   document.removeEventListener("click", this.boundClick, true);
   document.removeEventListener("keydown", this.boundKey, true);
@@ -4291,16 +3753,6 @@ ElementPicker.prototype.unhighlight = function(skipRemove) {
   this.hovered = null;
   this.prevOutline = "";
 };
-ElementPicker.prototype.drawRectAround = function(el) {
-  if (!this.box) return;
-  var r = el.getBoundingClientRect();
-  var s = this.box.style;
-  s.display = "block";
-  s.left = r.left + "px";
-  s.top = r.top + "px";
-  s.width = r.width + "px";
-  s.height = r.height + "px";
-};
 ElementPicker.prototype.onClick = function(e) {
   if (!e.isTrusted) return;
   e.preventDefault();
@@ -4312,19 +3764,6 @@ ElementPicker.prototype.onClick = function(e) {
 };
 ElementPicker.prototype.onKey = function(e) {
   if (e.key === "Escape") this.stop();
-};
-ElementPicker.prototype.createBox = function() {
-  if (this.box) return;
-  this.box = document.createElement("div");
-  Object.assign(this.box.style, {
-    position: "fixed",
-    pointerEvents: "none",
-    zIndex: 2147483646,
-    border: "2px solid #2f81f7",
-    background: "rgba(47,129,247,0.15)",
-    display: "none"
-  });
-  document.body.appendChild(this.box);
 };
 ElementPicker.prototype.status = function(msg) {
   if (!this.statusEl) {
@@ -4346,698 +3785,7 @@ ElementPicker.prototype.status = function(msg) {
   this.statusEl.textContent = msg;
   this.statusEl.style.display = msg ? "block" : "none";
 };
-function GraphicsBase(element, context) {
-  var canvas = null;
-  if (element instanceof HTMLCanvasElement) canvas = element;
-  else if (typeof element === "string") {
-    var c = document.getElementById(element);
-    if (c instanceof HTMLCanvasElement) canvas = c;
-  } else canvas = document.createElement("canvas");
-  if (!canvas) throw new Error("Object does not resolve to a canvas!");
-  this.canvas = canvas;
-  var self2 = this;
-  this.canvas.onresize = function() {
-    self2.resize();
-  };
-  this.ctx = context ? canvas.getContext(context) : null;
-}
-Object.defineProperty(GraphicsBase.prototype, "width", {
-  get: function() {
-    return this.canvas.width;
-  },
-  set: function(width) {
-    if (typeof width === "number")
-      this.canvas.width = width;
-  }
-});
-Object.defineProperty(GraphicsBase.prototype, "height", {
-  get: function() {
-    return this.canvas.height;
-  },
-  set: function(height) {
-    if (typeof height === "number")
-      this.canvas.height = height;
-  }
-});
-GraphicsBase.prototype.resize = function(width, height) {
-  if (typeof width === "undefined" || typeof height === "undefined") {
-    const rect = this.canvas.getBoundingClientRect();
-    width = rect.width;
-    height = rect.height;
-  }
-  const dpr = window.devicePixelRatio || 1;
-  this.width = width * dpr;
-  this.height = height * dpr;
-  return dpr;
-};
-GraphicsBase.prototype.downloadImage = function(data, filename) {
-  var a = document.createElement("a");
-  a.href = data;
-  a.download = filename || "untitled.jpeg";
-  document.body.appendChild(a);
-  a.click();
-};
-GraphicsBase.prototype.getDataUrl = function(type, quality) {
-  return this.canvas.toDataURL("image/" + (type || "png"), quality || 1);
-};
-GraphicsBase.prototype.downloadCanvas = function(filename) {
-  this.downloadImage(this.getDataUrl(), filename);
-};
-function Graphics3D(canvas, context) {
-  GraphicsBase.call(this, canvas, context);
-  if (context === "2d") return;
-  this.gl = context === "webgl2" && this.canvas.getContext("webgl2") || this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-  if (!this.gl) throw new Error("WebGL not supported!");
-  this.gl.clearColor(0, 0, 0, 0);
-  this.buffers = {
-    position: [],
-    indices: [],
-    color: []
-  };
-  this.renderTarget = null;
-  this.blitProgram = null;
-  this.blitBuffer = null;
-  this.blitAttribLocation = -1;
-  this.blitTextureLocation = null;
-  this.hasDepthBuffer = false;
-  this.onrender = function() {
-  };
-}
-Graphics3D.prototype = Object.create(GraphicsBase.prototype);
-Graphics3D.prototype.constructor = Graphics3D;
-var mat4 = {
-  create: function() {
-    return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-  },
-  multiply: function(out, a, b) {
-    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-    var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-    var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-    var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-    var b00 = b[0], b01 = b[1], b02 = b[2], b03 = b[3];
-    var b10 = b[4], b11 = b[5], b12 = b[6], b13 = b[7];
-    var b20 = b[8], b21 = b[9], b22 = b[10], b23 = b[11];
-    var b30 = b[12], b31 = b[13], b32 = b[14], b33 = b[15];
-    out[0] = a00 * b00 + a10 * b01 + a20 * b02 + a30 * b03;
-    out[1] = a01 * b00 + a11 * b01 + a21 * b02 + a31 * b03;
-    out[2] = a02 * b00 + a12 * b01 + a22 * b02 + a32 * b03;
-    out[3] = a03 * b00 + a13 * b01 + a23 * b02 + a33 * b03;
-    out[4] = a00 * b10 + a10 * b11 + a20 * b12 + a30 * b13;
-    out[5] = a01 * b10 + a11 * b11 + a21 * b12 + a31 * b13;
-    out[6] = a02 * b10 + a12 * b11 + a22 * b12 + a32 * b13;
-    out[7] = a03 * b10 + a13 * b11 + a23 * b12 + a33 * b13;
-    out[8] = a00 * b20 + a10 * b21 + a20 * b22 + a30 * b23;
-    out[9] = a01 * b20 + a11 * b21 + a21 * b22 + a31 * b23;
-    out[10] = a02 * b20 + a12 * b21 + a22 * b22 + a32 * b23;
-    out[11] = a03 * b20 + a13 * b21 + a23 * b22 + a33 * b23;
-    out[12] = a00 * b30 + a10 * b31 + a20 * b32 + a30 * b33;
-    out[13] = a01 * b30 + a11 * b31 + a21 * b32 + a31 * b33;
-    out[14] = a02 * b30 + a12 * b31 + a22 * b32 + a32 * b33;
-    out[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
-    return out;
-  },
-  perspective: function(out, fovy, aspect, near, far) {
-    var f = 1 / Math.tan(fovy / 2);
-    out[0] = f / aspect;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = f;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[11] = -1;
-    out[12] = 0;
-    out[13] = 0;
-    out[15] = 0;
-    if (far == null || far === Infinity) {
-      out[10] = -1;
-      out[14] = -2 * near;
-    } else {
-      var nf = 1 / (near - far);
-      out[10] = (far + near) * nf;
-      out[14] = 2 * far * near * nf;
-    }
-    return out;
-  },
-  translate: function(out, a, v) {
-    var x = v[0], y = v[1], z = v[2];
-    if (a === out) {
-      out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
-      out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
-      out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
-      out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
-      return out;
-    }
-    out[0] = a[0];
-    out[1] = a[1];
-    out[2] = a[2];
-    out[3] = a[3];
-    out[4] = a[4];
-    out[5] = a[5];
-    out[6] = a[6];
-    out[7] = a[7];
-    out[8] = a[8];
-    out[9] = a[9];
-    out[10] = a[10];
-    out[11] = a[11];
-    out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
-    out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
-    out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
-    out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
-    return out;
-  },
-  rotate: function(out, a, rad, axis) {
-    var x = axis[0], y = axis[1], z = axis[2];
-    var len = Math.sqrt(x * x + y * y + z * z);
-    if (!len) return null;
-    x /= len;
-    y /= len;
-    z /= len;
-    var s = Math.sin(rad);
-    var c = Math.cos(rad);
-    var t = 1 - c;
-    var a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-    var a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-    var a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-    var a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
-    var b00 = x * x * t + c;
-    var b01 = y * x * t + z * s;
-    var b02 = z * x * t - y * s;
-    var b10 = x * y * t - z * s;
-    var b11 = y * y * t + c;
-    var b12 = z * y * t + x * s;
-    var b20 = x * z * t + y * s;
-    var b21 = y * z * t - x * s;
-    var b22 = z * z * t + c;
-    out[0] = a00 * b00 + a10 * b01 + a20 * b02;
-    out[1] = a01 * b00 + a11 * b01 + a21 * b02;
-    out[2] = a02 * b00 + a12 * b01 + a22 * b02;
-    out[3] = a03 * b00 + a13 * b01 + a23 * b02;
-    out[4] = a00 * b10 + a10 * b11 + a20 * b12;
-    out[5] = a01 * b10 + a11 * b11 + a21 * b12;
-    out[6] = a02 * b10 + a12 * b11 + a22 * b12;
-    out[7] = a03 * b10 + a13 * b11 + a23 * b12;
-    out[8] = a00 * b20 + a10 * b21 + a20 * b22;
-    out[9] = a01 * b20 + a11 * b21 + a21 * b22;
-    out[10] = a02 * b20 + a12 * b21 + a22 * b22;
-    out[11] = a03 * b20 + a13 * b21 + a23 * b22;
-    out[12] = a30;
-    out[13] = a31;
-    out[14] = a32;
-    out[15] = a33;
-    return out;
-  }
-};
-function Vector3D(x, y, z) {
-  this.x = 0;
-  this.y = 0;
-  this.z = 0;
-  if (typeof x === "number") {
-    this.x = x;
-    if (y === void 0 || z === void 0)
-      this.y = x, this.z = x;
-    else this.y = y, this.z = z;
-  } else if (typeof x == "object" && x.x && x.y && x.z) {
-    this.x = x.x, this.y = x.y, this.z = x.z;
-  }
-}
-Vector3D.prototype.div = function(amount) {
-  this.x /= amount, this.y /= amount, this.z /= amount;
-  return this;
-};
-Vector3D.prototype.normalize = function() {
-  return this.div(this.x + this.y + this.z);
-};
-Graphics3D.prototype.clear = function() {
-  var mask = this.gl.COLOR_BUFFER_BIT;
-  if (this.hasDepthBuffer) mask |= this.gl.DEPTH_BUFFER_BIT;
-  this.gl.clear(mask);
-};
-Graphics3D.prototype.setClearColor = function(red, green, blue, alpha) {
-  this.gl.clearColor(red, green, blue, alpha);
-};
-Graphics3D.prototype.setRenderTarget = function(renderTarget) {
-  this.renderTarget = renderTarget;
-};
-Graphics3D.prototype.initBlitResources = function() {
-  if (this.blitProgram) return;
-  const gl = this.gl;
-  const vsSource = "attribute vec2 aPosition; varying vec2 vUv; void main() { vUv = aPosition * 0.5 + 0.5; gl_Position = vec4(aPosition, 0.0, 1.0); }";
-  const fsSource = "precision mediump float; uniform sampler2D uTexture; varying vec2 vUv; void main() { gl_FragColor = texture2D(uTexture, vUv); }";
-  const vertexShader = this.loadShader(gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = this.loadShader(gl.FRAGMENT_SHADER, fsSource);
-  if (!vertexShader || !fragmentShader) return console.warn("Failed to load shaders");
-  const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    alert(
-      "Unable to initialize the blit shader program: " + gl.getProgramInfoLog(program)
-    );
-    return;
-  }
-  this.blitProgram = program;
-  this.blitAttribLocation = gl.getAttribLocation(program, "aPosition");
-  this.blitTextureLocation = gl.getUniformLocation(program, "uTexture");
-  this.blitBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.blitBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-};
-Graphics3D.prototype.presentRenderTarget = function() {
-  const gl = this.gl;
-  if (!this.renderTarget || !gl) return;
-  if (!this.blitProgram) this.initBlitResources();
-  if (!this.blitProgram || this.blitAttribLocation === -1) return;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  gl.disable(gl.DEPTH_TEST);
-  gl.useProgram(this.blitProgram);
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.blitBuffer);
-  gl.vertexAttribPointer(this.blitAttribLocation, 2, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(this.blitAttribLocation);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, this.renderTarget.colorTexture);
-  gl.uniform1i(this.blitTextureLocation, 0);
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-};
-Graphics3D.prototype.loadShader = function(type, source) {
-  const shader = this.gl.createShader(type);
-  if (!shader) return null;
-  this.gl.shaderSource(shader, source);
-  this.gl.compileShader(shader);
-  if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-    alert(
-      "An error occurred compiling the shaders: " + this.gl.getShaderInfoLog(shader)
-    );
-    this.gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
-};
-Graphics3D.prototype.initShaderProgram = function(vsSource, fsSource) {
-  const vertexShader = this.loadShader(this.gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = this.loadShader(this.gl.FRAGMENT_SHADER, fsSource);
-  if (!vertexShader || !fragmentShader) return;
-  const shaderProgram = this.gl.createProgram();
-  this.gl.attachShader(shaderProgram, vertexShader);
-  this.gl.attachShader(shaderProgram, fragmentShader);
-  this.gl.linkProgram(shaderProgram);
-  if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
-    alert(
-      "Unable to initialize the shader program: " + this.gl.getProgramInfoLog(shaderProgram)
-    );
-    return null;
-  }
-  return shaderProgram;
-};
-Graphics3D.prototype.loadShaders = function(vsSource, fsSource) {
-  const gl = this.gl;
-  this.shaderProgram = this.initShaderProgram(vsSource, fsSource);
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  const positions = [1, 1, -1, 1, 1, -1, -1, -1];
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-  this.programInfo = {
-    program: this.shaderProgram,
-    attribLocations: {
-      vertexPosition: this.gl.getAttribLocation(
-        this.shaderProgram,
-        "aVertexPosition"
-      ),
-      vertexColor: this.gl.getAttribLocation(this.shaderProgram, "aVertexColor")
-    },
-    uniformLocations: {
-      projectionMatrix: this.gl.getUniformLocation(
-        this.shaderProgram,
-        "uProjectionMatrix"
-      ),
-      modelViewMatrix: this.gl.getUniformLocation(
-        this.shaderProgram,
-        "uModelViewMatrix"
-      )
-    }
-  };
-};
-let deltaTime = 0;
-let then = 0;
-function Camera() {
-  this.rotation = new Vector3D();
-}
-Graphics3D.prototype.drawScene = function(programInfo, deltaTime2, camera) {
-  const gl = this.gl;
-  if (this.renderTarget) {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.renderTarget.framebuffer);
-    gl.viewport(0, 0, this.renderTarget.width, this.renderTarget.height);
-  } else {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  }
-  gl.clearDepth(1);
-  gl.enable(gl.DEPTH_TEST);
-  gl.depthFunc(gl.LEQUAL);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.clearDepth(1);
-  const fov = 45;
-  const fieldOfView = fov * Math.PI / 180;
-  const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-  const zNear = 0.1;
-  const zFar = 100;
-  const projectionMatrix = mat4.create();
-  mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
-  const modelViewMatrix = mat4.create();
-  mat4.translate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to translate
-    [-0, 0, -6]
-  );
-  mat4.rotate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to rotate
-    camera.rotation.z,
-    // amount to rotate in radians
-    [0, 0, 1]
-  );
-  mat4.rotate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to rotate
-    camera.rotation.y,
-    // amount to rotate in radians
-    [0, 1, 0]
-  );
-  mat4.rotate(
-    modelViewMatrix,
-    // destination matrix
-    modelViewMatrix,
-    // matrix to rotate
-    camera.rotation.x,
-    // amount to rotate in radians
-    [1, 0, 0]
-  );
-  {
-    const numComponents2 = 3;
-    const type2 = gl.FLOAT;
-    const normalize2 = false;
-    const stride2 = 0;
-    const offset2 = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
-    gl.vertexAttribPointer(
-      this.programInfo.attribLocations.vertexPosition,
-      numComponents2,
-      type2,
-      normalize2,
-      stride2,
-      offset2
-    );
-    gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
-  }
-  const numComponents = 4;
-  const type = gl.FLOAT;
-  const normalize = false;
-  const stride = 0;
-  const offset = 0;
-  if (this.programInfo.attribLocations.vertexColor !== -1) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.color);
-    gl.vertexAttribPointer(
-      this.programInfo.attribLocations.vertexColor,
-      numComponents,
-      type,
-      normalize,
-      stride,
-      offset
-    );
-    gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexColor);
-  }
-  gl.useProgram(this.programInfo.program);
-  gl.uniformMatrix4fv(
-    this.programInfo.uniformLocations.projectionMatrix,
-    false,
-    projectionMatrix
-  );
-  gl.uniformMatrix4fv(
-    this.programInfo.uniformLocations.modelViewMatrix,
-    false,
-    modelViewMatrix
-  );
-  {
-    const vertexCount = 36;
-    const type2 = gl.UNSIGNED_SHORT;
-    const offset2 = 0;
-    gl.drawElements(gl.TRIANGLES, vertexCount, type2, offset2);
-  }
-  if (this.renderTarget && typeof uploadDepthFrame === "function" && typeof stereogramState !== "undefined" && stereogramState.depthSource === "generated") {
-    const pixels = new Uint8Array(
-      this.renderTarget.width * this.renderTarget.height * 4
-    );
-    gl.readPixels(
-      0,
-      0,
-      this.renderTarget.width,
-      this.renderTarget.height,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      pixels
-    );
-    uploadDepthFrame(pixels, this.renderTarget.width, this.renderTarget.height);
-  }
-  if (this.renderTarget) {
-    this.presentRenderTarget();
-  }
-};
-Graphics3D.prototype.render = function(now) {
-  now *= 1e-3;
-  deltaTime = now - then;
-  then = now;
-  this.drawScene(this.programInfo, deltaTime);
-  requestAnimationFrame(Graphics3D.prototype.render.bind(this));
-};
-Graphics3D.prototype.startRendering = function() {
-  requestAnimationFrame(Graphics3D.prototype.render.bind(this));
-};
-Graphics3D.prototype.resize = function(width, height) {
-  const dpr = GraphicsBase.prototype.resize.call(this, width, height);
-  if (this.gl)
-    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-  return dpr;
-};
-class CanvasMaker extends Graphics3D {
-  // canvas ;;
-  /** @type {Element | null} */
-  element = null;
-  /** @type {((this: CanvasMaker, t: number)=>void) | null} */
-  onDraw = null;
-  /**
-   * @param {CanvasLike} [element]
-   * @param {CanvasContext} [context]
-   */
-  constructor(element, context) {
-    super(element || document.createElement("canvas"), context);
-    this.canvas.setAttribute("layoutsubtree", "");
-  }
-  /** @param {HTMLElement} element */
-  createCanvas(element) {
-    element.setAttribute("drawable", "");
-    this.canvas.appendChild(element);
-    this.element = element;
-    document.body.appendChild(this.canvas);
-  }
-  /** @param {Element} element */
-  insertElement(element) {
-    element.setAttribute("drawable", "");
-    this.canvas.moveBefore(element, null);
-    this.element = element;
-  }
-  putMainInCanvas() {
-    const main = document.querySelector("main");
-    if (!main) return;
-    this.createCanvas(main);
-    this.startDrawing();
-  }
-  startDrawing() {
-    const gl = this.gl;
-    this.canvas.width = innerWidth;
-    this.canvas.height = innerHeight;
-    const W = this.canvas.width, H = this.canvas.height;
-    gl.viewport(0, 0, W, H);
-    const FRAG = (
-      /* GLSL */
-      `precision mediump float; uniform sampler2D s; varying vec2 v; void main() { gl_FragColor = texture2D(s, v); }`
-    );
-    const bgProg = this.initShaderProgram(
-      /* GLSL */
-      `attribute vec2 p; varying vec2 v; void main() { v = vec2(p.x * .5 + .5, .5 - p.y * .5); gl_Position = vec4(p, 0., 1.); }`,
-      FRAG
-    );
-    const bgBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    const cubeProg = this.initShaderProgram(
-      /* GLSL */
-      `
-	attribute vec3 p; attribute vec2 t; uniform float a, asp; varying vec2 v;
-	void main() {
-		vec3 q = p;
-		q.xz = mat2(cos(a), sin(a), -sin(a), cos(a)) * q.xz;        // spin around Y
-		q.yz = mat2(cos(.5), sin(.5), -sin(.5), cos(.5)) * q.yz;    // tilt around X
-		q.z -= 5.;
-		v = t;
-		gl_Position = vec4(q.x * 2.4 / asp, q.y * 2.4, -1.105 * q.z - 2.105, -q.z);
-	}`,
-      FRAG
-    );
-    if (!cubeProg || !bgProg) return;
-    const V = [], I = [];
-    for (let f = 0; f < 6; f++) {
-      const a = f % 3, s = f < 3 ? 1 : -1, u = (a + 1) % 3, w = (a + 2) % 3;
-      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        const p = [0, 0, 0];
-        p[a] = s;
-        p[u] = x;
-        p[w] = y;
-        V.push(...p, (x * s + 1) / 2, (1 - y) / 2);
-      }
-      I.push(f * 4, f * 4 + 1, f * 4 + 2, f * 4, f * 4 + 2, f * 4 + 3);
-    }
-    const cubeBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW);
-    const idxBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), gl.STATIC_DRAW);
-    const bgP = gl.getAttribLocation(bgProg, "p");
-    const cubeP = gl.getAttribLocation(cubeProg, "p");
-    const cubeT = gl.getAttribLocation(cubeProg, "t");
-    const uAngle = gl.getUniformLocation(cubeProg, "a");
-    const uAsp = gl.getUniformLocation(cubeProg, "asp");
-    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    this.canvas.onpaint = () => {
-      const panel = this.element;
-      if (!panel) return;
-      if (gl.texElementSubImage2D) gl.texElementSubImage2D(gl.TEXTURE_2D, 0, 0, 0, panel, { width: W, height: H });
-      else if (gl.texElementImage2D) gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, panel);
-      if (this.canvas.updateElementGeometry) this.canvas.updateElementGeometry(panel, { canvasTransform: new DOMMatrix() });
-    };
-    this.canvas.requestPaint();
-    var self2 = this;
-    this.hasDepthBuffer = true;
-    (function draw(t) {
-      self2.clear();
-      gl.disable(gl.DEPTH_TEST);
-      gl.useProgram(bgProg);
-      gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
-      gl.enableVertexAttribArray(bgP);
-      gl.vertexAttribPointer(bgP, 2, gl.FLOAT, false, 0, 0);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.disableVertexAttribArray(bgP);
-      gl.enable(gl.DEPTH_TEST);
-      gl.useProgram(cubeProg);
-      gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
-      gl.enableVertexAttribArray(cubeP);
-      gl.vertexAttribPointer(cubeP, 3, gl.FLOAT, false, 20, 0);
-      gl.enableVertexAttribArray(cubeT);
-      gl.vertexAttribPointer(cubeT, 2, gl.FLOAT, false, 20, 12);
-      gl.uniform1f(uAsp, W / H);
-      gl.uniform1f(uAngle, t / 1e3);
-      gl.drawElements(gl.TRIANGLES, I.length, gl.UNSIGNED_SHORT, 0);
-      gl.disableVertexAttribArray(cubeP);
-      gl.disableVertexAttribArray(cubeT);
-      requestAnimationFrame(draw);
-    })(0);
-  }
-  /** @param {number} t */
-  draw(t) {
-    if (this.onDraw) this.onDraw(t);
-  }
-}
-const canvasMaker = new CanvasMaker();
-class ScreenShooter extends CanvasMaker {
-  constructor() {
-    super(new OffscreenCanvas(1e3, 1e3), "2d");
-  }
-  async screenshotElement(element, { debug = false } = {}) {
-    if (typeof CanvasRenderingContext2D.prototype.drawElementImage !== "function")
-      throw new Error("html-in-canvas unavailable");
-    const rect = element.getBoundingClientRect();
-    const cssW = Math.max(1, Math.ceil(rect.width));
-    const cssH = Math.max(1, Math.ceil(rect.height));
-    const dpr = this.resize(cssW, cssH);
-    const outW = this.canvas.width;
-    const outH = this.canvas.height;
-    const mount = document.createElement("canvas");
-    mount.setAttribute("layoutsubtree", "");
-    mount.width = outW;
-    mount.height = outH;
-    mount.style.cssText = `position:fixed;top:0;left:0;width:${cssW}px;height:${cssH}px;z-index:-2147483647;pointer-events:none`;
-    document.body.appendChild(mount);
-    const mountCtx = mount.getContext("2d");
-    const parent = element.parentNode;
-    const placeholder = document.createComment("screenshot-placeholder");
-    parent.insertBefore(placeholder, element);
-    const savedStyle = element.getAttribute("style");
-    const hadDrawable = element.hasAttribute("drawable");
-    const move = (to, ref) => {
-      if (typeof to.moveBefore !== "function")
-        throw new Error("moveBefore() unavailable");
-      to.moveBefore(element, ref || null);
-    };
-    const frame = () => new Promise((resolve) => {
-      requestAnimationFrame(() => {
-        setTimeout(resolve, 50);
-      });
-    });
-    try {
-      move(mount);
-      element.setAttribute("drawable", "");
-      if (element instanceof HTMLElement) {
-        Object.assign(element.style, {
-          boxSizing: "border-box",
-          width: `${cssW}px`,
-          height: `${cssH}px`,
-          minWidth: `${cssW}px`,
-          maxWidth: `${cssW}px`,
-          minHeight: `${cssH}px`,
-          maxHeight: `${cssH}px`,
-          margin: "0",
-          flex: "none"
-        });
-      }
-      await document.fonts.ready;
-      await frame();
-      await frame();
-      mountCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      mountCtx.drawElementImage(element, 0, 0, cssW, cssH);
-      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.ctx.clearRect(0, 0, outW, outH);
-      this.ctx.drawImage(mount, 0, 0);
-      this.downloadCanvas();
-    } finally {
-      move(parent, placeholder);
-      placeholder.remove();
-      if (savedStyle === null)
-        element.removeAttribute("style");
-      else
-        element.setAttribute("style", savedStyle);
-      if (!hadDrawable)
-        element.removeAttribute("drawable");
-      mount.remove();
-    }
-  }
-}
-const supportsCSSScrollTimeline = CSS.supports("animation-timeline", "scroll()");
+var supportsCSSScrollTimeline = CSS.supports("animation-timeline", "scroll()");
 function Tab(content, id) {
   this.content = document.createElement("section");
   this.content.className = "tab-page";
@@ -5058,7 +3806,7 @@ Tab.prototype.createButton = function(asButton) {
   return button;
 };
 Tab.prototype.setTitle = function(title) {
-  this.button.innerText = title;
+  if (this.button) this.button.innerText = title;
 };
 function TabScroller(parent, hasButtons) {
   this.buttonHeader = hasButtons && document.createElement("div");
@@ -5069,11 +3817,14 @@ function TabScroller(parent, hasButtons) {
   if (hasButtons) {
     this.container = document.createElement("div");
     this.container.className = "tab-container";
+    this.container.appendChild(this.element);
+    if (!this.buttonHeader) return;
     this.buttonHeader.className = "tab-header";
     this.container.appendChild(this.buttonHeader);
-    this.container.appendChild(this.element);
   }
   if (parent) parent.appendChild(this.container);
+  if (typeof window.CSS !== "undefined" || !CSS.supports("scroll-snap-type: x mandatory"))
+    this.setupScollHandler();
 }
 TabScroller.prototype.addTab = function(content, title) {
   var tab = new Tab(content, "tab-" + this.tabs.length);
@@ -5083,50 +3834,60 @@ TabScroller.prototype.addTab = function(content, title) {
     this.buttonHeader.appendChild(tab.createButton());
     if (title) tab.setTitle(title);
   }
-  this.container.style.setProperty("--total-pages", this.tabs.length);
+  this.container.style.setProperty("--total-pages", this.tabs.length.toString());
 };
-class DesktopElement extends HTMLElement {
-}
+TabScroller.prototype.setupScollHandler = function() {
+  var timer;
+  var self2 = this;
+  this.element.addEventListener("scroll", function() {
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+      var width = self2.element.clientWidth / 2;
+      var index = Math.floor(self2.element.scrollLeft / width);
+      if (self2.element.scrollLeft % width > width / 2) index++;
+      var start = self2.element.scrollLeft;
+      var end = index * width;
+      var duration = 300;
+      var time = performance.now();
+      function animate(now) {
+        var progress = Math.min((now - time) / duration, 1);
+        progress = 1 - Math.pow(1 - progress, 3);
+        self2.element.scrollLeft = start + (end - start) * progress;
+        if (progress < 1) requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    }, 150);
+  }, false);
+};
 class WindowElement extends HTMLDivElement {
   constructor() {
     super();
     this.dialog = null;
   }
-  connectedCallback() {
-    console.log("I connected balls");
-  }
   /** @param {boolean} [enable] Enable maximization */
   toggleMaximizedVT(enable) {
-    if (document.activeViewTransition)
-      document.activeViewTransition.skipTransition();
     this.style.viewTransitionName = "window-fullscreen";
-    const self2 = this;
-    if (document.startViewTransition) {
-      var transition = document.startViewTransition(() => self2.classList.toggle("maximized", enable));
-      transition.ready.catch((ev) => console.warn("transition interrupted:", ev));
-      const dialog = this.dialog;
-      if (dialog) transition.finished.finally(() => {
-        if (dialog.maximizeAnimations <= 1)
-          self2.style.viewTransitionName = "";
-        dialog.maximizeAnimations--;
-      });
-    } else this.classList.toggle("maximized", enable);
+    document.activeViewTransition?.skipTransition();
+    const toggle = () => this.classList.toggle("maximized", enable);
+    if (!("startViewTransition" in document)) return toggle();
+    var transition = document.startViewTransition(toggle);
+    transition.ready.catch((ev) => console.warn("transition interrupted:", ev));
+    const dialog = this.dialog;
+    if (dialog) transition.finished.finally(() => {
+      if (dialog.maximizeAnimations <= 1)
+        this.style.viewTransitionName = "";
+      dialog.maximizeAnimations--;
+    });
   }
 }
 class OdometerDigit extends HTMLSpanElement {
   constructor() {
     super();
-    this.lineHeight = 40, this._value = 0;
-  }
-  connectedCallback() {
-    this.setAttribute("is", "odometer-track");
+    this.lineHeight = 40;
   }
   /** @param {number} digit Digit value */
   set value(digit) {
     this.style.transform = `translateY(-${digit * this.lineHeight}px)`;
-  }
-  get value() {
-    return this._value;
   }
 }
 class OdometerDisplay extends HTMLTimeElement {
@@ -5135,41 +3896,40 @@ class OdometerDisplay extends HTMLTimeElement {
     this.tracks = [];
   }
   connectedCallback() {
-    this.setAttribute("is", "odometer-time");
     this.textContent = "";
     this.style.display = "flex";
     this.style.overflow = "hidden";
   }
-  /** @param {number} digits */
-  init(digits) {
-    this.innerHTML = "";
+  /**
+   * Rebuilds the tracks: one for every digit, the groups separated by a colon.
+   * @param {number[]} groups Number of digits in each group
+   */
+  buildTracks(groups) {
+    this.textContent = "";
     this.tracks.length = 0;
     const height = this.clientHeight;
-    for (let i = 0; i < digits; i++) {
-      const digit = this.addDigit();
-      if (digit && height > 0) digit.lineHeight = height;
-    }
+    groups.forEach((digits, group) => {
+      for (let i = 0; i < digits; i++) {
+        const track = document.createElement("span", { is: "odometer-track" });
+        track.textContent = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";
+        if (track instanceof OdometerDigit) {
+          if (height > 0) track.lineHeight = height;
+          this.tracks.push(track);
+        }
+        this.appendChild(track);
+      }
+      if (group < groups.length - 1) this.append(":");
+    });
   }
-  addDigit() {
-    const track = document.createElement("span", { is: "odometer-track" });
-    if (!(track instanceof OdometerDigit)) return;
-    track.textContent = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";
-    this.tracks.push(track);
-    this.appendChild(track);
-    return track;
+  /** @param {number} digits Number of digits */
+  init(digits) {
+    this.buildTracks([digits]);
   }
-  /**
-   * @param {number} value
-   * @param {number} pos
-   */
-  getDigit(value, pos) {
-    return Math.floor(value / Math.pow(10, pos)) % 10;
-  }
+  /** @type {DigitGetter} */
+  getDigit = (value, pos) => Math.floor(value / Math.pow(10, pos)) % 10;
   /** @param {number} value */
   set value(value) {
-    this.tracks.forEach((track, i) => {
-      track.value = this.getDigit(value, this.tracks.length - 1 - i);
-    });
+    this.tracks.forEach((track, i) => track.value = this.getDigit(value, this.tracks.length - 1 - i));
   }
 }
 class OdometerTime extends OdometerDisplay {
@@ -5177,44 +3937,28 @@ class OdometerTime extends OdometerDisplay {
     return ["datetime", "value"];
   }
   connectedCallback() {
-    this.setAttribute("is", "odometer-time");
-    if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim()) {
+    if (!this.hasAttribute("value") && !this.hasAttribute("datetime") && this.textContent.trim())
       this.setAttribute("value", this.textContent.trim());
-    }
-    this.buildTracks(this.currentGroupCount());
+    this.buildTracks(this.groupSizes());
     this.update();
     this.style.overflow = "hidden";
   }
-  get dateTime() {
-    return this.getAttribute("datetime") || "";
-  }
-  set dateTime(value) {
-    this.setAttribute("datetime", value);
-  }
-  /** value wins if present; otherwise fall back to datetime */
+  /** Whether the digits come from the value attribute instead of the date. */
   usingValue() {
     return this.hasAttribute("value");
   }
-  currentGroupCount() {
-    if (this.usingValue()) {
-      const v = this.getAttribute("value") || "00:00:00";
-      return v.split(":").length;
+  /** The digits of each group: the groups of the value, or the hours, minutes and seconds. */
+  groups() {
+    if (!this.usingValue()) {
+      const date = new Date(this.dateTime);
+      return [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part || 0).padStart(2, "0"));
     }
-    return 3;
+    const parts = (this.getAttribute("value") || "00:00:00").split(":");
+    return parts.map((part, i) => String(parseInt(part, 10) || 0).padStart(i === 0 && parts.length === 4 ? 3 : 2, "0"));
   }
-  /** @param {number} groups */
-  buildTracks(groups) {
-    this.textContent = "";
-    this.tracks.length = 0;
-    for (let i = 0; i < groups; i++) {
-      const digitsInGroup = i === 0 && groups === 4 ? 3 : 2;
-      for (let j = 0; j < digitsInGroup; j++) this.addDigit();
-      if (i < groups - 1) this.append(":");
-    }
-    const height = this.clientHeight;
-    if (height > 0) this.tracks.forEach((track) => {
-      track.lineHeight = height;
-    });
+  /** The number of digits in each group. */
+  groupSizes() {
+    return this.groups().map((group) => group.length);
   }
   /**
    * @param {string} name Name of the attribute
@@ -5223,108 +3967,70 @@ class OdometerTime extends OdometerDisplay {
    */
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    if (name === "value") {
-      this.update();
-      return;
-    }
-    if (name === "datetime" && !this.usingValue()) {
-      if (this.tracks.length !== 6) this.buildTracks(3);
-      this.update();
-    }
+    if (name === "value") return this.update();
+    if (name !== "datetime" || this.usingValue()) return;
+    if (this.tracks.length !== 6) this.buildTracks([2, 2, 2]);
+    this.update();
   }
   update() {
-    let digits;
-    if (this.usingValue()) {
-      const value = this.getAttribute("value") || "00:00:00";
-      const parts = value.split(":").map((n) => parseInt(n, 10) || 0);
-      digits = [];
-      parts.forEach((part, i) => {
-        const width = i === 0 && parts.length === 4 ? 3 : 2;
-        const str = String(part).padStart(width, "0");
-        for (const ch of str) digits.push(parseInt(ch, 10));
-      });
-    } else {
-      const date = new Date(this.dateTime);
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
-      digits = [
-        Math.floor(hours / 10),
-        hours % 10,
-        Math.floor(minutes / 10),
-        minutes % 10,
-        Math.floor(seconds / 10),
-        seconds % 10
-      ];
-    }
+    const digits = this.groups().join("").split("").map(Number);
     this.tracks.forEach((track, i) => {
       if (digits[i] !== void 0) track.value = digits[i];
     });
   }
 }
-customElements.define("window-div", WindowElement, {
-  extends: "div"
-});
-customElements.define("odometer-track", OdometerDigit, {
-  extends: "span"
-});
-customElements.define("odometer-display", OdometerDisplay, {
-  extends: "time"
-});
-customElements.define("odometer-time", OdometerTime, {
-  extends: "time"
-});
+let customElems;
+const customs = customElems = {
+  "window-div": { constructor: WindowElement, extends: "div" },
+  "odometer-track": { constructor: OdometerDigit, extends: "span" },
+  "odometer-display": { constructor: OdometerDisplay, extends: "time" },
+  "odometer-time": { constructor: OdometerTime, extends: "time" }
+};
+Object.entries(customElems).forEach(([name, c]) => customElements.define(name, c.constructor, c));
 class Modern {
   /**
-   * @param {HTMLElement} el
-   * @param {(pipWindow:Window)=>void} callback
+   * Moves an element into a picture-in-picture window, and back when it closes.
+   * @param {HTMLElement} el The element to move
+   * @param {(pipWindow: Window)=>void} callback Called when the window is open
+   * @param {string|string[]} [stylesheets] The stylesheets the window should use
    */
-  static toggleElementPip(el, callback) {
-    if (typeof window.documentPictureInPicture === "undefined") {
-      console.warn("Document Picture-in-Picture not supported in this browser.");
-      return;
-    }
-    var existing = window.documentPictureInPicture.window;
-    if (existing)
-      existing.close();
-    var rect = el.getBoundingClientRect();
-    var width = Math.round(rect.width) || 400;
-    var height = Math.round(rect.height) || 300;
-    window.documentPictureInPicture.requestWindow({ width, height }).then((pipWindow) => {
-      var originalParent = el.parentNode;
-      var originalNextSibling = el.nextSibling;
-      pipWindow.document.body.style.margin = "0";
+  static toggleElementPip(el, callback, stylesheets) {
+    const pip = window.documentPictureInPicture;
+    if (!pip) return console.warn("Document Picture-in-Picture not supported in this browser.");
+    pip.window?.close();
+    const rect = el.getBoundingClientRect();
+    pip.requestWindow({ width: Math.round(rect.width) || 400, height: Math.round(rect.height) || 300 }).then((pipWindow) => {
+      const parent = el.parentNode, sibling = el.nextSibling;
+      const sheets = ["./Styles/pip.css"];
+      if (stylesheets) sheets.push(...Array.isArray(stylesheets) ? stylesheets : [stylesheets]);
+      Modern.loadStylesheets(pipWindow, sheets).then(() => pipWindow.dispatchEvent(new Event("resize")));
       pipWindow.document.body.appendChild(el);
-      pipWindow.addEventListener("pagehide", () => {
-        if (!originalParent) return;
-        if (originalNextSibling) originalParent.insertBefore(el, originalNextSibling);
-        else originalParent.appendChild(el);
-      }, { once: true });
+      pipWindow.addEventListener("pagehide", () => parent && (sibling ? parent.insertBefore(el, sibling) : parent.appendChild(el)), { once: true });
       callback(pipWindow);
     });
   }
+  /**
+   * Loads stylesheets into a picture-in-picture window. The window is a document
+   * of its own, so it needs the styles it should have.
+   * @param {Window} pipWindow The window to load the stylesheets into
+   * @param {string[]} stylesheets The stylesheets to load
+   */
+  static loadStylesheets(pipWindow, stylesheets) {
+    const head = pipWindow.document.head || pipWindow.document.documentElement;
+    return Promise.all(stylesheets.map((stylesheet) => new Promise((resolve) => {
+      const link = pipWindow.document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = new URL(stylesheet, document.baseURI).href;
+      link.addEventListener("load", resolve, { once: true });
+      link.addEventListener("error", resolve, { once: true });
+      head.appendChild(link);
+    })));
+  }
 }
 "use strict";
-var supportsObjectFit = Boolean(document.documentElement && document.documentElement.style && typeof document.documentElement.style.objectFit != "undefined");
-function changeTitlebarColor(newColor) {
-  var metaTag = document.querySelector('meta[name="theme-color"]');
-  if (!metaTag) {
-    metaTag = document.createElement("meta");
-    metaTag.setAttribute("name", "theme-color");
-    document.head.appendChild(metaTag);
-  }
-  metaTag.setAttribute("content", newColor);
-}
-function vibrate() {
-  navigator.vibrate(500);
-}
-function stopVibrations() {
-  navigator.vibrate(0);
-}
 var eventPrevent = function(event2) {
   event2.preventDefault();
 };
-var scrollTabs = null;
 var onLoad = function() {
   var desktop = document.getElementById("desktop");
   if (desktop) desktop.addEventListener("mousedown", function() {
@@ -5361,45 +4067,50 @@ var onLoad = function() {
     ev.preventDefault();
     ev.stopPropagation();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "copy";
-    console.log("DADARAGGY");
   };
   document.body.ondrop = function(ev) {
     ev.preventDefault();
     ev.stopPropagation();
+    setDesktopDragOpacity("");
     if (!ev.dataTransfer) return;
     ev.dataTransfer.dropEffect = "copy";
-    console.log("Kronkel");
     var dt = ev.dataTransfer;
-    var json = dt.getData("application/json");
-    var plain = dt.getData("text/plain");
-    var uriList = dt.getData("text/uri-list") || "";
-    var html = dt.getData("text/html") || "";
+    if (!dt) return;
+    dt.dropEffect = "copy";
+    var json = "";
+    var plain = "";
+    var uriList = "";
+    var html = "";
+    try {
+      json = dt.getData("application/json") || "";
+      plain = dt.getData("text/plain") || "";
+      uriList = dt.getData("text/uri-list") || "";
+      html = dt.getData("text/html") || "";
+    } catch (exception) {
+    }
+    try {
+      if (!plain) plain = dt.getData("Text") || "";
+    } catch (exception) {
+    }
+    try {
+      if (!uriList) uriList = dt.getData("URL") || "";
+    } catch (exception) {
+    }
     var droppedUrl = "";
     if (uriList) {
-      var lines = uriList.replace(/\r\n/g, "\n").split("\n");
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (line && line.charAt(0) !== "#") {
-          droppedUrl = line;
-          break;
-        }
-      }
+      var line = uriList.split(/\r?\n/).find(function(entry) {
+        entry = entry.trim();
+        return entry && entry.charAt(0) !== "#";
+      });
+      droppedUrl = line ? line.trim() : "";
     }
-    if (!json && plain) {
-      var maybeJson = plain.trim();
-      if (maybeJson.charAt(0) === "{" || maybeJson.charAt(0) === "[") json = maybeJson;
-    }
+    if (!json && plain && /^[[{]/.test(plain.trim())) json = plain.trim();
     var data = null;
     if (html) {
       try {
-        var parser = new DOMParser();
-        var newDoc = parser.parseFromString(html, "text/html");
-        var text = newDoc.body && newDoc.body.textContent ? newDoc.body.textContent : html;
-        var trimmed = text.trim();
-        if (trimmed) {
-          data = JSON.parse(trimmed);
-          if (data) json = trimmed;
-        }
+        var newDoc = new DOMParser().parseFromString(html, "text/html");
+        var trimmed = (newDoc.body && newDoc.body.textContent || html).trim();
+        if (trimmed) data = JSON.parse(trimmed);
       } catch (exception) {
         data = null;
       }
@@ -5419,13 +4130,12 @@ var onLoad = function() {
       droppedUrl = plain.trim();
     }
     if (!droppedUrl) return;
+    var url;
     try {
-      var url = new URL(droppedUrl, location.href).href;
+      url = new URL(droppedUrl, location.href).href;
     } catch (exception) {
-      console.warn("Could not interpret dropped content as a URL.", exception);
       return;
     }
-    if (!window.appManager || !window.windowManager) return;
     var existing = null;
     for (var id in window.appManager.apps) {
       if (window.appManager.apps.hasOwnProperty(id)) {
@@ -5437,12 +4147,12 @@ var onLoad = function() {
       }
     }
     if (existing) {
-      window.windowManager.dropApplication(existing, ev.clientX, ev.clientY, null, null);
+      window.windowManager.dropApplication(existing, ev.clientX, ev.clientY);
       return;
     }
     var newApp = window.appManager.createApp(url, url, "dropped." + Date.now());
     window.appManager.addApp(newApp);
-    window.windowManager.dropApplication(newApp, ev.clientX, ev.clientY, null, null);
+    window.windowManager.dropApplication(newApp, ev.clientX, ev.clientY);
   };
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./Scripts/sw.js")["then"](function(reg) {
     console.log("Service Worker registered!", reg);
@@ -5457,16 +4167,16 @@ var onLoad = function() {
     clickOffset.dragHandler = function(ev) {
       clickOffset.update(ev.clientX - clickOffset.clickX, ev.clientY - clickOffset.clickY);
       var width = clickOffset.position.x, height = clickOffset.position.y;
-      transformElementOld(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
-      selector.style.width = toPixels(Math.abs(width));
-      selector.style.height = toPixels(Math.abs(height));
+      Helpers.translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
+      selector.style.width = Helpers.toPixels(Math.abs(width));
+      selector.style.height = Helpers.toPixels(Math.abs(height));
     };
     tingeling.addEventListener(supportsPointer ? "pointerdown" : "mousedown", function(ev) {
       clickOffset.init(ev.clientX, ev.clientY);
       var width = clickOffset.position.x, height = clickOffset.position.y;
-      transformElementOld(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
-      selector.style.width = toPixels(Math.abs(width));
-      selector.style.height = toPixels(Math.abs(height));
+      Helpers.translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
+      selector.style.width = Helpers.toPixels(Math.abs(width));
+      selector.style.height = Helpers.toPixels(Math.abs(height));
       selector.className = "selector";
       if (tingeling) tingeling.appendChild(selector);
       clickOffset.toggleDragEventHandler(true);
@@ -5477,17 +4187,17 @@ var onLoad = function() {
     };
     window.addEventListener(supportsPointer ? "pointerup" : "mouseup", stopIt, false);
   }
-  document.onselectstart = function() {
-    return false;
+  document.onselectstart = function(event2) {
+    return !!(event2 && event2.ctrlKey);
   };
   if (window.desktopManager) window.desktopManager.init();
 };
 function createDesktop() {
   var windowSection = document.createElement("section");
   windowSection.className = "window-section";
-  var wallpaper2 = document.getElementById("wallpaper")?.cloneNode(true);
+  var wallpaper2 = document.getElementById("wallpaper").cloneNode(true);
   windowSection.appendChild(wallpaper2);
-  var dockArea = document.getElementById("dock-area")?.cloneNode(true);
+  var dockArea = document.getElementById("dock-area").cloneNode(true);
   windowSection.appendChild(dockArea);
   return windowSection;
 }
@@ -5498,55 +4208,30 @@ function Desktop(name, desktopElement) {
 Desktop.prototype.insertWindow = function(dialog) {
   dialog.setParentElement(this.target);
 };
-function addDesktop() {
-}
 window.addEventListener("load", onLoad, false);
 function ContextMenu() {
   this.element = document.getElementById("context-menu");
 }
-ContextMenu.prototype.toggleOpen = function(force) {
-  if (!this.element) return;
-  this.element.classList.toggle("open", force);
-};
 ContextMenu.prototype.open = function(x, y) {
   if (!this.element) return;
-  this.element.style.left = toPixels(x);
-  this.element.style.top = toPixels(y);
+  this.element.style.left = Helpers.toPixels(x);
+  this.element.style.top = Helpers.toPixels(y);
   this.element.classList.add("open");
 };
 ContextMenu.prototype.close = function() {
   if (!this.element) return;
   this.element.classList.remove("open");
 };
-ContextMenu.prototype.addItem = function(title, callback, icon) {
-  if (!this.element) return;
-};
 var contextMenu = new ContextMenu();
-var docontexthook = true;
-if (docontexthook) document.addEventListener("contextmenu", function(e) {
+document.addEventListener("contextmenu", function(e) {
   e.preventDefault();
-  console.log("Open contex tp ples");
   contextMenu.open(e.clientX, e.clientY);
 }, false);
-var reflecitons = false;
 var dock = document.getElementById("dock");
-var reflectionr = document.getElementById("reflection");
-var reflector = reflectionr ? new Reflector(reflectionr) : null;
-var applistItems = document.getElementById("dockapplist");
-function toggleReflections(force) {
-  if (!reflector) return;
-  if (force == null) reflecitons = !reflecitons;
-  else reflecitons = Boolean(force);
-  if (reflecitons) windowManager.forEachWindow(function(dialog) {
-    if (dialog.target && reflector) reflector.reflect(dialog.target);
-  });
-  else if (typeof reflector.observer != "undefined") reflector.observer.disconnect();
-}
 window.addEventListener("keydown", function(event2) {
   switch (event2.key) {
     case "F11":
       event2.preventDefault();
-      console.log("F11 captured! Custom action goes here.");
       void document.documentElement.requestFullscreen();
       break;
     case "F10":
@@ -5569,6 +4254,8 @@ function DesktopManager() {
   this.wallpaperImage = null;
   this.desktops = [];
   this.scrollTabs = null;
+  this.desktopParent = null;
+  this.desktopNextSibling = null;
 }
 Object.defineProperty(DesktopManager.prototype, "isExpos\xE9", {
   get: function() {
@@ -5586,10 +4273,48 @@ DesktopManager.prototype.getDesktopIndexAt = function(x, y) {
   return -1;
 };
 DesktopManager.prototype.init = function() {
+  var windowSection = document.getElementById("window-section");
+  if (windowSection) {
+    this.desktopParent = windowSection.parentNode;
+    this.desktopNextSibling = windowSection.nextSibling;
+  }
+  this.setExpos\u00E9Enabled(!(typeof flags !== "undefined" && flags.exposeAndDesktops === false));
+};
+DesktopManager.prototype.isExpos\u00E9Supported = function() {
+  return "TabScroller" in window && !(document.documentMode && document.documentMode < 10);
+};
+DesktopManager.prototype.setExpos\u00E9Enabled = function(enabled) {
+  if (enabled) this.enableExpos\u00E9();
+  else this.disableExpos\u00E9();
+};
+DesktopManager.prototype.enableExpos\u00E9 = function() {
+  if (this.scrollTabs || !this.isExpos\u00E9Supported()) return;
+  var windowSection = document.getElementById("window-section");
+  if (!windowSection) return;
+  if (!this.desktopParent) {
+    this.desktopParent = windowSection.parentNode;
+    this.desktopNextSibling = windowSection.nextSibling;
+  }
+  document.body.classList.add("expos\xE9");
   this.scrollTabs = new TabScroller(document.querySelector("main"));
-  this.addDesktop("Main", document.getElementById("window-section") || void 0);
+  this.addDesktop("Main", windowSection);
   this.addDesktop();
   this.addDesktop();
+};
+DesktopManager.prototype.disableExpos\u00E9 = function() {
+  document.body.classList.remove("expos\xE9");
+  var windowSection = document.getElementById("window-section");
+  var parent = this.desktopParent || document.getElementById("desktop-area");
+  if (windowSection && parent) {
+    if (this.desktopNextSibling && this.desktopNextSibling.parentNode === parent)
+      parent.insertBefore(windowSection, this.desktopNextSibling);
+    else parent.appendChild(windowSection);
+  }
+  if (this.scrollTabs && this.scrollTabs.container && this.scrollTabs.container.parentNode)
+    this.scrollTabs.container.parentNode.removeChild(this.scrollTabs.container);
+  this.scrollTabs = null;
+  this.desktops = [];
+  this.gapDesktop = null;
 };
 DesktopManager.prototype.addDesktop = function(name, desktopElement) {
   if (!this.scrollTabs) return;
@@ -5609,9 +4334,6 @@ DesktopManager.prototype.addOrMoveDesktopGap = function() {
 function setTheme(theme) {
   document.body.classList.add(theme);
   window.windowManager.synchronizeStates();
-}
-function hasTheme(theme) {
-  return document.body.classList.contains(theme);
 }
 DesktopManager.removeTheme = function(theme) {
   document.body.classList.remove(theme);
@@ -5638,7 +4360,7 @@ DesktopManager.prototype.applyWallpaperImage = function(url, blurredUrl, onError
     var wallpaper2 = DesktopManager.getWallpaper();
     if (!wallpaper2 || !self2.wallpaperImage) return;
     while (wallpaper2.firstChild) wallpaper2.removeChild(wallpaper2.firstChild);
-    if (typeof blurredUrl == "string") wallpaper2.setAttribute("data-blurred-src", blurredUrl);
+    if (typeof blurredUrl === "string") wallpaper2.setAttribute("data-blurred-src", blurredUrl);
     else wallpaper2.removeAttribute("data-blurred-src");
     wallpaper2.classList.toggle("legacy-wallpaper", !supportsObjectFit);
     wallpaper2.style.backgroundImage = "";
@@ -5681,19 +4403,19 @@ DesktopManager.prototype.applyRegisteredWallpaper = function(id) {
   this.clearWallpaperContent();
   var frame = this.ensureWallpaperFrame();
   if (!frame) return;
-  if (typeof appManager != "undefined" && typeof appManager.setWallpaper == "function")
+  if (typeof appManager !== "undefined" && typeof appManager.setWallpaper === "function")
     appManager.setWallpaper(id);
   else frame.src = "https://iemand005.github.io/FrostedColours/";
 };
 DesktopManager.prototype.restoreDefaultWallpaper = function() {
   var defaultId = "colors";
-  if (typeof appManager != "undefined" && appManager._wallpaper)
+  if (typeof appManager !== "undefined" && appManager._wallpaper)
     defaultId = appManager._wallpaper.id;
   this.applyRegisteredWallpaper(defaultId);
 };
 DesktopManager.prototype.clearWallpaperCache = function() {
   try {
-    if (typeof settings != "undefined" && settings.set) settings.set("wallpaperImage", null);
+    if (typeof settings !== "undefined" && settings.set) settings.set("wallpaperImage", null);
   } catch (ex) {
   }
   try {
@@ -5707,27 +4429,37 @@ DesktopManager.prototype.clearWallpaperCache = function() {
   }, function() {
   });
 };
-DesktopManager.prototype.toggleOverlay = function(enable) {
-  var overlay = bodyCrawler.getOverlay();
-  if (!overlay) return;
-  overlay.classList.toggle("open", enable);
-};
 window.desktopManager = new DesktopManager();
+function isFileDrag(ev) {
+  var transfer = ev && ev.dataTransfer;
+  var types = transfer && transfer.types;
+  if (!types) return false;
+  for (var i = 0; i < types.length; i++) {
+    if (String(types[i]).toLowerCase() === "files") return true;
+  }
+  return false;
+}
+function setDesktopDragOpacity(opacity) {
+  var desktop = document.getElementById("desktop");
+  if (desktop) desktop.style.opacity = opacity;
+}
 window.ondrag = document.ondrag = function(ev) {
-  ev.preventDefault();
-  ev.stopPropagation();
-  if (elements.desktop) elements.desktop.style.opacity = "0.5";
+  ev = ev || window.event;
+  if (!isFileDrag(ev)) return;
+  setDesktopDragOpacity("0.5");
 };
 window.ondragleave = document.ondragleave = function(ev) {
-  ev.preventDefault();
-  ev.stopPropagation();
-  if (elements.desktop) elements.desktop.style.opacity = "";
+  ev = ev || window.event;
+  if (!isFileDrag(ev)) return;
+  setDesktopDragOpacity("");
+};
+window.ondragend = document.ondragend = function() {
+  setDesktopDragOpacity("");
 };
 var wallpaperDB = null;
 function initWallpaperDB(onSuccess, onFailure) {
   var isFileScheme = window.location.protocol === "file:";
   if (isFileScheme) {
-    console.log("File scheme detected (HTA/local file). Using localStorage only.");
     if (onFailure) onFailure(new Error("IndexedDB not available for file:// scheme"));
     return;
   }
@@ -5741,12 +4473,10 @@ function initWallpaperDB(onSuccess, onFailure) {
   }
   var request = indexedDB.open("LVOSWallpaperDB", 1);
   request.onerror = function() {
-    console.warn("IndexedDB failed to open:", request.error);
     if (onFailure) onFailure(request.error);
   };
   request.onsuccess = function() {
     wallpaperDB = request.result;
-    console.log("IndexedDB opened successfully");
     onSuccess(wallpaperDB);
   };
   request.onupgradeneeded = function(event2) {
@@ -5758,44 +4488,23 @@ function initWallpaperDB(onSuccess, onFailure) {
   };
 }
 function localStorageFabblack(dataUrl) {
-  if (dataUrl) {
-    if (typeof settings != "undefined" && settings.set) {
-      try {
-        settings.set("wallpaperImage", dataUrl);
-        console.log("Wallpaper saved to localStorage via settings");
-      } catch (ex) {
-        console.warn("Failed to save to settings, trying direct localStorage:", ex.message);
-        try {
-          window.localStorage.setItem("wallpaperImage", dataUrl);
-          console.log("Wallpaper saved to direct localStorage");
-        } catch (ex2) {
-          console.warn("Failed to save to direct localStorage:", ex2.message);
-        }
-      }
-    } else {
-      try {
-        window.localStorage.setItem("wallpaperImage", dataUrl);
-        console.log("Wallpaper saved to direct localStorage");
-      } catch (ex) {
-        console.warn("Failed to save wallpaper to localStorage:", ex.message);
-      }
+  if (!dataUrl) return;
+  try {
+    if (typeof settings !== "undefined" && settings.set) settings.set("wallpaperImage", dataUrl);
+    else throw new Error("Settings unavailable");
+  } catch (ex) {
+    try {
+      window.localStorage.setItem("wallpaperImage", dataUrl);
+    } catch (ex2) {
     }
   }
 }
 function saveWallpaperToCache(blob, dataUrl) {
-  if (!(blob instanceof Blob)) {
-    console.warn("Invalid blob provided to saveWallpaperToCache");
-    return;
-  }
+  if (!(blob instanceof Blob)) return;
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readwrite");
     var store = transaction.objectStore("wallpapers");
-    var request = store.put({ id: "current", blob, timestamp: Date.now() });
-    request.onsuccess = function() {
-      console.log("Wallpaper saved to IndexedDB");
-    };
-    request.onerror = function() {
-      console.warn("Failed to save wallpaper to IndexedDB, falling back to localStorage:", request.error);
+    store.put({ id: "current", blob, timestamp: Date.now() }).onerror = function() {
       localStorageFabblack(dataUrl);
     };
   }, function() {
@@ -5803,77 +4512,43 @@ function saveWallpaperToCache(blob, dataUrl) {
   });
 }
 function hasRegisteredWallpaperSelection() {
-  if (typeof settings == "undefined" || !settings || typeof settings.get != "function") return false;
+  if (typeof settings === "undefined" || !settings || typeof settings.get !== "function") return false;
   var selection = settings.get("wallpaper");
-  return typeof selection == "string" && selection.indexOf("registered:") === 0;
+  return typeof selection === "string" && selection.indexOf("registered:") === 0;
 }
 function loadWallpaperFromCache() {
   initWallpaperDB(function(db) {
-    var transaction = db.transaction(["wallpapers"], "readonly");
-    var store = transaction.objectStore("wallpapers");
+    var store = db.transaction(["wallpapers"], "readonly").objectStore("wallpapers");
     var request = store.get("current");
     request.onsuccess = function() {
       var result = request.result;
       if (result && result.blob && window.desktopManager && !hasRegisteredWallpaperSelection()) {
-        var objectUrl = URL.createObjectURL(result.blob);
-        console.log("Loading cached wallpaper from IndexedDB");
-        window.desktopManager.applyWallpaperImage(objectUrl);
+        window.desktopManager.applyWallpaperImage(URL.createObjectURL(result.blob));
       } else {
         loadWallpaperFromLocalStorage();
       }
     };
-    request.onerror = function() {
-      loadWallpaperFromLocalStorage();
-    };
-  }, function() {
-    loadWallpaperFromLocalStorage();
-  });
+    request.onerror = loadWallpaperFromLocalStorage;
+  }, loadWallpaperFromLocalStorage);
 }
 function loadWallpaperFromLocalStorage() {
   if (hasRegisteredWallpaperSelection()) return;
-  console.log("Attempting to load wallpaper from localStorage...");
-  console.log("settings defined:", typeof settings != "undefined");
-  if (typeof settings == "undefined") {
-    console.warn("Settings not available yet, trying direct localStorage access");
-    try {
-      var cachedWallpaper = window.localStorage.getItem("wallpaperImage");
-      if (cachedWallpaper && window.desktopManager) {
-        console.log("Loading cached wallpaper from direct localStorage");
-        window.desktopManager.applyWallpaperImage(cachedWallpaper);
-      } else {
-        console.log("No cached wallpaper found in localStorage, or applyWallpaperImage not available");
-      }
-    } catch (ex) {
-      console.warn("Failed to load wallpaper from direct localStorage:", ex.message);
-    }
-    return;
-  }
+  var key = "wallpaperImage";
+  var cachedWallpaper;
   try {
-    var cachedWallpaper = settings.get("wallpaperImage");
-    console.log("Retrieved from settings.get():", cachedWallpaper ? "found" : "not found");
-    if (cachedWallpaper && window.desktopManager) {
-      console.log("Loading cached wallpaper from localStorage via settings");
-      window.desktopManager.applyWallpaperImage(cachedWallpaper);
-    } else {
-      console.log("No cached wallpaper found in settings, or applyWallpaperImage not available");
-    }
+    cachedWallpaper = typeof settings !== "undefined" ? settings.get(key) : window.localStorage.getItem(key);
   } catch (ex) {
-    console.warn("Failed to load wallpaper from settings localStorage:", ex.message);
     try {
-      var cachedWallpaper = window.localStorage.getItem("wallpaperImage");
-      if (cachedWallpaper && window.desktopManager) {
-        console.log("Loading cached wallpaper from direct localStorage (fallback)");
-        window.desktopManager.applyWallpaperImage(cachedWallpaper);
-      }
+      cachedWallpaper = window.localStorage.getItem(key);
     } catch (ex2) {
-      console.warn("Direct localStorage fallback also failed:", ex2.message);
     }
   }
+  if (cachedWallpaper && window.desktopManager) window.desktopManager.applyWallpaperImage(cachedWallpaper);
 }
 function handleWallpaperDrop(ev) {
   ev.preventDefault();
   ev.stopPropagation();
-  if (elements.desktop) elements.desktop.style.opacity = "";
+  setDesktopDragOpacity("");
   if (!ev.dataTransfer || !ev.dataTransfer.files) return;
   var files = ev.dataTransfer.files;
   for (var i = 0; i < files.length; i++) {
@@ -5886,13 +4561,10 @@ function handleWallpaperDrop(ev) {
       if (!(typeof dataUrl === "string")) return;
       try {
         if (window.desktopManager) {
-          window.desktopManager.applyWallpaperImage(dataUrl, void 0, function() {
-            console.warn("Failed to apply dropped wallpaper image");
-          });
+          window.desktopManager.applyWallpaperImage(dataUrl);
           saveWallpaperToCache(file, dataUrl);
         }
       } catch (ex) {
-        console.error("Error applying wallpaper:", ex);
       }
     };
     reader.readAsDataURL(file);
@@ -5919,25 +4591,21 @@ var wallpaper = DesktopManager.getWallpaper();
 if (wallpaper) {
   wallpaper.ondragover = function(ev) {
     ev.preventDefault();
-    console.log("okdi");
   };
   wallpaper.ondrop = function(ev) {
     ev.preventDefault();
   };
 }
-function loadMetro() {
-  var metro = document.getElementById("metro");
-  if (metro) {
-    metro.style.display = "block";
-    var metroFrame = document.createElement("iframe");
-    metroFrame.src = "mobile.html";
-    metro.appendChild(metroFrame);
-  }
+var screenShooter = null;
+function getScreenShooter() {
+  if (screenShooter) return screenShooter;
+  if (typeof ScreenShooter === "undefined") return null;
+  return screenShooter = new ScreenShooter();
 }
-var screenShooter = new ScreenShooter();
-var picker = new ElementPicker({
+var picker = "ElementPicker" in window ? new ElementPicker({
   onSelect: function(el) {
-    window.screenShooter.screenshotElement(el);
+    var shooter = getScreenShooter();
+    if (shooter) shooter.screenshotElement(el);
   },
   onMove: function(el) {
     if (el.nodeName === "ARTICLE") {
@@ -5946,49 +4614,16 @@ var picker = new ElementPicker({
     } else this.highlight(el);
     return true;
   }
-});
-picker.register();
+}) : null;
+if (picker) picker.register();
 "use strict";
-var STORAGE_FILE = "app_storage.json";
 function formatCamelCase(text) {
   if (!text) return "";
   var result = text.replace(/([A-Z])/g, " $1");
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
-var supportsActiveX = typeof ActiveXObject != "undefined";
-function ActiveXStorage() {
-  if (!window.ActiveXObject) throw new Error("ActiveX not supported!");
-  this.fso = new window.ActiveXObject("Scripting.FileSystemObject");
-}
-ActiveXStorage.prototype.setItem = function(key, value) {
-  var data = {};
-  if (this.fso.FileExists(STORAGE_FILE)) {
-    try {
-      var readFile = this.fso.OpenTextFile(STORAGE_FILE, 1);
-      data = JSON.parse(readFile.ReadAll());
-      readFile.Close();
-    } catch (e) {
-      data = {};
-    }
-  }
-  data[key] = value;
-  var writeFile = this.fso.OpenTextFile(STORAGE_FILE, 2, true);
-  writeFile.Write(JSON.stringify(data));
-  writeFile.Close();
-};
-ActiveXStorage.prototype.getItem = function(key) {
-  if (!this.fso.FileExists(STORAGE_FILE)) return null;
-  try {
-    var readFile = this.fso.OpenTextFile(STORAGE_FILE, 1);
-    var data = JSON.parse(readFile.ReadAll());
-    readFile.Close();
-    return data[key] !== void 0 ? data[key] : null;
-  } catch (e) {
-    return null;
-  }
-};
 function SettingsHandler() {
-  this.storage = typeof localStorage != "undefined" && localStorage || supportsActiveX && new ActiveXStorage();
+  this.storage = typeof localStorage != "undefined" && localStorage || typeof ActiveXStorage != "undefined" && new ActiveXStorage();
 }
 SettingsHandler.prototype.get = function(key) {
   if (!this.storage) return null;
@@ -6028,7 +4663,6 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
   for (var flagId in flags2) {
     if (!flags2.hasOwnProperty(flagId) || flagId.charAt(0) === "_") continue;
     var flag = flags2[flagId];
-    var settingElement = document.createElement("label");
     var flagValue = flags2[flagId];
     switch (typeof flag) {
       case "boolean":
@@ -6051,8 +4685,6 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
         })(flagId);
         break;
     }
-    if (!settingElement) return;
-    flagsElement.appendChild(settingElement);
   }
   var settingsElement = document.getElementById("settings");
   if (settingsElement) settingsElement.appendChild(flagsElement);
@@ -6122,12 +4754,10 @@ function toggleSquircles(enabled) {
   document.body.classList.toggle("squircles", enabled);
   settings.set("squircles", enabled);
 }
-function toggleCharmsEvent(ev) {
-}
 function setBorderSize(size) {
   settings.set("borderSize", size);
   if (typeof windowManager !== "undefined" && windowManager.windows) {
-    for (var index in windowManager.windows) windowManager.windows[index].borderSize = size;
+    for (var index in windowManager.windows) if (windowManager.windows.hasOwnProperty(index)) windowManager.windows[index].borderSize = size;
   }
 }
 function hexToRGB(hex) {
@@ -6146,7 +4776,7 @@ function setColor(color) {
   settings.set("color", elements.color.value = color);
   var isWhite = isColorDark(color);
   if (!("windowManager" in window)) return;
-  for (var index in windowManager.windows) {
+  for (var index in windowManager.windows) if (windowManager.windows.hasOwnProperty(index)) {
     var dialog = windowManager.windows[index];
     if (!dialog || !dialog.target) continue;
     var content = dialog.target.getElementsByTagName("content")[0];
@@ -6170,7 +4800,6 @@ function loadSettings() {
   restoreWallpaperSetting();
   setColor(settings.get("color"));
   setAccentColor(settings.get("accentColor"));
-  updateBlurState();
 }
 function updateWallpaperImageButton() {
   if (!elements.wallpaperImageButton || !elements.wallpaperSelect) return;
@@ -6222,21 +4851,21 @@ function setWallpaperOption(value) {
     return;
   }
   if (window.desktopManager) {
-    if (typeof window.desktopManager.restoreDefaultWallpaper == "function")
+    if (typeof window.desktopManager.restoreDefaultWallpaper === "function")
       window.desktopManager.restoreDefaultWallpaper();
-    if (typeof window.desktopManager.clearWallpaperCache == "function")
+    if (typeof window.desktopManager.clearWallpaperCache === "function")
       window.desktopManager.clearWallpaperCache();
   }
 }
 function applyWallpaperFile(files) {
   if (!files || !files.length) return;
   var file = files[0];
-  if (typeof file.type != "string" || !file.type.match(/^image\//)) return;
+  if (typeof file.type !== "string" || !file.type.match(/^image\//)) return;
   var reader = new FileReader();
   reader.onload = function(e) {
     if (!e.target) return;
     var dataUrl = e.target.result;
-    if (typeof dataUrl != "string" || !window.desktopManager) return;
+    if (typeof dataUrl !== "string" || !window.desktopManager) return;
     window.desktopManager.applyWallpaperImage(dataUrl, void 0, function() {
       console.warn("Failed to apply wallpaper image");
     });
@@ -6274,21 +4903,10 @@ function loadThemeSetting() {
     if (elements.squircles) elements.squircles.checked = squircles;
   }
 }
-function updateBlurState() {
-}
-function toggleBlur(enabled) {
-  if (enabled == null) document.body.classList.toggle("blur");
-  else document.body.classList.toggle("blur", enabled);
-}
 var elements = {
-  desktop: null,
-  charms: null,
   color: null,
   accent: null,
-  resetColor: null,
-  resetAccent: null,
   border: null,
-  dockAppList: null,
   theme: null,
   colorDebug: null,
   squircles: null,
@@ -6331,14 +4949,9 @@ function installAppFromUrl(useProxy) {
   }
 }
 function loadElements() {
-  elements.desktop = document.getElementById("desktop");
-  elements.charms = document.getElementById("charms");
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
-  elements.resetColor = document.getElementById("resetaccent");
-  elements.resetAccent = document.getElementById("resetaccent");
   elements.border = document.getElementById("border");
-  elements.dockAppList = document.getElementById("dockapplist");
   elements.theme = document.getElementById("theme");
   elements.colorDebug = document.getElementById("color-debug");
   elements.squircles = document.getElementById("squircles");
@@ -6352,7 +4965,6 @@ function loadElements() {
   var applist = document.getElementById("applist");
   var charmsButton = applist ? applist.appendChild(document.createElement("button")) : document.createElement("button");
   charmsButton.textContent = "Settings";
-  window.addEventListener("mousedown", toggleCharmsEvent, false);
   if (charmsButton) charmsButton.onclick = function() {
     DesktopManager.toggleCharms();
   };
@@ -6404,7 +5016,6 @@ addEventListener("load", function() {
   loadElements();
   loadSettings();
 }, false);
-var metroAppList = document.getElementById("metroapplist");
 function downloadObject(object, fileName) {
   var uri = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(object));
   var a = document.createElement("a");
@@ -6419,355 +5030,72 @@ function downloadSettings() {
 }
 "use strict";
 var dockAppList = document.getElementById("dockapplist");
+function provisionedApp(title, id, src, extra) {
+  return Object.assign({ title, id, src }, extra);
+}
 var applications = [
-  {
-    title: "Frosted Colors",
-    id: "colors",
-    distSrc: "https://iemand005.github.io/FrostedColours",
-    src: "Applications/FrostedColours/index.html",
-    wallpaper: true
-  },
-  {
-    title: "Calculator",
-    id: "calculator",
-    minWidth: 180,
-    minHeight: 240,
-    src: "./Applications/Calculator/calculator.html"
-  },
-  {
-    title: "Color Tool",
-    id: "colortool",
-    minWidth: 180,
-    minHeight: 240,
-    src: "./Applications/ColorTool/colors.html"
-  },
-  { title: "Example", id: "0", src: "./example.html" },
-  {
-    title: "Camera",
-    id: "camera",
-    src: "./Applications/Camera/index.html",
-    camera: true,
-    microphone: true
-    // add attribute allow="camera; microphone" to iframe!
-  },
-  {
-    title: "Video",
-    id: "video",
-    src: "./Applications/Video/index.html",
-    hidden: true
-  },
-  {
-    title: "Cover Flow",
-    id: "coverflow",
-    src: "./Applications/Coverflow/Coverflow.html"
-  },
-  {
-    title: "Music",
-    id: "music",
-    src: "./Applications/Music/index.html"
-  },
-  {
-    title: "Citates",
-    id: "citates",
-    src: "./Applications/Citaten/index.html",
-    hidden: true
-    // Hiding the incomplete apps. These are enabled once finished.
-  },
-  {
-    title: "Clock",
-    id: "clock",
-    src: "./Applications/Clock/index.html",
-    hidden: true
-  },
-  {
-    title: "Verlet",
-    id: "verlet",
-    src: "./Applications/Verlet/index.html",
-    hidden: true
-  },
-  {
-    title: "Recorder",
-    id: "recorder",
-    src: "./Applications/Recorder/index.html",
-    hidden: true
-  },
-  {
-    title: "Error",
-    id: "error",
-    src: "./Applications/Error/error.html",
-    hidden: true
-  },
-  {
-    title: "Cube",
-    id: "cube",
-    src: "./Applications/Cube/cube.html",
-    hidden: true
-  },
-  {
-    title: "Geode",
-    id: "geode",
-    src: "https://geode.tepartive.net",
-    hidden: true
-  },
-  {
-    title: "Level",
-    id: "level",
-    src: "./Applications/Level/level.html",
-    hidden: true
-  },
-  {
-    title: "Browser",
-    id: "browser",
-    src: "./Applications/Browser/index.html"
-  },
-  {
-    title: "MPTool",
-    id: "mptool",
-    src: "./Applications/MPTool/index.html",
-    hidden: true
-  },
-  {
-    title: "Autostereograms",
-    id: "stereograms",
-    src: "./Applications/StereogramMaker/index.html",
-    hidden: true
-  },
-  {
-    title: "Metronome",
-    id: "cyanide.metronome",
-    src: "./Applications/Cyanide/metronome/index.html",
-    hidden: true
-  },
-  {
-    title: "Rainboy",
-    id: "cyanide.rainboy",
-    src: "./Applications/Cyanide/rainboy/index.html",
-    hidden: true
-  },
-  {
-    title: "OPC",
-    id: "opc",
-    src: "https://bypass-online.netlify.app/",
-    iconUrl: "https://iemand005.github.io/OPC/files/apps/me.flexan.terminal/terminal.png",
-    accentColor: "rgb(37, 104, 245)"
-  },
-  {
-    title: "daedalOS",
-    id: "daedal",
-    src: "https://dustinbrett.com/"
-  },
-  {
-    title: "Fenix Engine Demo",
-    id: "fenix.web",
-    src: "https://iemand005.github.io/FenixWeb/"
-  },
-  {
-    title: "FoxCraft",
-    id: "fenix.foxcraft",
-    src: "https://iemand005.github.io/FenixWeb/FoxCraft/index.html"
-  },
-  {
-    title: "Cake",
-    id: "fenix.cake",
-    src: "https://iemand005.github.io/FenixWeb/Cake/index.html",
-    audioVisualizer: true
-  },
-  {
-    title: "My Web Archive",
-    id: "foxyz.archive",
-    src: "https://iemand005.github.io/Archive-2023/index.html"
-  },
-  {
-    title: "Tappy",
-    id: "foxyz.tappy",
-    // src: "https://iemand005.github.io/Tappy/tappy.html", // TODO: perhaps uh a prod vs dev env for github url and local
-    src: "./Applications/Tappy/tappy.html",
-    hidden: true
-  },
-  {
-    title: "AIOne",
-    id: "foxyz.aione",
-    src: "./Applications/AIOneWeb/index.html",
-    hidden: true
-  },
-  {
-    title: "WebGPUFluidSim",
-    id: "foxyz.webgpufluidsim",
-    src: "./Applications/WebGPUFluidSim/index.html",
-    moveEvents: true
-  },
-  {
-    title: "Fur:Trash",
-    id: "foxyz.fur:trash",
-    src: "https://open.spotify.com/embed/artist/1jp7cmyHDn5nuP3MMSwm1m?utm_source=generator&si=86b6cf864e0048c3",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f1788c05c5ac8638f68f84053a57"
-    // appIcon?
-  },
-  {
-    title: "Cavetown",
-    id: "foxyz.cavetown",
-    src: "https://open.spotify.com/embed/artist/2hR4h1Cao2ueuI7Cx9c7V8?utm_source=generator&theme=0&si=714602d32e764d47",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Awolnation",
-    id: "foxyz.awolnation",
-    src: "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Papa Roach",
-    id: "foxyz.papa-roach",
-    src: "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X",
-    iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780"
-  },
-  {
-    title: "Monaco",
-    id: "monaco",
-    src: "./Applications/Monaco/monaco.html",
-    iconUrl: "https://code.visualstudio.com/favicon.ico"
-  },
-  {
-    title: "Furzona Lite",
-    id: "furzona",
-    src: "https://iemand005.github.io/FurzonaWeb",
-    iconUrl: "https://iemand005.github.io/FurzonaWeb/Logo.png"
-  },
-  {
-    title: "The Useless Web",
-    id: "theuselessweb",
-    src: "https://theuselessweb.com/"
-  },
-  {
-    title: "Windows 95",
-    id: "win95",
-    src: "https://98.js.org/"
-  },
-  {
-    title: "Pinball Space Cadet",
-    id: "pinball",
-    src: "https://98.js.org/programs/pinball/space-cadet.html",
-    iconUrl: "https://98.js.org/images/icons/pinball-16x16.png"
-  },
-  {
-    title: "Internet Exporer",
-    id: "ie",
-    src: "https://98.js.org/programs/explorer/index.html?address=https%3A%2F%2Fwww.google.com",
-    iconUrl: "https://98.js.org/images/icons/html-16x16.png"
-  },
-  {
-    title: "Solitaire",
-    id: "solitaire",
-    src: "https://98.js.org/programs/js-solitaire/index.html",
-    iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png"
-  },
-  {
-    title: "Pipes",
-    id: "pipes",
-    src: "https://98.js.org/programs/pipes/index.html#%7B%22hideUI%22%3Atrue%7D",
-    iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png",
-    screensaver: true
-  },
-  {
-    title: "Cavetown - Big Strong Man",
-    id: "cavetown.bigstrongmen",
-    src: "https://www.youtube.com/embed/uKn0BtAAEyw?si=s3Pz0PzIpQDCxizU"
-  },
-  {
-    title: "Gamepad Input Recorder",
-    id: "inputrecorder",
-    src: "https://iemand005.github.io/GamepadRecorder/"
-  },
-  {
-    title: "LVOS Mobile",
-    id: "mobile",
-    src: "./mobile.html",
-    distSrc: "https://iemand005.github.io/LVOS/mobile.html"
-  },
-  {
-    title: "LVOS",
-    id: "lvos",
-    src: "index.html",
-    distSrc: "https://iemand005.github.io/LVOS/",
-    altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"]
-  },
-  {
-    title: "Speak",
-    id: "speak",
-    src: "Applications/Speak/speak.html"
-  },
-  {
-    title: "Tepartive.NET",
-    id: "tepartive",
-    src: "https://tepartive.net/"
-  },
-  {
-    title: "ColourTool",
-    id: "color-tool",
-    src: "Applications/ColorTool/colors.html"
-  }
+  provisionedApp("Settings App", "settings", "./Applications/Settings/settings.html"),
+  provisionedApp("Frosted Colors", "colors", "Applications/FrostedColours/index.html", { distSrc: "https://iemand005.github.io/FrostedColours", wallpaper: true }),
+  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Color Tool", "colortool", "./Applications/ColorTool/colors.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Example", "0", "./example.html"),
+  provisionedApp("Camera", "camera", "./Applications/Camera/index.html", { camera: true, microphone: true }),
+  provisionedApp("Video", "video", "./Applications/Video/index.html", { hidden: true }),
+  provisionedApp("Cover Flow", "coverflow", "./Applications/Coverflow/Coverflow.html"),
+  provisionedApp("Music", "music", "./Applications/Music/index.html"),
+  provisionedApp("Citates", "citates", "./Applications/Citaten/index.html", { hidden: true }),
+  provisionedApp("Clock", "clock", "./Applications/Clock/index.html", { hidden: true }),
+  provisionedApp("Verlet", "verlet", "./Applications/Verlet/index.html", { hidden: true }),
+  provisionedApp("Recorder", "recorder", "./Applications/Recorder/index.html", { hidden: true }),
+  provisionedApp("Error", "error", "./Applications/Error/error.html", { hidden: true }),
+  provisionedApp("Cube", "cube", "./Applications/Cube/cube.html", { hidden: true }),
+  provisionedApp("Geode", "geode", "https://geode.tepartive.net", { hidden: true }),
+  provisionedApp("Level", "level", "./Applications/Level/level.html", { hidden: true }),
+  provisionedApp("Browser", "browser", "./Applications/Browser/index.html"),
+  provisionedApp("MPTool", "mptool", "./Applications/MPTool/index.html", { hidden: true }),
+  provisionedApp("Autostereograms", "stereograms", "./Applications/StereogramMaker/index.html", { hidden: true }),
+  provisionedApp("Metronome", "cyanide.metronome", "./Applications/Cyanide/metronome/index.html", { hidden: true }),
+  provisionedApp("Rainboy", "cyanide.rainboy", "./Applications/Cyanide/rainboy/index.html", { hidden: true }),
+  provisionedApp("OPC", "opc", "https://bypass-online.netlify.app/", { iconUrl: "https://iemand005.github.io/OPC/files/apps/me.flexan.terminal/terminal.png", accentColor: "rgb(37, 104, 245)" }),
+  provisionedApp("daedalOS", "daedal", "https://dustinbrett.com/"),
+  provisionedApp("Fenix Engine Demo", "fenix.web", "https://iemand005.github.io/FenixWeb/"),
+  provisionedApp("FoxCraft", "fenix.foxcraft", "https://iemand005.github.io/FenixWeb/FoxCraft/index.html"),
+  provisionedApp("Cake", "fenix.cake", "https://iemand005.github.io/FenixWeb/Cake/index.html", { audioVisualizer: true }),
+  provisionedApp("My Web Archive", "foxyz.archive", "https://iemand005.github.io/Archive-2023/index.html"),
+  provisionedApp("Tappy", "foxyz.tappy", "./Applications/Tappy/tappy.html", { hidden: true }),
+  provisionedApp("AIOne", "foxyz.aione", "./Applications/AIOneWeb/index.html", { hidden: true }),
+  provisionedApp("WebGPUFluidSim", "foxyz.webgpufluidsim", "./Applications/WebGPUFluidSim/index.html", { moveEvents: true }),
+  provisionedApp("Fur:Trash", "foxyz.fur:trash", "https://open.spotify.com/embed/artist/1jp7cmyHDn5nuP3MMSwm1m?utm_source=generator&si=86b6cf864e0048c3", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f1788c05c5ac8638f68f84053a57" }),
+  provisionedApp("Cavetown", "foxyz.cavetown", "https://open.spotify.com/embed/artist/2hR4h1Cao2ueuI7Cx9c7V8?utm_source=generator&theme=0&si=714602d32e764d47", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Awolnation", "foxyz.awolnation", "https://open.spotify.com/embed/artist/4njdEjTnLfcGImKZu1iSrz", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Papa Roach", "foxyz.papa-roach", "https://open.spotify.com/embed/artist/4RddZ3iHvSpGV4dvATac9X", { iconUrl: "https://image-cdn-fa.spotifycdn.com/image/ab6761610000f17845ec07bbcf1fed2a4747e780" }),
+  provisionedApp("Monaco", "monaco", "./Applications/Monaco/monaco.html", { iconUrl: "https://code.visualstudio.com/favicon.ico" }),
+  provisionedApp("Furzona Lite", "furzona", "https://iemand005.github.io/FurzonaWeb", { iconUrl: "https://iemand005.github.io/FurzonaWeb/Logo.png" }),
+  provisionedApp("The Useless Web", "theuselessweb", "https://theuselessweb.com/"),
+  provisionedApp("Windows 95", "win95", "https://98.js.org/"),
+  provisionedApp("Pinball Space Cadet", "pinball", "https://98.js.org/programs/pinball/space-cadet.html", { iconUrl: "https://98.js.org/images/icons/pinball-16x16.png" }),
+  provisionedApp("Internet Exporer", "ie", "https://98.js.org/programs/explorer/index.html?address=https%3A%2F%2Fwww.google.com", { iconUrl: "https://98.js.org/images/icons/html-16x16.png" }),
+  provisionedApp("Solitaire", "solitaire", "https://98.js.org/programs/js-solitaire/index.html", { iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png" }),
+  provisionedApp("Pipes", "pipes", "https://98.js.org/programs/pipes/index.html#%7B%22hideUI%22%3Atrue%7D", { iconUrl: "https://98.js.org/images/icons/solitaire-16x16.png", screensaver: true }),
+  provisionedApp("Cavetown - Big Strong Man", "cavetown.bigstrongmen", "https://www.youtube.com/embed/uKn0BtAAEyw?si=s3Pz0PzIpQDCxizU"),
+  provisionedApp("Gamepad Input Recorder", "inputrecorder", "https://iemand005.github.io/GamepadRecorder/"),
+  provisionedApp("LVOS Mobile", "mobile", "./mobile.html", { distSrc: "https://iemand005.github.io/LVOS/mobile.html" }),
+  provisionedApp("LVOS", "lvos", "index.html", { distSrc: "https://iemand005.github.io/LVOS/", altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"] }),
+  provisionedApp("Speak", "speak", "Applications/Speak/speak.html"),
+  provisionedApp("Tepartive.NET", "tepartive", "https://tepartive.net/"),
+  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html")
 ];
 var games = [
-  {
-    title: "Conway",
-    id: "conway",
-    src: "./Games/Conway/index.html",
-    classes: ["rounded-corners"]
-  },
-  {
-    title: "Velocities",
-    id: "velocities",
-    src: "./Applications/Velocities/index.html",
-    moveEvents: true
-    // This flag enables attaching window movement statistic listener.
-  },
-  {
-    title: "Minesweeper",
-    id: "minesweeper",
-    src: "./Games/Minesweeper/index.html",
-    resizable: false,
-    scroll: false
-  },
-  {
-    title: "Chess",
-    id: "chess",
-    src: "./Games/Chess/index.html",
-    hidden: true
-  },
-  {
-    title: "Tetris",
-    id: "tetris",
-    src: "./Games/Tetris/tetris.html",
-    hidden: true
-  },
-  {
-    title: "Sudoku",
-    id: "sudoku",
-    src: "./Games/Sudoku/sudoku.html",
-    hidden: true
-  },
-  {
-    title: "Clicker",
-    id: "clicker",
-    src: "./Games/ChoccyClicker/clicker.html",
-    hidden: true
-  },
-  {
-    title: "FAT",
-    id: "mountain",
-    src: "https://iemand005.github.io/MountainWeb/"
-  },
-  {
-    title: "Planet Life",
-    id: "planetlife",
-    src: "https://www.planetlife.space/static/game/index.html"
-  },
-  {
-    title: "Horizon Background",
-    id: "horizon-bg",
-    src: "https://iemand005.github.io/HorizonBackground/",
-    wallpaper: true
-  }
+  provisionedApp("Conway", "conway", "./Games/Conway/index.html", { classes: ["rounded-corners"] }),
+  provisionedApp("Velocities", "velocities", "./Applications/Velocities/index.html", { moveEvents: true }),
+  provisionedApp("Minesweeper", "minesweeper", "./Games/Minesweeper/index.html", { resizable: false, scroll: false }),
+  provisionedApp("Chess", "chess", "./Games/Chess/index.html", { hidden: true }),
+  provisionedApp("Tetris", "tetris", "./Games/Tetris/tetris.html", { hidden: true }),
+  provisionedApp("Sudoku", "sudoku", "./Games/Sudoku/sudoku.html", { hidden: true }),
+  provisionedApp("Clicker", "clicker", "./Games/ChoccyClicker/clicker.html", { hidden: true }),
+  provisionedApp("FAT", "mountain", "https://iemand005.github.io/MountainWeb/"),
+  provisionedApp("Planet Life", "planetlife", "https://www.planetlife.space/static/game/index.html"),
+  provisionedApp("Horizon Background", "horizon-bg", "https://iemand005.github.io/HorizonBackground/", { wallpaper: true })
 ];
 if (typeof windowManager !== "undefined") {
   Object.defineProperty(Window.prototype, "windows", {
@@ -6794,17 +5122,16 @@ function initApps() {
   }
   finishAppInstall();
 }
-;
 function finishAppInstall() {
   if (typeof appManager !== "undefined") {
     appManager.addApps(applications, games);
     appManager.loadApps();
   }
-  if (typeof restoreWallpaperSetting == "function") restoreWallpaperSetting();
+  if (typeof restoreWallpaperSetting === "function") restoreWallpaperSetting();
 }
 finishAppInstall();
 window.addEventListener("load", initApps, false);
-var bindConsole = false;
+var bindConsole = true;
 var ConsoleOutType = {
   Input: -1,
   Return: 0,
@@ -6955,7 +5282,6 @@ function probeAllStorage() {
     JavaApplets: typeof navigator.javaEnabled == "function" && navigator.javaEnabled()
   };
 }
-console.log("Detected Browser Capabilities:", probeAllStorage());
 function OmniFS() {
   this.webkitSize = 5 * 1024 * 1024;
   this.webkitFs = null;
@@ -6988,7 +5314,7 @@ OmniFS.prototype.writeToChromeLegacyFS = function(fileName, textData) {
           resolve("Saved via Chrome Legacy FS to" + fileEntry.toURL());
         };
         fileWriter.onerror = reject;
-        const blob = new Blob([textData], { type: "text/plain" });
+        var blob = new Blob([textData], { type: "text/plain" });
         fileWriter.write(blob);
       }, reject);
     }, reject);
@@ -7046,39 +5372,38 @@ NewtonManager.prototype.loop = function(time) {
 };
 NewtonManager.prototype.step = function(time) {
   var currentTime = time;
-  var deltaTime2 = this.lastTime - currentTime;
+  var deltaTime = this.lastTime - currentTime;
   this.lastTime = currentTime;
   var self2 = this;
   windowManager.forEachWindow(function(window2) {
     if (window2.dragging) return;
     if (!window2.velocity) window2.velocity = new Vector();
-    window2.velocity.y -= self2.gravity * deltaTime2;
+    window2.velocity.y -= self2.gravity * deltaTime;
     var lastY = window2.y;
     window2.y += window2.velocity.y;
     window2.x += window2.velocity.x;
     if (window2.y === lastY) window2.velocity.y = 0;
   });
 };
-var reflecitons = false;
 var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
 function init() {
-  var launchpadElement = document.getElementById("launchpad");
-  if (!launchpad || !launchpadElement) return;
-  launchpad.init(launchpadElement);
-  if (typeof appManager !== "undefined") {
-    appManager.forEachApp(launchpad.addApp.bind(launchpad));
-    appManager.reloadWallpaper();
-  }
   if (typeof windowManager !== "undefined" && "windowManager" in window) {
-    windowManager.forEachWindow(function(dialog) {
-      if (launchpad && dialog.application) launchpad.addApp(dialog);
+    if (launchpad) windowManager.forEachWindow(function(dialog) {
+      if (dialog.application) launchpad.addApp(dialog);
     });
     if (!isBlink) DesktopManager.removeTheme("glass");
     windowManager.initializeDialogs();
-    toggleReflections(false);
     LVMessenger.receive(messageReceived);
   }
-  if (location.protocol === "file:") {
+  var launchpadElement = document.getElementById("launchpad");
+  if (launchpad && launchpadElement) {
+    launchpad.init(launchpadElement);
+    if (typeof appManager !== "undefined") {
+      appManager.forEachApp(launchpad.addApp.bind(launchpad));
+      appManager.reloadWallpaper();
+    }
+  }
+  if (location.protocol === "file:") try {
     var scripts = document.querySelectorAll('script[type="module"]');
     scripts.forEach(function(s) {
       var replacement = document.createElement("script");
@@ -7088,9 +5413,25 @@ function init() {
       } catch (ex) {
       }
     });
+  } catch (ex) {
   }
   window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
   if (window.__LVMessenger)
     window.__LVMessenger.accent = window.metaThemeColor;
 }
-window.addEventListener("DOMContentLoaded", init, false);
+function ready(fn) {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(fn, 0);
+    return;
+  }
+  window.addEventListener("DOMContentLoaded", fn, false);
+}
+ready(init);
+if (document.documentMode === 9) {
+  var script = document.createElement("script");
+  script.src = "./Scripts/Animation.js";
+  document.getElementsByTagName("head")[0].appendChild(script);
+}
+window.onerror = function() {
+  return true;
+};
