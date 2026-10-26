@@ -5426,6 +5426,7 @@ function applyWallpaperFile(files) {
   reader.readAsDataURL(file);
 }
 function loadThemeSetting() {
+	return;
   var theme = settings.get("theme");
   if (THEMES.indexOf(theme) !== -1) {
     for (var i = 0; i < THEMES.length; i++)
