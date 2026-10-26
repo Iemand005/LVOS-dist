@@ -2,6 +2,41 @@
 var __lvosReserved = { "get": true, "getActiveFrame": true, "getActiveId": true, "getApp": true, "getBodyRect": true, "getBoundingClientRect": true, "getButton": true, "getClientRects": true, "getData": true, "getDesktopIndexAt": true, "getDirectory": true, "getElementById": true, "getElementByTagOrClassName": true, "getElementsByClassName": true, "getElementsByTagName": true, "getExtension": true, "getFile": true, "getFileHandle": true, "getGestureSnapZone": true, "getHTML": true, "getIconUrl": true, "getItem": true, "getMiniIconUrl": true, "getOrCreateFrame": true, "getRect": true, "getSnapContainer": true, "getSnapGroup": true, "getSnapSpacer": true, "getSnapZone": true, "getState": true, "getTitleElement": true, "getViewBoxPosition": true, "getVisualizerApps": true, "getWallpaper": true, "getWindowById": true, "getWindowOwningElement": true, "set": true, "setAttribute": true, "setClickOffset": true, "setData": true, "setDragScale": true, "setExpos\xE9Enabled": true, "setExtensionEnabled": true, "setHalfInset": true, "setHeight": true, "setHeightInset": true, "setIcon": true, "setInset": true, "setItem": true, "setMaxSize": true, "setMinSize": true, "setParentElement": true, "setPointerCapture": true, "setPointerPosition": true, "setProperty": true, "setRotation": true, "setScale": true, "setScaleY": true, "setSkew": true, "setTimeout": true, "setTitle": true, "setWallpaper": true, "setWidth": true, "setZ": true, "setupScollHandler": true };
 var __lvosAccessors = {};
 var __lvosMethodNames = {};
+if (!Array.prototype.indexOf) {
+  Array.prototype.indexOf = function(searchElement, fromIndex) {
+    var len = this == null ? 0 : this.length >>> 0;
+    if (len === 0)
+      return -1;
+    var n = typeof fromIndex === "number" ? fromIndex | 0 : 0;
+    if (n >= len)
+      return -1;
+    var k = n >= 0 ? n : Math.max(len - Math.abs(n), 0);
+    for (; k < len; k++) {
+      if (k in this && this[k] === searchElement)
+        return k;
+    }
+    return -1;
+  };
+}
+if (!Array.prototype.lastIndexOf) {
+  Array.prototype.lastIndexOf = function(searchElement, fromIndex) {
+    var len = this == null ? 0 : this.length >>> 0;
+    if (len === 0)
+      return -1;
+    var n = typeof fromIndex === "number" ? fromIndex | 0 : len - 1;
+    var k = n >= 0 ? Math.min(n, len - 1) : len - Math.abs(n);
+    for (; k >= 0; k--) {
+      if (k in this && this[k] === searchElement)
+        return k;
+    }
+    return -1;
+  };
+}
+if (!String.prototype.trim) {
+  String.prototype.trim = function() {
+    return this.replace(/^\s+|\s+$/g, "");
+  };
+}
 (function() {
   if (typeof document === "undefined" || !document.createElement)
     return;
@@ -899,8 +934,9 @@ function messageReceived(type, data, source) {
           if (!overlay)
             return;
           overlay.ontransitionend = null;
-          overlay.requestFullscreen()["catch"](function() {
-          });
+          if (typeof overlay.requestFullscreen === "function")
+            overlay.requestFullscreen()["catch"](function() {
+            });
           if (__lvosGet(dialog, "body"))
             overlay.appendChild(__lvosGet(dialog, "body"));
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -2081,17 +2117,17 @@ function WindowSnap() {
   __lvosSet(this.element, "id", "window-snap");
   this._snapped = "";
   this._section = null;
-//   this.element.classList.add("hidden");
+  this.element.classList.add("hidden");
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
     return this.element.classList.contains("hidden");
   },
   set: function(enable) {
-    // if (enable)
-    //   this.element.classList.add("hidden");
-    // else
-    //   this.element.classList.remove("hidden");
+    if (enable)
+      this.element.classList.add("hidden");
+    else
+      this.element.classList.remove("hidden");
   }
 });
 WindowSnap.prototype.init = function() {
@@ -3060,7 +3096,8 @@ __lvosDefineProperties(Dialog.prototype, {
   },
   right: {
     get: function() {
-      return window.innerWidth - __lvosGet(this, "rightFromLeft");
+      var rfl = __lvosGet(this, "rightFromLeft");
+      return typeof rfl === "number" && rfl === rfl ? window.innerWidth - rfl : 0;
     },
     set: function(right) {
       if (typeof right === "number") {
@@ -3083,7 +3120,8 @@ __lvosDefineProperties(Dialog.prototype, {
   },
   bottom: {
     get: function() {
-      return window.innerHeight - __lvosGet(this, "bottomFromTop");
+      var bft = __lvosGet(this, "bottomFromTop");
+      return typeof bft === "number" && bft === bft ? window.innerHeight - bft : 0;
     },
     set: function(bottom) {
       if (typeof bottom === "number") {
@@ -5317,7 +5355,7 @@ function applyStartButtonIcon(theme) {
     startButton.innerText = "Start";
   }
 }
-function setThemeOption(theme) {
+function setThemeOption(theme) {return;
   var previous = settings.get("theme");
   var blurWasOn = previous === "blur" || previous === "glass" || previous === "modern-blur";
   var previousBase = BASE_THEMES[previous];
@@ -5507,7 +5545,7 @@ function applyWallpaperFile(files) {
   };
   reader.readAsDataURL(file);
 }
-function loadThemeSetting() {
+function loadThemeSetting() {return;
   var theme = settings.get("theme");
   if (THEMES.indexOf(theme) !== -1) {
     for (var i = 0; i < THEMES.length; i++)
@@ -5791,7 +5829,7 @@ function finishAppInstall() {
 }
 finishAppInstall();
 window.addEventListener("load", initApps, false);
-var bindConsole = true;
+var bindConsole = false;
 var ConsoleOutType = {
   Input: -1,
   Return: 0,
@@ -5907,7 +5945,7 @@ ConsoleInterceptor.prototype.getHTML = function() {
   return output;
 };
 var interceptor = new ConsoleInterceptor();
-interceptor.bindage();
+/* interceptor.bindage(); */
 window.addEventListener("load", function() {
   if (bindConsole)
     interceptor.init();

@@ -613,7 +613,7 @@ function messageReceived(type, data, source) {
           }
           if (!overlay) return;
           overlay.ontransitionend = null;
-          overlay.requestFullscreen().catch(function() {
+          if (typeof overlay.requestFullscreen === "function") overlay.requestFullscreen()["catch"](function() {
           });
           if (dialog.body) overlay.appendChild(dialog.body);
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -2524,7 +2524,8 @@ Object.defineProperties(Dialog.prototype, {
   },
   right: {
     get: function() {
-      return window.innerWidth - this.rightFromLeft;
+      var rfl = this.rightFromLeft;
+      return typeof rfl === "number" && rfl === rfl ? window.innerWidth - rfl : 0;
     },
     set: function(right) {
       if (typeof right === "number") {
@@ -2545,7 +2546,8 @@ Object.defineProperties(Dialog.prototype, {
   },
   bottom: {
     get: function() {
-      return window.innerHeight - this.bottomFromTop;
+      var bft = this.bottomFromTop;
+      return typeof bft === "number" && bft === bft ? window.innerHeight - bft : 0;
     },
     set: function(bottom) {
       if (typeof bottom === "number") {
