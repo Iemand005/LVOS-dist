@@ -1101,7 +1101,7 @@ function WindowManager() {
       console.warn(ex);
     }
   };
-  this.windowSnap = new WindowSnap();
+//   this.windowSnap = new WindowSnap();
   this.snapGroups = /* @__PURE__ */ new Map();
   this.extensions = [];
 }
@@ -2006,7 +2006,7 @@ function WindowSnap() {
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
-    return this.element.classList.contains("hidden");
+    // return this.element.classList.contains("hidden");
   },
   set: function(enable) {
     if (enable)
@@ -5826,7 +5826,7 @@ ConsoleInterceptor.prototype.getHTML = function() {
   return output;
 };
 var interceptor = new ConsoleInterceptor();
-interceptor.bindage();
+// interceptor.bindage();
 window.addEventListener("load", function() {
   if (bindConsole)
     interceptor.init();
