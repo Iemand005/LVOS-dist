@@ -3522,8 +3522,8 @@ Dialog.prototype.toggleMaximized = function(enable) {
   var startY = __lvosGet(this, "y");
   var scaleX = startWidth > 0 ? endWidth / startWidth : 1;
   var scaleY = startHeight > 0 ? endHeight / startHeight : 1;
-  var isSlow = __lvosGet(document, "body") && // __lvosGet(document, "body").classList.contains("slow-animations");
-  var duration = isSlow ? 3e3 : 280;
+//   var isSlow = __lvosGet(document, "body") && // __lvosGet(document, "body").classList.contains("slow-animations");
+  var duration = false ? 3e3 : 280;
   var toTransform = function(x, y, sx, sy) {
     return "translate(" + Helpers.toPixels(x) + "," + Helpers.toPixels(y) + ") scale(" + sx + "," + sy + ")";
   };
