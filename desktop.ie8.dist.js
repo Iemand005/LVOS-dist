@@ -2117,6 +2117,8 @@ function WindowSnap() {
   __lvosSet(this.element, "id", "window-snap");
   this._snapped = "";
   this._section = null;
+  if (document.documentMode && document.documentMode < 9)
+    return;
   this.element.classList.add("hidden");
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {

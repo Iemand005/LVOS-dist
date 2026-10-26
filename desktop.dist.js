@@ -1645,6 +1645,7 @@ function WindowSnap() {
   this.element.id = "window-snap";
   this._snapped = "";
   this._section = null;
+  if (document.documentMode && document.documentMode < 9) return;
   this.element.classList.add("hidden");
 }
 Object.defineProperty(WindowSnap.prototype, "hidden", {
