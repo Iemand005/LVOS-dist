@@ -821,6 +821,8 @@ function messageReceived(type, data, source) {
           if (!overlay)
             return;
           overlay.ontransitionend = null;
+          overlay.requestFullscreen().catch(function() {
+          });
           if (__lvosGet(dialog, "body"))
             overlay.appendChild(__lvosGet(dialog, "body"));
           window.setTimeout(overlay.classList.add.bind(overlay.classList, "shown"), 500);
@@ -2001,7 +2003,7 @@ function WindowSnap() {
   __lvosSet(this.element, "id", "window-snap");
   this._snapped = "";
   this._section = null;
-//   this.element.classList.add("hidden");
+  this.element.classList.add("hidden");
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
@@ -4905,7 +4907,7 @@ DesktopManager.prototype.clearWallpaperCache = function() {
   initWallpaperDB(function(db) {
     var transaction = db.transaction(["wallpapers"], "readwrite");
     var store = transaction.objectStore("wallpapers");
-    // store.delete("current");
+    store.delete("current");
   }, function() {
   });
 };
@@ -5234,45 +5236,45 @@ function applyStartButtonIcon(theme) {
   }
 }
 function setThemeOption(theme) {
-//   var previous = settings.get("theme");
-//   var blurWasOn = previous === "blur" || previous === "glass" || previous === "modern-blur";
-//   var previousBase = BASE_THEMES[previous];
-//   if (previous && previous !== theme) {
-//     if (THEMES.indexOf(previous) !== -1)
-//       DesktopManager.removeTheme(previous);
-//     if (previous === "glass")
-//       DesktopManager.removeTheme("blur");
-//     if (previous === "modern-blur") {
-//       DesktopManager.removeTheme("blur");
-//       DesktopManager.removeTheme("modern");
-//     }
-//     if (previousBase)
-//       DesktopManager.removeTheme(previousBase);
-//   }
-//   if (theme && THEMES.indexOf(theme) !== -1) {
-//     if (theme !== "modern-blur")
-//       setTheme(theme);
-//     if (theme === "glass")
-//       setTheme("blur");
-//     if (theme === "modern-blur") {
-//       setTheme("modern");
-//       setTheme("blur");
-//     }
-//     if (BASE_THEMES[theme])
-//       setTheme(BASE_THEMES[theme]);
-//     applyStartButtonIcon(theme);
-//     settings.set("theme", theme);
-//   } else {
-//     DesktopManager.removeTheme("blur");
-//     DesktopManager.removeTheme("glass");
-//     settings.set("theme", "");
-//   }
-//   if (theme === "blur" || theme === "glass")
-//     DesktopManager.removeTheme("modern");
-//   else if (blurWasOn && theme !== "modern-blur")
-//     setTheme("modern");
-//   if (typeof windowManager !== "undefined" && typeof windowManager.broadcastTheme === "function")
-//     windowManager.broadcastTheme();
+  var previous = settings.get("theme");
+  var blurWasOn = previous === "blur" || previous === "glass" || previous === "modern-blur";
+  var previousBase = BASE_THEMES[previous];
+  if (previous && previous !== theme) {
+    if (THEMES.indexOf(previous) !== -1)
+      DesktopManager.removeTheme(previous);
+    if (previous === "glass")
+      DesktopManager.removeTheme("blur");
+    if (previous === "modern-blur") {
+      DesktopManager.removeTheme("blur");
+      DesktopManager.removeTheme("modern");
+    }
+    if (previousBase)
+      DesktopManager.removeTheme(previousBase);
+  }
+  if (theme && THEMES.indexOf(theme) !== -1) {
+    if (theme !== "modern-blur")
+      setTheme(theme);
+    if (theme === "glass")
+      setTheme("blur");
+    if (theme === "modern-blur") {
+      setTheme("modern");
+      setTheme("blur");
+    }
+    if (BASE_THEMES[theme])
+      setTheme(BASE_THEMES[theme]);
+    applyStartButtonIcon(theme);
+    settings.set("theme", theme);
+  } else {
+    DesktopManager.removeTheme("blur");
+    DesktopManager.removeTheme("glass");
+    settings.set("theme", "");
+  }
+  if (theme === "blur" || theme === "glass")
+    DesktopManager.removeTheme("modern");
+  else if (blurWasOn && theme !== "modern-blur")
+    setTheme("modern");
+  if (typeof windowManager !== "undefined" && typeof windowManager.broadcastTheme === "function")
+    windowManager.broadcastTheme();
 }
 function toggleColorDebug(enabled) {
   __lvosGet(document, "body").classList.toggle("color-debug", enabled);
@@ -5424,42 +5426,42 @@ function applyWallpaperFile(files) {
   reader.readAsDataURL(file);
 }
 function loadThemeSetting() {
-//   var theme = settings.get("theme");
-//   if (THEMES.indexOf(theme) !== -1) {
-//     for (var i = 0; i < THEMES.length; i++)
-//       __lvosGet(document, "body").classList.remove(THEMES[i]);
-//     for (var base in BASE_THEMES) {
-//       if (BASE_THEMES.hasOwnProperty(base))
-//         __lvosGet(document, "body").classList.remove(BASE_THEMES[base]);
-//     }
-//     if (theme !== "modern-blur")
-//       setTheme(theme);
-//     if (theme === "glass")
-//       setTheme("blur");
-//     if (theme === "modern-blur") {
-//       setTheme("modern");
-//       setTheme("blur");
-//     }
-//     if (BASE_THEMES[theme])
-//       setTheme(BASE_THEMES[theme]);
-//     if (theme === "blur" || theme === "glass")
-//       removeTheme("modern");
-//     applyStartButtonIcon(theme);
-//     if (elements.theme)
-//       elements.theme.value = theme;
-//   }
-//   var colorDebug = settings.get("color-debug");
-//   if (typeof colorDebug == "boolean") {
-//     __lvosGet(document, "body").classList.toggle("color-debug", colorDebug);
-//     if (elements.colorDebug)
-//       elements.colorDebug.checked = colorDebug;
-//   }
-//   var squircles = settings.get("squircles");
-//   if (typeof squircles == "boolean") {
-//     __lvosGet(document, "body").classList.toggle("squircles", squircles);
-//     if (elements.squircles)
-//       elements.squircles.checked = squircles;
-//   }
+  var theme = settings.get("theme");
+  if (THEMES.indexOf(theme) !== -1) {
+    for (var i = 0; i < THEMES.length; i++)
+      __lvosGet(document, "body").classList.remove(THEMES[i]);
+    for (var base in BASE_THEMES) {
+      if (BASE_THEMES.hasOwnProperty(base))
+        __lvosGet(document, "body").classList.remove(BASE_THEMES[base]);
+    }
+    if (theme !== "modern-blur")
+      setTheme(theme);
+    if (theme === "glass")
+      setTheme("blur");
+    if (theme === "modern-blur") {
+      setTheme("modern");
+      setTheme("blur");
+    }
+    if (BASE_THEMES[theme])
+      setTheme(BASE_THEMES[theme]);
+    if (theme === "blur" || theme === "glass")
+      removeTheme("modern");
+    applyStartButtonIcon(theme);
+    if (elements.theme)
+      elements.theme.value = theme;
+  }
+  var colorDebug = settings.get("color-debug");
+  if (typeof colorDebug == "boolean") {
+    __lvosGet(document, "body").classList.toggle("color-debug", colorDebug);
+    if (elements.colorDebug)
+      elements.colorDebug.checked = colorDebug;
+  }
+  var squircles = settings.get("squircles");
+  if (typeof squircles == "boolean") {
+    __lvosGet(document, "body").classList.toggle("squircles", squircles);
+    if (elements.squircles)
+      elements.squircles.checked = squircles;
+  }
 }
 var elements = {
   color: null,
