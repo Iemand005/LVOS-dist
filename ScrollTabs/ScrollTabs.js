@@ -38,7 +38,7 @@ Tab.prototype.setTitle = function(title) {
 
 /**
  * @param {HTMLElement} parent
- * @param {boolean} hasButtons
+ * @param {boolean} [hasButtons]
  */
 function TabScroller(parent, hasButtons) {
 
@@ -49,8 +49,6 @@ function TabScroller(parent, hasButtons) {
 	this.element.className = "tab-scroller";
 	/** @type {Tab[]} */
 	this.tabs = [];
-
-	// this.container = hasButtons ? 
 
 	this.container = this.element;
 

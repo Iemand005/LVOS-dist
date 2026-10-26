@@ -104,7 +104,6 @@ function injectMica(dialog) {
  */
 function updateMicaPosition(dialog) {
 	try {
-		if (!dialog) return;
 		var backdrop = getMicaBackdrop(dialog);
 		if (!backdrop) return;
 		var wallpaper = document.getElementById("wallpaper");
@@ -112,13 +111,13 @@ function updateMicaPosition(dialog) {
 		var wallpaperImage = wallpaper.children[0];
 		if (!wallpaperImage) return;
 
-		translateElement(backdrop, -dialog.x, -dialog.y);
+		Helpers.translateElement(backdrop, -dialog.x, -dialog.y);
 
 		var wallpaperWidth = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientWidth ? wallpaperImage.clientWidth : wallpaper.clientWidth;
 		var wallpaperHeight = wallpaperImage instanceof HTMLImageElement && wallpaperImage.clientHeight ? wallpaperImage.clientHeight : wallpaper.clientHeight;
 
-		backdrop.style.width = toPixels(wallpaperWidth);
-		backdrop.style.height = toPixels(wallpaperHeight);
+		backdrop.style.width = Helpers.toPixels(wallpaperWidth);
+		backdrop.style.height = Helpers.toPixels(wallpaperHeight);
 	} catch (ex) { console.warn(ex); }
 }
 
@@ -129,7 +128,6 @@ function updateMicaPosition(dialog) {
  */
 function removeMica(dialog) {
 	try {
-		if (!dialog || !dialog.target) return false;
 		dialog.target.classList.remove(MICA_WINDOW_CLASS);
 		var clip = getMicaElement(dialog);
 		if (!clip) return false;

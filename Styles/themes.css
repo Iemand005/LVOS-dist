@@ -82,6 +82,16 @@ body {
 	padding: var(--window-border-width);
 }
 
+.modern .window content,
+.modern button {
+	background-color: #dddddd;
+	/* background: linear-gradient(358deg, #161616, #333232); */
+	border: 0px solid black !important;
+	background: linear-gradient(to bottom, #eeeeee, #cccccc);
+	/* -pie-background: linear-gradient(358deg, #161616, #333232); */
+	/* behavior: url(/Scripts/PIE/PIE.htc); */
+}
+
 .window.rounded-corners {
 	border-radius: var(--window-radius) !important;
 }
@@ -201,16 +211,17 @@ body {
 	background-color: rgba(0, 0, 0, 0.16);
 }
 
-.windows .window header button:nth-child(3):hover,
-.windows-10 .window header button:nth-child(3):hover,
-.windows-11 .window header button:nth-child(3):hover {
+.windows .window header button:nth-child(3):hover {
 	background-color: #e81123;
 }
 
-.windows .window header button:nth-child(3):active,
-.windows-10 .window header button:nth-child(3):active,
-.windows-11 .window header button:nth-child(3):active {
+.windows .window header button:nth-child(3):active {
 	background-color: #c50f1f;
+}
+
+.windows .window header button:nth-child(3):hover svg,
+.windows .window header button:nth-child(3):active svg {
+	fill: white;
 }
 
 .windows .window content,
@@ -563,16 +574,14 @@ button {
 	pointer-events: none;
 }
 
-
+.modern h1,
 .modern .window content,
 .modern button {
-	color: white;
-	/* background-color: #202020; */
-	background: linear-gradient(358deg, #161616, #333232);
-	border: 0px solid black !important;
-	background: linear-gradient(to bottom, #eeeeee, #cccccc);
-	-pie-background: linear-gradient(358deg, #161616, #333232);
-	behavior: url(/Scripts/PIE/PIE.htc);
+	color: black;
+}
+
+.modern svg {
+	fill: black;
 }
 
 .modern button:active {
@@ -588,6 +597,10 @@ button {
 	position: relative;
 	border-radius: 100px;
 	padding: 5px 10px;
+}
+
+.modern .window header button {
+	border-radius: 0;
 }
 
 .modern .backdrop-clip {
