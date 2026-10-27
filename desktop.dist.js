@@ -2010,22 +2010,22 @@ function Dialog(object) {
   this.dragging = false;
   this._ctrlDrag = false;
   this._appIcon = null;
-  var self2 = this;
+  var self3 = this;
   this.activationHandler = function(ev, id2) {
     if (!ev) {
       var event2 = window.event;
       event2.target = event2.srcElement;
       ev = event2;
     }
-    self2._ctrlDrag = !!(ev && ev.ctrlKey);
-    if (self2._ctrlDrag) {
+    self3._ctrlDrag = !!(ev && ev.ctrlKey);
+    if (self3._ctrlDrag) {
       ev.stopImmediatePropagation();
       return;
     }
     ensureClassList(ev.target);
     if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
-    windowManager.windowActivationEvent(ev, self2, id2);
+    windowManager.windowActivationEvent(ev, self3, id2);
     return true;
   };
   if (object instanceof Dialog) {
@@ -2045,11 +2045,25 @@ function Dialog(object) {
         if (element && this.application) {
           this.target = element;
           var doc = this.contentDocument;
-          if (doc && doc.readyState !== "complete") this.openUrl(this.application.src);
+          var self2 = this;
+          this.openUrl(this.application.src);
+          setTimeout(function() {
+            if (!self2.frame) self2.openUrl(self2.application.src);
+          }, 0);
+          setTimeout(function() {
+            if (!self2.frame) self2.openUrl(self2.application.src);
+          }, 50);
         }
       } else {
         this.target = createDialogElement();
+        var self3 = this;
         this.openUrl(object.src);
+        setTimeout(function() {
+          if (!self3.frame && self3.application) self3.openUrl(self3.application.src);
+        }, 0);
+        setTimeout(function() {
+          if (!self3.frame && self3.application) self3.openUrl(self3.application.src);
+        }, 50);
       }
       if (this.windowTarget) this.windowTarget.dialog = this;
       if (object.classes && typeof object.classes === "object") {
@@ -2066,7 +2080,7 @@ function Dialog(object) {
       }
       this.moveEvents = object.moveEvents || false;
       this.setIcon(this.getMiniIconUrl(), function() {
-        self2.setIcon(self2.getIconUrl());
+        self3.setIcon(self3.getIconUrl());
       });
     }
   }
@@ -2075,9 +2089,9 @@ function Dialog(object) {
   this.toggleFullButton(true);
   if (this.verifyEjectCapability()) this.toggleEjectButton(true);
   this.exchangeDialogMouseUpEvent = this.messageFrame.bind(this, "mouseUp", { difference: new Vector() });
-  var self2 = this;
+  var self3 = this;
   this.exchangeDialogMoveEvent = function(difference) {
-    if (difference && self2.clickOffset) this.messageFrame("windowMove", self2.clickOffset.update(difference.x, difference.y));
+    if (difference && self3.clickOffset) this.messageFrame("windowMove", self3.clickOffset.update(difference.x, difference.y));
   };
   if (!this.target.classList) ensureClassList(this.target);
   var target = this.target;
@@ -2085,13 +2099,13 @@ function Dialog(object) {
   var createSizers = true;
   if (this.resizable && createSizers) this._createSizers();
   target.onselectstart = function(event2) {
-    if (self2._ctrlDrag) return;
+    if (self3._ctrlDrag) return;
     cancelDomEvent(event2);
   };
   var body = this.body;
   if (body) body.onload = function() {
     try {
-      self2.verifyEjectCapability();
+      self3.verifyEjectCapability();
     } catch (exception) {
       console.log(exception);
       if (buttons[0]) buttons[0].style.display = "none";
@@ -2106,7 +2120,7 @@ function Dialog(object) {
       if (node.nodeName && node.nodeName.toLowerCase() === "button") return;
       node = node.parentElement;
     }
-    self2.toggleMaximized();
+    self3.toggleMaximized();
   };
   if (supportsPointer) target.onpointerdown = this.activationHandler;
   else target.onmousedown = this.activationHandler;
@@ -2119,19 +2133,19 @@ function Dialog(object) {
   var fullscreenButton = buttons[windowButtons.full];
   if (fullscreenButton)
     fullscreenButton.onclick = function() {
-      self2.toggleMaximized();
+      self3.toggleMaximized();
     };
   this.toggleOpen(false);
   target.ondragstart = function(event2) {
-    if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
+    if (!(event2.ctrlKey || self3._ctrlDrag) || !event2.dataTransfer || !self3.application) {
       event2.preventDefault();
       return;
     }
     var dragState = {
-      state: self2.getState(),
-      app: self2.application
+      state: self3.getState(),
+      app: self3.application
     };
-    var rect = getRect(self2.target);
+    var rect = getRect(self3.target);
     if (rect) dragState.offset = {
       x: event2.clientX - (rect.left + rect.width / 2),
       y: event2.clientY - (rect.top + rect.height / 2)
@@ -2143,21 +2157,21 @@ function Dialog(object) {
       if (flagsieDropCompatibleMode) {
         transfer.setData("Text", data);
         transfer.setData("text/plain", data);
-      } else transfer.setData("text/plain", self2.src || self2.title || self2.id);
-      if (self2.src) transfer.setData("text/uri-list", self2.src);
+      } else transfer.setData("text/plain", self3.src || self3.title || self3.id);
+      if (self3.src) transfer.setData("text/uri-list", self3.src);
       transfer.setData("text/html", data);
-      transfer.setData("URL", self2.src + "\n" + data);
+      transfer.setData("URL", self3.src + "\n" + data);
     } catch (ex) {
       console.warn(ex);
       transfer.setData("Text", data);
-      if (self2.src) transfer.setData("URL", self2.src);
+      if (self3.src) transfer.setData("URL", self3.src);
       transfer.setData("URL", "https://example.com");
     }
     transfer.effectAllowed = "copyMove";
-    self2.target.classList.add("hidden");
+    self3.target.classList.add("hidden");
   };
   target.ondragend = function() {
-    self2._ctrlDrag = false;
+    self3._ctrlDrag = false;
   };
   if (this.id) windowManager.windows[this.id] = this;
   this.updateUseTransform(this.useTransform);
@@ -2168,7 +2182,7 @@ function Dialog(object) {
       this.move(object.x, object.y);
     else this.moveCenterTo(Helpers.getViewportWidth() / 2, Helpers.getViewportHeight() / 2);
   if (this.frame) this.frame.addEventListener("load", function() {
-    self2._loaded = true;
+    self3._loaded = true;
   }, false);
   if (!this.scroll && this.body) this.body.style.overflow = "hidden";
   this.originalBody = this.body;
@@ -2348,8 +2362,15 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
 };
 Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = this.frame;
-  if (frame || create === false || !this.body) return frame;
-  return this.body.appendChild(document.createElement("iframe"));
+  if (frame || create === false) return frame;
+  var body = this.body;
+  if (!body) {
+    var content = this.content;
+    if (content) body = content;
+    else body = this.target;
+  }
+  if (!body) return null;
+  return body.appendChild(document.createElement("iframe"));
 };
 Object.defineProperties(Dialog.prototype, {
   isOpen: {
@@ -3535,9 +3556,14 @@ Dialog.prototype.setInset = function(top, left, right, bottom) {
   else insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
-  var frame = this.getOrCreateFrame(true);
-  if (!frame) return;
   var self2 = this;
+  var frame = this.getOrCreateFrame(true);
+  if (!frame) {
+    setTimeout(function() {
+      self2.openUrl(url);
+    }, 0);
+    return;
+  }
   var timeout = -1;
   frame.onload = function() {
     clearTimeout(timeout);
@@ -3549,15 +3575,22 @@ Dialog.prototype.openUrl = function(url) {
   var fallbackUrls = baseUrls.concat(this.application.altUrls);
   var index = 0;
   function tryNext() {
-    var url2;
-    while (index < fallbackUrls.length && !(url2 = fallbackUrls[index++])) ;
-    if (!url2 || !frame) return;
-    frame.src = url2;
-    self2._src = url2;
+    var nextUrl;
+    while (index < fallbackUrls.length && !(nextUrl = fallbackUrls[index++])) ;
+    if (!nextUrl || !frame) return;
+    try {
+      frame.src = nextUrl;
+    } catch (ex) {
+    }
+    self2._src = nextUrl;
     clearTimeout(timeout);
     timeout = setTimeout(tryNext, 3e3);
   }
-  frame.addEventListener("error", tryNext, false);
+  if (frame.attachEvent) {
+    frame.attachEvent("onerror", tryNext);
+  } else if (frame.addEventListener) {
+    frame.addEventListener("error", tryNext, false);
+  }
   tryNext();
 };
 Dialog.prototype.refresh = function() {
