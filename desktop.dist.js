@@ -453,10 +453,12 @@ var isLocal = location.protocol === "file:" || location.hostname === "localhost"
 var transitionEndEvent = "transition" in document.documentElement.style ? "transitionend" : "webkitTransition" in document.documentElement.style ? "webkitTransitionEnd" : "transitionend";
 if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
+var allowUpdateRateLimit = true;
+if (document.documentMode && document.documentMode < 9) allowUpdateRateLimit = false;
 var flags = {
   useSkewAnimations: false,
   aeroSnap: true,
-  updateRateLimit: true,
+  updateRateLimit: allowUpdateRateLimit,
   useDragOverlay: true,
   broadcastWindowMoves: !document.documentMode,
   _useTransform: useTransform,
