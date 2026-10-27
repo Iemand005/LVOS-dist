@@ -3575,6 +3575,31 @@ Dialog.prototype.openUrl = function(url) {
   frame.onload = function() {
     clearTimeout(timeout);
     self2.reportState();
+    try {
+      self2.updateBodyOffset();
+      if (typeof self2.resize === "function") self2.resize(self2.width, self2.height);
+    } catch (ex) {
+    }
+    try {
+      if (typeof self2.update === "function") self2.update();
+    } catch (ex) {
+    }
+    setTimeout(function() {
+      try {
+        self2.updateBodyOffset();
+        if (typeof self2.resize === "function") self2.resize(self2.width, self2.height);
+        if (typeof self2.update === "function") self2.update();
+      } catch (ex) {
+      }
+    }, 0);
+    setTimeout(function() {
+      try {
+        self2.updateBodyOffset();
+        if (typeof self2.resize === "function") self2.resize(self2.width, self2.height);
+        if (typeof self2.update === "function") self2.update();
+      } catch (ex) {
+      }
+    }, 50);
   };
   if (!this.application) return;
   var baseUrls = [url || this.src, this.application.distSrc];
