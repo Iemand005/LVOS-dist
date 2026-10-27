@@ -2790,6 +2790,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
     var sizer = self2.getElementByTagOrClassName(sizerId);
     if (!sizer || !Helpers.isElement(sizer))
       sizer = document.createElement("div");
+    ensureClassList(sizer);
     sizer.draggable = false;
     __lvosSet(sizer, "id", id.toString());
     sizer.classList.add(sizerId);

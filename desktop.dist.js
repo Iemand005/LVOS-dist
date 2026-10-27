@@ -2238,6 +2238,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
     var sizerId = "sizer-" + id;
     var sizer = self2.getElementByTagOrClassName(sizerId);
     if (!sizer || !Helpers.isElement(sizer)) sizer = document.createElement("div");
+    ensureClassList(sizer);
     sizer.draggable = false;
     sizer.id = id.toString();
     sizer.classList.add(sizerId);
