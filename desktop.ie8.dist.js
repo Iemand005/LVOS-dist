@@ -4669,12 +4669,12 @@ var eventPrevent = function(event2) {
 var onLoad = function() {
   var desktop = document.getElementById("desktop");
   if (desktop)
-    desktop.addEventListener("mousedown", function() {
+    desktop.onmousedown = function() {
       DesktopManager.toggleCharms(false);
       if (launchpad)
         launchpad.close();
       contextMenu.close();
-    }, false);
+    };
   var applist = document.getElementById("applist");
   if (applist) {
     applist.addEventListener("submit", eventPrevent, false);
@@ -5391,10 +5391,10 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
           toggle.type = "checkbox";
           __lvosSet(toggle, "id", "flag-" + flagId);
           toggle.checked = flagValue;
-          toggle.addEventListener("change", function() {
+          toggle.onchange = function() {
             __lvosSet(flags2, currentKey, toggle.checked);
             handler.saveFlags(flags2);
-          }, false);
+          };
           var label = document.createElement("label");
           label.htmlFor = __lvosGet(toggle, "id");
           label.appendChild(document.createTextNode(formatCamelCase(flagId)));

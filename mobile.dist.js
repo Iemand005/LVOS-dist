@@ -413,10 +413,10 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
           toggle.type = "checkbox";
           toggle.id = "flag-" + flagId;
           toggle.checked = flagValue;
-          toggle.addEventListener("change", function() {
+          toggle.onchange = function() {
             flags2[currentKey] = toggle.checked;
             handler.saveFlags(flags2);
-          }, false);
+          };
           var label = document.createElement("label");
           label.htmlFor = toggle.id;
           label.appendChild(document.createTextNode(formatCamelCase(flagId)));
