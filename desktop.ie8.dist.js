@@ -752,7 +752,7 @@ if (isIE)
   useTransform = true;
 if (!supportsTransform)
   useTransform = false;
-var allowUpdateRateLimit = true;
+var allowUpdateRateLimit = false;
 if (document.documentMode && document.documentMode < 9)
   allowUpdateRateLimit = false;
 if (document.documentMode && document.documentMode < 8)
@@ -1083,7 +1083,7 @@ function getDialogTemplate() {
   var content = template;
   if (template instanceof HTMLTemplateElement)
     return __lvosGet(template, "content").children[0];
-  return content.children[0];
+  return content.children ? content.children[0] : content.childNodes[1];
 }
 function createDialogElement() {
   var template = getDialogTemplate();
@@ -1231,19 +1231,20 @@ function WindowManager() {
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
-  this.channel = BroadcastChannel && new BroadcastChannel("lvos");
-  this.channel.onmessage = function(ev) {
-    var data = ev.data;
-    if (typeof data === "string")
-      try {
-        data = JSON.parse(data);
-      } catch (ex) {
-        return console.warn(ex);
-      }
-    if (!data || typeof data !== "object" || typeof data.type !== "string")
-      return;
-    windowManager.handleBroadcast(data.type, data.data, __lvosGet(data, "id"));
-  };
+  this.channel = "BroadcastChannel" in window && new BroadcastChannel("lvos");
+  if (this.channel)
+    this.channel.onmessage = function(ev) {
+      var data = ev.data;
+      if (typeof data === "string")
+        try {
+          data = JSON.parse(data);
+        } catch (ex) {
+          return console.warn(ex);
+        }
+      if (!data || typeof data !== "object" || typeof data.type !== "string")
+        return;
+      windowManager.handleBroadcast(data.type, data.data, __lvosGet(data, "id"));
+    };
   var self2 = this;
   this.resizeHandler = function() {
     self2.forEachWindow(function(window2) {
@@ -2182,7 +2183,8 @@ function WindowSnap() {
   this._section = null;
   if (document.documentMode && document.documentMode < 9)
     return;
-  this.element.classList.add("hidden");
+  if (this.element.classList)
+    this.element.classList.add("hidden");
 }
 __lvosDefineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
@@ -6074,7 +6076,7 @@ ConsoleInterceptor.prototype.init = function() {
 };
 ConsoleInterceptor.prototype.bindage = function() {
   var self2 = this;
-  if (bindConsole) {
+  if (bindConsole && console && console.log) {
     console.standardLog = console.log.bind(console);
     console.logs = [];
     console.log = function() {

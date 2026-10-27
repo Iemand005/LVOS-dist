@@ -453,7 +453,7 @@ var isLocal = location.protocol === "file:" || location.hostname === "localhost"
 var transitionEndEvent = "transition" in document.documentElement.style ? "transitionend" : "webkitTransition" in document.documentElement.style ? "webkitTransitionEnd" : "transitionend";
 if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
-var allowUpdateRateLimit = true;
+var allowUpdateRateLimit = false;
 if (document.documentMode && document.documentMode < 9) allowUpdateRateLimit = false;
 if (document.documentMode && document.documentMode < 8) useScale = true;
 var flags = {
@@ -717,7 +717,7 @@ function getDialogTemplate() {
   if (!template) return;
   var content = template;
   if (template instanceof HTMLTemplateElement) return template.content.children[0];
-  return content.children[0];
+  return content.children ? content.children[0] : content.childNodes[1];
 }
 function createDialogElement() {
   var template = getDialogTemplate();
@@ -844,8 +844,8 @@ function WindowManager() {
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
-  this.channel = BroadcastChannel && new BroadcastChannel("lvos");
-  this.channel.onmessage = function(ev) {
+  this.channel = "BroadcastChannel" in window && new BroadcastChannel("lvos");
+  if (this.channel) this.channel.onmessage = function(ev) {
     var data = ev.data;
     if (typeof data === "string") try {
       data = JSON.parse(data);
@@ -1672,7 +1672,7 @@ function WindowSnap() {
   this._snapped = "";
   this._section = null;
   if (document.documentMode && document.documentMode < 9) return;
-  this.element.classList.add("hidden");
+  if (this.element.classList) this.element.classList.add("hidden");
 }
 Object.defineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
@@ -5324,7 +5324,7 @@ ConsoleInterceptor.prototype.init = function() {
 };
 ConsoleInterceptor.prototype.bindage = function() {
   var self2 = this;
-  if (bindConsole) {
+  if (bindConsole && console && console.log) {
     console.standardLog = console.log.bind(console);
     console.logs = [];
     console.log = function() {
