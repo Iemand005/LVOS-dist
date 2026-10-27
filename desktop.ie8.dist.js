@@ -4381,7 +4381,7 @@ Dialog.prototype.updateUseTransform = function(useTransform2) {
     target.style.width = "";
     target.style.height = "";
   }
-  this.updateScale(useTransform2);
+  this.updateScale(__lvosGet(this, "useScale"));
   this.update();
 };
 Dialog.prototype.updateScale = function(useScale2) {

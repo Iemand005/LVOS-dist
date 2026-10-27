@@ -3642,7 +3642,7 @@ Dialog.prototype.updateUseTransform = function(useTransform2) {
     target.style.width = "";
     target.style.height = "";
   }
-  this.updateScale(useTransform2);
+  this.updateScale(this.useScale);
   this.update();
 };
 Dialog.prototype.updateScale = function(useScale2) {
