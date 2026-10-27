@@ -4368,6 +4368,7 @@ function setTheme(theme) {
   window.windowManager.synchronizeStates();
 }
 DesktopManager.removeTheme = function(theme) {
+  ensureClassList(document.body);
   document.body.classList.remove(theme);
 };
 DesktopManager.toggleCharms = function(force) {

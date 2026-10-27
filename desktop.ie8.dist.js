@@ -4963,6 +4963,7 @@ function setTheme(theme) {
   window.windowManager.synchronizeStates();
 }
 DesktopManager.removeTheme = function(theme) {
+  ensureClassList(__lvosGet(document, "body"));
   __lvosGet(document, "body").classList.remove(theme);
 };
 DesktopManager.toggleCharms = function(force) {
