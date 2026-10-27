@@ -2947,18 +2947,24 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = __lvosGet(this, "frame");
   if (frame || create === false)
     return frame;
-  var body = __lvosGet(this, "body");
-  if (!body && this.target) {
-    var content = __lvosGet(this, "content") || this.getElementByTagOrClassName("content", this.target);
-    if (content) {
-      body = this.getElementByTagOrClassName("article", content);
-      if (!body && content.getElementsByTagName) {
-        var articles = content.getElementsByTagName("article");
-        if (articles && articles.length)
-          body = articles[0];
+  var body = null;
+  if (this.target) {
+    if (this.target.getElementsByTagName) {
+      var articles = this.target.getElementsByTagName("article");
+      if (articles && articles.length) {
+        body = articles[0];
       }
     }
-    if (!body && this.target.getElementsByTagName) {
+    if (!body && this.target.getElementsByClassName) {
+      var ac = this.target.getElementsByClassName("article");
+      if (ac && ac.length)
+        body = ac[0];
+    }
+  }
+  if (!body)
+    body = __lvosGet(this, "body");
+  if (!body && this.target) {
+    if (this.target.getElementsByTagName) {
       var articles2 = this.target.getElementsByTagName("article");
       if (articles2 && articles2.length)
         body = articles2[0];
@@ -2966,9 +2972,13 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   }
   if (!body)
     return null;
-  if (this.target && body === this.target)
+  try {
+    var frameEl = document.createElement("iframe");
+    body.appendChild(frameEl);
+    return frameEl;
+  } catch (ex) {
     return null;
-  return body.appendChild(document.createElement("iframe"));
+  }
 };
 __lvosDefineProperties(Dialog.prototype, {
   isOpen: {
@@ -4284,9 +4294,14 @@ Dialog.prototype.setInset = function(top, left, right, bottom) {
     insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
+  var self2 = this;
   var frame = this.getOrCreateFrame(true);
-  if (!frame)
+  if (!frame) {
+    setTimeout(function() {
+      self2.openUrl(url);
+    }, 5);
     return;
+  }
   var self2 = this;
   var timeout = -1;
   frame.onload = function() {
