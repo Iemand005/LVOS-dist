@@ -838,13 +838,11 @@ var games = [
   provisionedApp("Planet Life", "planetlife", "https://www.planetlife.space/static/game/index.html"),
   provisionedApp("Horizon Background", "horizon-bg", "https://iemand005.github.io/HorizonBackground/", { wallpaper: true })
 ];
-if (typeof windowManager !== "undefined" && "Window" in window) {
-  Object.defineProperty(Window.prototype, "windows", {
-    get: function() {
-      return windowManager.windows;
-    }
-  });
+function getWindows() {
+  return windowManager.windows;
 }
+if (typeof windowManager !== "undefined" && "Window" in window)
+  Object.defineProperty(Window.prototype, "windows", { get: getWindows });
 function dockApp(dialog) {
   if (dockAppList && dialog) dockAppList.appendChild(dialog.createOpenButton());
 }

@@ -1075,12 +1075,12 @@ function createDialogElement() {
   return clone;
 }
 function removeComments(element) {
-  element.childNodes.forEach(function(child) {
+  for (var child in element.childNodes) {
     if (child.nodeName === "#comment")
       element.removeChild(child);
     else if (Helpers.isElement(child))
       removeComments(child);
-  });
+  }
   return element;
 }
 function flipElement(element, onToggled, thisArg) {
@@ -5868,13 +5868,11 @@ var games = [
   provisionedApp("Planet Life", "planetlife", "https://www.planetlife.space/static/game/index.html"),
   provisionedApp("Horizon Background", "horizon-bg", "https://iemand005.github.io/HorizonBackground/", { wallpaper: true })
 ];
-if (typeof windowManager !== "undefined" && "Window" in window) {
-  __lvosDefineProperty(Window.prototype, "windows", {
-    get: function() {
-      return __lvosGet(windowManager, "windows");
-    }
-  });
+function getWindows() {
+  return __lvosGet(windowManager, "windows");
 }
+if (typeof windowManager !== "undefined" && "Window" in window)
+  __lvosDefineProperty(Window.prototype, "windows", { get: getWindows });
 function dockApp(dialog) {
   if (dockAppList && dialog)
     dockAppList.appendChild(dialog.createOpenButton());
