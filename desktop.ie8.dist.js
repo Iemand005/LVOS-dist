@@ -1,5 +1,5 @@
 "use strict";
-var __lvosReserved = { "get": true, "getActiveFrame": true, "getActiveId": true, "getApp": true, "getBodyRect": true, "getBoundingClientRect": true, "getButton": true, "getClientRects": true, "getData": true, "getDesktopIndexAt": true, "getDirectory": true, "getElementById": true, "getElementByTagOrClassName": true, "getElementsByClassName": true, "getElementsByTagName": true, "getExtension": true, "getFile": true, "getFileHandle": true, "getGestureSnapZone": true, "getHTML": true, "getIconUrl": true, "getItem": true, "getMiniIconUrl": true, "getOrCreateFrame": true, "getRect": true, "getSnapContainer": true, "getSnapGroup": true, "getSnapSpacer": true, "getSnapZone": true, "getState": true, "getTitleElement": true, "getViewBoxPosition": true, "getVisualizerApps": true, "getWallpaper": true, "getWindowById": true, "getWindowOwningElement": true, "set": true, "setAttribute": true, "setClickOffset": true, "setData": true, "setDragScale": true, "setExpos\xE9Enabled": true, "setExtensionEnabled": true, "setHalfInset": true, "setHeight": true, "setHeightInset": true, "setIcon": true, "setInset": true, "setItem": true, "setMaxSize": true, "setMinSize": true, "setParentElement": true, "setPointerCapture": true, "setPointerPosition": true, "setProperty": true, "setRotation": true, "setScale": true, "setScaleY": true, "setSkew": true, "setTimeout": true, "setTitle": true, "setWallpaper": true, "setWidth": true, "setZ": true, "setupScollHandler": true };
+var __lvosReserved = { "get": true, "getActiveFrame": true, "getActiveId": true, "getApp": true, "getBodyRect": true, "getBoundingClientRect": true, "getButton": true, "getClientRects": true, "getData": true, "getDesktopIndexAt": true, "getDirectory": true, "getElementById": true, "getElementByTagOrClassName": true, "getElementsByClassName": true, "getElementsByTagName": true, "getExtension": true, "getFile": true, "getFileHandle": true, "getGestureSnapZone": true, "getHTML": true, "getIconUrl": true, "getItem": true, "getMiniIconUrl": true, "getOrCreateFrame": true, "getRect": true, "getSnapContainer": true, "getSnapGroup": true, "getSnapSpacer": true, "getSnapZone": true, "getState": true, "getTitleElement": true, "getViewBoxPosition": true, "getViewportHeight": true, "getViewportWidth": true, "getVisualizerApps": true, "getWallpaper": true, "getWindowById": true, "getWindowOwningElement": true, "set": true, "setAttribute": true, "setClickOffset": true, "setData": true, "setDragScale": true, "setExpos\xE9Enabled": true, "setExtensionEnabled": true, "setHalfInset": true, "setHeight": true, "setHeightInset": true, "setIcon": true, "setInset": true, "setItem": true, "setMaxSize": true, "setMinSize": true, "setParentElement": true, "setPointerCapture": true, "setPointerPosition": true, "setProperty": true, "setRotation": true, "setScale": true, "setScaleY": true, "setSkew": true, "setTimeout": true, "setTitle": true, "setWallpaper": true, "setWidth": true, "setZ": true, "setupScollHandler": true };
 var __lvosAccessors = {};
 var __lvosMethodNames = {};
 if (!Array.prototype.indexOf) {
@@ -867,7 +867,7 @@ Helpers.isElement = function(object) {
   return object && "nodeType" in object || false;
 };
 function getWindowChromeHeight(window2) {
-  return window2.outerHeight - window2.innerHeight;
+  return window2.outerHeight - Helpers.getViewportHeight();
 }
 Helpers.translateElement = function(element, x, y) {
   transformElement(element, { x: x, y: y });
@@ -1023,6 +1023,12 @@ Helpers.stringifyWindowOpenProperties = function(properties) {
 };
 Helpers.getViewBoxPosition = function() {
   return { x: window.screenLeft, y: window.screenTop };
+};
+Helpers.getViewportHeight = function() {
+  return window.innerHeight || document.documentElement && document.documentElement.clientHeight || __lvosGet(document, "body") && __lvosGet(document, "body").clientHeight || 0;
+};
+Helpers.getViewportWidth = function() {
+  return window.innerWidth || document.documentElement && document.documentElement.clientWidth || __lvosGet(document, "body") && __lvosGet(document, "body").clientWidth || 0;
 };
 Helpers.toPixels = function(value) {
   return Math.round(value || 0) + "px";
@@ -1498,8 +1504,8 @@ WindowManager.recalculateWindowBounds = function() {
   var inset = WindowManager.windowBoundsInset;
   __lvosSet(WindowManager._windowBounds, "top", __lvosGet(inset, "top") !== null ? __lvosGet(inset, "top") : -Infinity);
   __lvosSet(WindowManager._windowBounds, "left", __lvosGet(inset, "left") !== null ? __lvosGet(inset, "left") : -Infinity);
-  __lvosSet(WindowManager._windowBounds, "right", __lvosGet(inset, "right") !== null ? window.innerWidth - __lvosGet(inset, "right") : Infinity);
-  __lvosSet(WindowManager._windowBounds, "bottom", __lvosGet(inset, "bottom") !== null ? window.innerHeight - __lvosGet(inset, "bottom") : Infinity);
+  __lvosSet(WindowManager._windowBounds, "right", __lvosGet(inset, "right") !== null ? Helpers.getViewportWidth() - __lvosGet(inset, "right") : Infinity);
+  __lvosSet(WindowManager._windowBounds, "bottom", __lvosGet(inset, "bottom") !== null ? Helpers.getViewportHeight() - __lvosGet(inset, "bottom") : Infinity);
 };
 __lvosDefineProperty(WindowManager, "windowBounds", {
   get: function() {
@@ -1784,11 +1790,11 @@ WindowManager.prototype.getSnapGroup = function(section) {
 };
 WindowManager.prototype.snapWidth = function(section) {
   var area = section || this.getSnapContainer();
-  return area ? area.clientWidth : window.innerWidth;
+  return area ? area.clientWidth : Helpers.getViewportWidth();
 };
 WindowManager.prototype.snapHeight = function(section) {
   var area = section || this.getSnapContainer();
-  return area ? area.clientHeight : window.innerHeight;
+  return area ? area.clientHeight : Helpers.getViewportHeight();
 };
 WindowManager.prototype.setPointerPosition = function(x, y) {
   __lvosSet(this.pointerPosition, "x", x);
@@ -2223,7 +2229,7 @@ WindowSnap.prototype.setInset = function(inset) {
 };
 WindowSnap.prototype.areaWidth = function() {
   var section = this._section || windowManager && windowManager.getSnapContainer() || document.getElementById("window-section");
-  return section ? section.clientWidth : window.innerWidth;
+  return section ? section.clientWidth : Helpers.getViewportWidth();
 };
 WindowSnap.prototype.setHalfInset = function(side) {
   var half = Math.round(this.areaWidth() / 2);
@@ -2695,7 +2701,7 @@ function Dialog(object) {
     if (object instanceof Dialog)
       this.move(__lvosGet(object, "x"), __lvosGet(object, "y"));
     else
-      this.moveCenterTo(window.innerWidth / 2, window.innerHeight / 2);
+      this.moveCenterTo(Helpers.getViewportWidth() / 2, Helpers.getViewportHeight() / 2);
   if (__lvosGet(this, "frame"))
     __lvosGet(this, "frame").addEventListener("load", function() {
       self2._loaded = true;
@@ -2957,7 +2963,7 @@ __lvosDefineProperties(Dialog.prototype, {
   },
   x: {
     get: function() {
-      return this._x * window.innerWidth;
+      return this._x * Helpers.getViewportWidth();
     },
     set: function(x) {
       if (typeof x === "number")
@@ -2966,7 +2972,7 @@ __lvosDefineProperties(Dialog.prototype, {
   },
   y: {
     get: function() {
-      return this._y * window.innerHeight;
+      return this._y * Helpers.getViewportHeight();
     },
     set: function(y) {
       if (typeof y === "number")
@@ -3122,12 +3128,12 @@ __lvosDefineProperties(Dialog.prototype, {
       var height = Math.max(Math.min(bottom - top, __lvosGet(this, "maxHeight")), __lvosGet(this, "minHeight"));
       top = bottom - height;
       this._height = height;
-      this._y = top / window.innerHeight;
+      this._y = top / Helpers.getViewportHeight();
       if (__lvosGet(this, "useTransform")) {
         this.target.style.height = Helpers.toPixels(height);
         this.updateTransform();
       } else
-        this.setInset(top, __lvosGet(this, "left"), __lvosGet(this, "right"), window.innerHeight - bottom);
+        this.setInset(top, __lvosGet(this, "left"), __lvosGet(this, "right"), Helpers.getViewportHeight() - bottom);
       this._isMinHeight = height === __lvosGet(this, "minHeight");
     }
   },
@@ -3145,12 +3151,12 @@ __lvosDefineProperties(Dialog.prototype, {
       var width = Math.max(Math.min(right - left, __lvosGet(this, "maxWidth")), __lvosGet(this, "minWidth"));
       left = right - width;
       this._width = width;
-      this._x = left / window.innerWidth;
+      this._x = left / Helpers.getViewportWidth();
       if (__lvosGet(this, "useTransform")) {
         this.target.style.width = Helpers.toPixels(width);
         this.updateTransform();
       } else
-        this.setInset(__lvosGet(this, "top"), left, window.innerWidth - right, __lvosGet(this, "bottom"));
+        this.setInset(__lvosGet(this, "top"), left, Helpers.getViewportWidth() - right, __lvosGet(this, "bottom"));
       this._isMinWidth = width === __lvosGet(this, "minWidth");
     }
   },
@@ -3165,7 +3171,7 @@ __lvosDefineProperties(Dialog.prototype, {
   right: {
     get: function() {
       var rfl = __lvosGet(this, "rightFromLeft");
-      return typeof rfl === "number" && rfl === rfl ? window.innerWidth - rfl : 0;
+      return typeof rfl === "number" && rfl === rfl ? Helpers.getViewportWidth() - rfl : 0;
     },
     set: function(right) {
       if (typeof right === "number") {
@@ -3174,7 +3180,7 @@ __lvosDefineProperties(Dialog.prototype, {
           right = __lvosGet(bounds, "right");
         if (right < __lvosGet(bounds, "left"))
           right = __lvosGet(bounds, "left");
-        __lvosSet(this, "width", window.innerWidth - right - __lvosGet(this, "x"));
+        __lvosSet(this, "width", Helpers.getViewportWidth() - right - __lvosGet(this, "x"));
       }
     }
   },
@@ -3189,7 +3195,7 @@ __lvosDefineProperties(Dialog.prototype, {
   bottom: {
     get: function() {
       var bft = __lvosGet(this, "bottomFromTop");
-      return typeof bft === "number" && bft === bft ? window.innerHeight - bft : 0;
+      return typeof bft === "number" && bft === bft ? Helpers.getViewportHeight() - bft : 0;
     },
     set: function(bottom) {
       if (typeof bottom === "number") {
@@ -3198,7 +3204,7 @@ __lvosDefineProperties(Dialog.prototype, {
           bottom = __lvosGet(bounds, "bottom");
         if (bottom < __lvosGet(bounds, "top"))
           bottom = __lvosGet(bounds, "top");
-        __lvosSet(this, "height", window.innerHeight - bottom - __lvosGet(this, "y"));
+        __lvosSet(this, "height", Helpers.getViewportHeight() - bottom - __lvosGet(this, "y"));
       }
     }
   },
@@ -3658,13 +3664,13 @@ Dialog.prototype.toggleMaximized = function(enable) {
       if (enable) {
         __lvosSet(self2, "x", Anim.lerp(__lvosGet(startPos, "x"), 0, ease(t)));
         __lvosSet(self2, "y", Anim.lerp(__lvosGet(startPos, "y"), 0, ease(t)));
-        __lvosSet(self2, "width", Anim.lerp(__lvosGet(startSize, "x"), window.innerWidth, ease(t)));
-        __lvosSet(self2, "height", Anim.lerp(__lvosGet(startSize, "y"), window.innerHeight, ease(t)));
+        __lvosSet(self2, "width", Anim.lerp(__lvosGet(startSize, "x"), Helpers.getViewportWidth(), ease(t)));
+        __lvosSet(self2, "height", Anim.lerp(__lvosGet(startSize, "y"), Helpers.getViewportHeight(), ease(t)));
       } else {
         __lvosSet(self2, "x", Anim.lerp(0, __lvosGet(startPos, "x"), ease(t)));
         __lvosSet(self2, "y", Anim.lerp(0, __lvosGet(startPos, "y"), ease(t)));
-        __lvosSet(self2, "width", Anim.lerp(window.innerWidth, __lvosGet(startSize, "x"), ease(t)));
-        __lvosSet(self2, "height", Anim.lerp(window.innerHeight, __lvosGet(startSize, "y"), ease(t)));
+        __lvosSet(self2, "width", Anim.lerp(Helpers.getViewportWidth(), __lvosGet(startSize, "x"), ease(t)));
+        __lvosSet(self2, "height", Anim.lerp(Helpers.getViewportHeight(), __lvosGet(startSize, "y"), ease(t)));
       }
     }, function() {
       if (enable)
@@ -3699,8 +3705,8 @@ Dialog.prototype.toggleMaximized = function(enable) {
     this._compositorMaxState = null;
   }
   var windowSection = windowManager.getSnapContainer(this);
-  var endWidth = windowSection ? windowSection.clientWidth : window.innerWidth;
-  var endHeight = windowSection ? windowSection.clientHeight : window.innerHeight;
+  var endWidth = windowSection ? windowSection.clientWidth : Helpers.getViewportWidth();
+  var endHeight = windowSection ? windowSection.clientHeight : Helpers.getViewportHeight();
   var startWidth = __lvosGet(this, "width") || target.offsetWidth || 300;
   var startHeight = __lvosGet(this, "height") || target.offsetHeight || 200;
   var startX = __lvosGet(this, "x");
@@ -3877,8 +3883,8 @@ Dialog.prototype.move = function(x, y, update, animate) {
     if (__lvosGet(bounds, "bottom") !== Infinity && y > __lvosGet(bounds, "bottom") - __lvosGet(this, "height"))
       y = __lvosGet(bounds, "bottom") - __lvosGet(this, "height");
   }
-  var windowWidth = window.innerWidth;
-  var windowHeight = window.innerHeight;
+  var windowWidth = Helpers.getViewportWidth();
+  var windowHeight = Helpers.getViewportHeight();
   var previousX = this._x, previousY = this._y;
   this._x = x / windowWidth;
   this._y = y / windowHeight;
@@ -4297,7 +4303,7 @@ Dialog.prototype.createPopOut = function() {
       return;
     }
     var outerX = self2._popupWindow.screenX, outerY = self2._popupWindow.screenY;
-    var width = self2._popupWindow.innerWidth || self2._popupWindow.outerWidth, height = self2._popupWindow.innerHeight || self2._popupWindow.outerHeight;
+    var width = self2._popupHelpers.getViewportWidth() || self2._popupWindow.outerWidth, height = self2._popupWindow.innerHeight || self2._popupWindow.outerHeight;
     outerX = Math.round(outerX);
     outerY = Math.round(outerY);
     width = Math.round(width);
