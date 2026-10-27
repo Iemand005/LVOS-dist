@@ -437,7 +437,7 @@ AppManager.prototype.reloadWallpaper = function() {
 var appManager = new AppManager();
 window.appManager = appManager;
 "use strict";
-var useTransform = true, useScale = true;
+var useTransform = true, useScale = false;
 var isBlink = "chrome" in window;
 var isIE = typeof window !== "undefined" && typeof document !== "undefined" && !!window.MSInputMethodContext && document.documentMode === 11;
 var supportsPointer = typeof window !== "undefined" && "PointerEvent" in window && !isIE && !("MSPointerEvent" in window);
@@ -455,6 +455,7 @@ if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
 var allowUpdateRateLimit = true;
 if (document.documentMode && document.documentMode < 9) allowUpdateRateLimit = false;
+if (document.documentMode && document.documentMode < 8) useScale = true;
 var flags = {
   useSkewAnimations: false,
   aeroSnap: true,
