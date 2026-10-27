@@ -2102,7 +2102,7 @@ function Dialog(object) {
       self2.toggleMaximized();
     };
   this.toggleOpen(false);
-  target.addEventListener("dragstart", function(event2) {
+  target.ondragstart = function(event2) {
     if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
       event2.preventDefault();
       return;
@@ -2135,7 +2135,7 @@ function Dialog(object) {
     }
     transfer.effectAllowed = "copyMove";
     self2.target.classList.add("hidden");
-  }, false);
+  };
   target.ondragend = function() {
     self2._ctrlDrag = false;
   };
