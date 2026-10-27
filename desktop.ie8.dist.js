@@ -2644,18 +2644,20 @@ function Dialog(object) {
       self2.toggleMaximized();
     };
   if (supportsPointer)
-    target.addEventListener("pointerdown", this.activationHandler, false);
+    target.onpointerdown = this.activationHandler;
   else
-    target.addEventListener("mousedown", this.activationHandler, false);
+    target.onmousedown = this.activationHandler;
   var ejectButton = buttons[windowButtons.eject];
   if (ejectButton)
-    ejectButton.addEventListener("click", this.eject.bind(this), false);
+    ejectButton.onclick = this.eject.bind(this);
   var closeButton = buttons[windowButtons.close];
   if (closeButton)
-    closeButton.addEventListener("click", this.close.bind(this), false);
+    closeButton.onclick = this.close.bind(this);
   var fullscreenButton = buttons[windowButtons.full];
   if (fullscreenButton)
-    fullscreenButton.addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
+    fullscreenButton.onclick = function() {
+      self2.toggleMaximized();
+    };
   this.toggleOpen(false);
   target.addEventListener("dragstart", function(event2) {
     if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
@@ -2695,9 +2697,9 @@ function Dialog(object) {
     transfer.effectAllowed = "copyMove";
     self2.target.classList.add("hidden");
   }, false);
-  target.addEventListener("dragend", function() {
+  target.ondragend = function() {
     self2._ctrlDrag = false;
-  }, false);
+  };
   if (__lvosGet(this, "id"))
     __lvosGet(windowManager, "windows")[__lvosGet(this, "id")] = this;
   this.updateUseTransform(__lvosGet(this, "useTransform"));
