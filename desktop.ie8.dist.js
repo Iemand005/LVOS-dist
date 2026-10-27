@@ -841,12 +841,17 @@ var flags = __lvosObject({
   }
 ]);
 function cancelDomEvent(event2) {
-  if (typeof event2.preventDefault === "function")
-    event2.preventDefault();
-  event2.returnValue = false;
-  if (typeof event2.stopPropagation === "function")
-    event2.stopPropagation();
-  event2.cancelBubble = true;
+  try {
+    if (typeof event2.preventDefault === "function")
+      event2.preventDefault();
+    event2.returnValue = false;
+    if (typeof event2.stopPropagation === "function")
+      event2.stopPropagation();
+    event2.cancelBubble = true;
+    return false;
+  } catch (ex) {
+    console.warn("Failed co tancel dom evemnt.txt", ex);
+  }
   return false;
 }
 function getFaviconUrl(url) {
