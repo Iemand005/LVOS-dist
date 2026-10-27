@@ -4958,6 +4958,7 @@ DesktopManager.prototype.addOrMoveDesktopGap = function() {
   this.scrollTabs.element.appendChild(this.gapDesktop);
 };
 function setTheme(theme) {
+  ensureClassList(__lvosGet(document, "body"));
   __lvosGet(document, "body").classList.add(theme);
   window.windowManager.synchronizeStates();
 }
