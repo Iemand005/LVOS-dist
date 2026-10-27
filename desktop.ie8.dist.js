@@ -877,23 +877,23 @@ function transformElement(element, t) {
   if ("msTransform" in element.style)
     element.style.msTransform = transform;
   else
-    __lvosSet(element.style, "transform", transform);
+    element.style.transform = transform;
 }
 function insetElement(element, top, left, right, bottom) {
   if ("inset" in element.style)
     if (typeof left === "undefined")
-      __lvosSet(element.style, "inset", Helpers.toPixels(top));
+      element.style.inset = Helpers.toPixels(top);
     else
-      __lvosSet(element.style, "inset", Helpers.toPixels(top) + " " + Helpers.toPixels(right || 0) + " " + Helpers.toPixels(bottom || 0) + " " + Helpers.toPixels(left));
+      element.style.inset = Helpers.toPixels(top) + " " + Helpers.toPixels(right || 0) + " " + Helpers.toPixels(bottom || 0) + " " + Helpers.toPixels(left);
   else {
     if (typeof left === "undefined")
       left = top, right = top, bottom = top;
-    __lvosSet(element.style, "top", Helpers.toPixels(top));
-    __lvosSet(element.style, "left", Helpers.toPixels(left));
+    element.style.top = Helpers.toPixels(top);
+    element.style.left = Helpers.toPixels(left);
     if (typeof right !== "undefined")
-      __lvosSet(element.style, "right", Helpers.toPixels(right));
+      element.style.right = Helpers.toPixels(right);
     if (typeof bottom !== "undefined")
-      __lvosSet(element.style, "bottom", Helpers.toPixels(bottom));
+      element.style.bottom = Helpers.toPixels(bottom);
   }
 }
 function setClass(element, className, enabled) {
@@ -1686,7 +1686,7 @@ WindowManager.prototype.updateExpos\u00E9DragScale = function(dialog, x, y) {
   var renderedScale = dialog._exposeVisualWidth ? __lvosGet(rendered, "width") / dialog._exposeVisualWidth : k;
   if (!renderedScale)
     return;
-  __lvosSet(content.style, "transform", "translate(" + Helpers.toPixels((x - __lvosGet(grab, "x") * renderedScale - __lvosGet(targetRect, "left")) / renderedScale) + "," + Helpers.toPixels((y - __lvosGet(grab, "y") * renderedScale - __lvosGet(targetRect, "top")) / renderedScale) + ")");
+  content.style.transform = "translate(" + Helpers.toPixels((x - __lvosGet(grab, "x") * renderedScale - __lvosGet(targetRect, "left")) / renderedScale) + "," + Helpers.toPixels((y - __lvosGet(grab, "y") * renderedScale - __lvosGet(targetRect, "top")) / renderedScale) + ")";
 };
 WindowManager.prototype.getSnapZone = function(x, y, section) {
   var area = section || this.getSnapContainer();
@@ -2362,7 +2362,7 @@ __lvosDefineProperty(Transformable.prototype, "perspective", {
   set: function(value) {
     var parent = this.target.parentElement;
     if (parent)
-      __lvosSet(parent.style, "perspective", Helpers.toPixels(this._perspective = value));
+      parent.style.perspective = Helpers.toPixels(this._perspective = value);
   }
 });
 Transformable.prototype.applyTransform = function() {
@@ -2728,7 +2728,7 @@ Dialog.prototype.detachToRootKeepingVisual = function(root) {
   content.style.transformOrigin = "0 0";
   content.style.scale = String(scale);
   var measured = content.getBoundingClientRect();
-  __lvosSet(content.style, "transform", "translate(" + Helpers.toPixels((__lvosGet(before, "left") - __lvosGet(measured, "left")) / scale) + "," + Helpers.toPixels((__lvosGet(before, "top") - __lvosGet(measured, "top")) / scale) + ")");
+  content.style.transform = "translate(" + Helpers.toPixels((__lvosGet(before, "left") - __lvosGet(measured, "left")) / scale) + "," + Helpers.toPixels((__lvosGet(before, "top") - __lvosGet(measured, "top")) / scale) + ")";
   this._exposeVisualScale = scale;
   this._exposeContentScale = scale;
   this._exposeVisualWidth = __lvosGet(after, "width");
@@ -2739,7 +2739,7 @@ Dialog.prototype.clearExpos\u00E9Visual = function() {
     return;
   var content = __lvosGet(this, "content");
   if (content) {
-    __lvosSet(content.style, "transform", "");
+    content.style.transform = "";
     content.style.transformOrigin = "";
     content.style.scale = "";
     content.style.transition = "";
@@ -3098,7 +3098,7 @@ __lvosDefineProperties(Dialog.prototype, {
       this._height = height;
       this._y = top / window.innerHeight;
       if (__lvosGet(this, "useTransform")) {
-        __lvosSet(this.target.style, "height", Helpers.toPixels(height));
+        this.target.style.height = Helpers.toPixels(height);
         this.updateTransform();
       } else
         this.setInset(top, __lvosGet(this, "left"), __lvosGet(this, "right"), window.innerHeight - bottom);
@@ -3121,7 +3121,7 @@ __lvosDefineProperties(Dialog.prototype, {
       this._width = width;
       this._x = left / window.innerWidth;
       if (__lvosGet(this, "useTransform")) {
-        __lvosSet(this.target.style, "width", Helpers.toPixels(width));
+        this.target.style.width = Helpers.toPixels(width);
         this.updateTransform();
       } else
         this.setInset(__lvosGet(this, "top"), left, window.innerWidth - right, __lvosGet(this, "bottom"));
@@ -3337,10 +3337,10 @@ __lvosDefineProperties(Dialog.prototype, {
   },
   opacity: {
     set: function(opacity) {
-      this.target && __lvosSet(this.target.style, "opacity", String(opacity));
+      this.target && (this.target.style.opacity = String(opacity));
     },
     get: function() {
-      return this.target && __lvosGet(this.target.style, "opacity") !== "" ? Number(__lvosGet(this.target.style, "opacity")) : 1;
+      return this.target && this.target.style.opacity !== "" ? Number(this.target.style.opacity) : 1;
     }
   },
   icon: {
@@ -3707,8 +3707,8 @@ Dialog.prototype.toggleMaximized = function(enable) {
       target.style.pointerEvents = "";
       target.classList.remove("animating");
       if (content) {
-        __lvosSet(content.style, "width", "");
-        __lvosSet(content.style, "height", "");
+        content.style.width = "";
+        content.style.height = "";
       }
       self2.maximizeAnimations--;
     }
@@ -3728,8 +3728,8 @@ Dialog.prototype.toggleMaximized = function(enable) {
     target.style.transformOrigin = "";
     target.style.pointerEvents = "";
     if (content) {
-      __lvosSet(content.style, "width", "");
-      __lvosSet(content.style, "height", "");
+      content.style.width = "";
+      content.style.height = "";
     }
     if (enable) {
       target.classList.add("maximized", "scaled-max");
@@ -3757,7 +3757,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
     target.classList.add("scaled-max");
     target.classList.remove("maximized");
     target.style.setProperty("transition", "none", "important");
-    __lvosSet(target.style, "transform", toTransform(startX, startY, 1, 1));
+    target.style.transform = toTransform(startX, startY, 1, 1);
     void target.offsetWidth;
     state.raf = requestAnimationFrame(function() {
       state.raf = 0;
@@ -3765,12 +3765,12 @@ Dialog.prototype.toggleMaximized = function(enable) {
         return;
       target.classList.add("animating");
       target.style.removeProperty("transition");
-      __lvosSet(target.style, "transform", toTransform(0, 0, scaleX, scaleY));
+      target.style.transform = toTransform(0, 0, scaleX, scaleY);
     });
   } else {
     target.classList.add("maximized", "scaled-max");
     target.style.setProperty("transition", "none", "important");
-    __lvosSet(target.style, "transform", toTransform(0, 0, 1, 1));
+    target.style.transform = toTransform(0, 0, 1, 1);
     void target.offsetWidth;
     state.raf = requestAnimationFrame(function() {
       state.raf = 0;
@@ -3778,7 +3778,7 @@ Dialog.prototype.toggleMaximized = function(enable) {
         return;
       target.classList.add("animating");
       target.style.removeProperty("transition");
-      __lvosSet(target.style, "transform", toTransform(startX, startY, 1 / scaleX, 1 / scaleY));
+      target.style.transform = toTransform(startX, startY, 1 / scaleX, 1 / scaleY);
     });
   }
 };
@@ -3892,15 +3892,15 @@ Dialog.prototype.setZ = function(z) {
 };
 Dialog.prototype.updateWidth = function() {
   if (__lvosGet(this, "useTransform"))
-    __lvosSet(this.target.style, "width", Helpers.toPixels(this._width));
+    this.target.style.width = Helpers.toPixels(this._width);
   else
-    __lvosSet(this.target.style, "right", Helpers.toPixels(__lvosGet(this, "right")));
+    this.target.style.right = Helpers.toPixels(__lvosGet(this, "right"));
 };
 Dialog.prototype.updateHeight = function() {
   if (__lvosGet(this, "useTransform"))
-    __lvosSet(this.target.style, "height", Helpers.toPixels(this._height));
+    this.target.style.height = Helpers.toPixels(this._height);
   else
-    __lvosSet(this.target.style, "bottom", Helpers.toPixels(__lvosGet(this, "bottom")));
+    this.target.style.bottom = Helpers.toPixels(__lvosGet(this, "bottom"));
 };
 Dialog.prototype._setSize = function(axis, size, update, animate) {
   if (typeof size !== "number" || axis === "height" && !this.target)
@@ -4297,13 +4297,13 @@ Dialog.prototype.updateUseTransform = function(useTransform2) {
   this._useTransform = useTransform2;
   var target = this.target;
   if (useTransform2) {
-    __lvosSet(target.style, "top", "");
-    __lvosSet(target.style, "left", "");
+    target.style.top = "";
+    target.style.left = "";
   } else {
-    __lvosSet(target.style, "transform", "");
+    target.style.transform = "";
     target.style.webkitTransform = "";
-    __lvosSet(target.style, "width", "");
-    __lvosSet(target.style, "height", "");
+    target.style.width = "";
+    target.style.height = "";
   }
   this.updateScale(useTransform2);
   this.update();
@@ -4312,24 +4312,24 @@ Dialog.prototype.updateScale = function(useScale2) {
   this._useScale = useScale2;
   var target = this.target;
   if (useScale2) {
-    __lvosSet(target.style, "right", "");
-    __lvosSet(target.style, "bottom", "");
+    target.style.right = "";
+    target.style.bottom = "";
     this.toggleMinSizeConstraints(__lvosGet(this, "maximized"));
   } else {
     if (__lvosGet(this, "useTransform"))
       return;
     var right = __lvosGet(this, "right"), bottom = __lvosGet(this, "bottom");
     if (right === right)
-      __lvosSet(target.style, "right", Helpers.toPixels(right));
+      target.style.right = Helpers.toPixels(right);
     if (bottom === bottom)
-      __lvosSet(target.style, "bottom", Helpers.toPixels(bottom));
+      target.style.bottom = Helpers.toPixels(bottom);
   }
   target.classList.toggle("use-scale", useScale2);
   this.update();
 };
 Dialog.prototype.toggleMinSizeConstraints = function(isMaximized) {
-  __lvosSet(this.target.style, "minWidth", isMaximized ? "100%" : Helpers.toPixels(__lvosGet(this, "minWidth")));
-  __lvosSet(this.target.style, "minHeight", isMaximized ? "100%" : Helpers.toPixels(__lvosGet(this, "minHeight")));
+  this.target.style.minWidth = isMaximized ? "100%" : Helpers.toPixels(__lvosGet(this, "minWidth"));
+  this.target.style.minHeight = isMaximized ? "100%" : Helpers.toPixels(__lvosGet(this, "minHeight"));
 };
 Dialog.prototype.flip = function(enable) {
   this.toggleClassAnimated("flipped", enable);
@@ -4781,15 +4781,15 @@ var onLoad = function() {
       clickOffset.update(ev.clientX - clickOffset.clickX, ev.clientY - clickOffset.clickY);
       var width = __lvosGet(__lvosGet(clickOffset, "position"), "x"), height = __lvosGet(__lvosGet(clickOffset, "position"), "y");
       Helpers.translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
-      __lvosSet(selector.style, "width", Helpers.toPixels(Math.abs(width)));
-      __lvosSet(selector.style, "height", Helpers.toPixels(Math.abs(height)));
+      selector.style.width = Helpers.toPixels(Math.abs(width));
+      selector.style.height = Helpers.toPixels(Math.abs(height));
     };
     tingeling.addEventListener(supportsPointer ? "pointerdown" : "mousedown", function(ev) {
       clickOffset.init(ev.clientX, ev.clientY);
       var width = __lvosGet(__lvosGet(clickOffset, "position"), "x"), height = __lvosGet(__lvosGet(clickOffset, "position"), "y");
       Helpers.translateElement(selector, width < 0 ? ev.clientX : clickOffset.clickX, height < 0 ? ev.clientY : clickOffset.clickY);
-      __lvosSet(selector.style, "width", Helpers.toPixels(Math.abs(width)));
-      __lvosSet(selector.style, "height", Helpers.toPixels(Math.abs(height)));
+      selector.style.width = Helpers.toPixels(Math.abs(width));
+      selector.style.height = Helpers.toPixels(Math.abs(height));
       selector.className = "selector";
       if (tingeling)
         tingeling.appendChild(selector);
@@ -4831,8 +4831,8 @@ function ContextMenu() {
 ContextMenu.prototype.open = function(x, y) {
   if (!this.element)
     return;
-  __lvosSet(this.element.style, "left", Helpers.toPixels(x));
-  __lvosSet(this.element.style, "top", Helpers.toPixels(y));
+  this.element.style.left = Helpers.toPixels(x);
+  this.element.style.top = Helpers.toPixels(y);
   this.element.classList.add("open");
 };
 ContextMenu.prototype.close = function() {
@@ -5090,7 +5090,7 @@ function isFileDrag(ev) {
 function setDesktopDragOpacity(opacity) {
   var desktop = document.getElementById("desktop");
   if (desktop)
-    __lvosSet(desktop.style, "opacity", opacity);
+    desktop.style.opacity = opacity;
 }
 window.ondrag = document.ondrag = function(ev) {
   ev = ev || window.event;
