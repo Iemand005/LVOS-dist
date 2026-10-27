@@ -2543,8 +2543,9 @@ function Dialog(object) {
   var self2 = this;
   this.activationHandler = function(ev, id2) {
     if (!ev) {
-      ev = window.event;
-      ev.target = ev.srcElement;
+      var event2 = window.event;
+      event2.target = event2.srcElement;
+      ev = event2;
     }
     self2._ctrlDrag = !!(ev && ev.ctrlKey);
     if (self2._ctrlDrag) {
@@ -2931,7 +2932,7 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
 };
 Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = __lvosGet(this, "frame");
-  if (frame || !create || !__lvosGet(this, "body"))
+  if (frame || create === false || !__lvosGet(this, "body"))
     return frame;
   return __lvosGet(this, "body").appendChild(document.createElement("iframe"));
 };

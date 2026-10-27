@@ -2003,8 +2003,9 @@ function Dialog(object) {
   var self2 = this;
   this.activationHandler = function(ev, id2) {
     if (!ev) {
-      ev = window.event;
-      ev.target = ev.srcElement;
+      var event2 = window.event;
+      event2.target = event2.srcElement;
+      ev = event2;
     }
     self2._ctrlDrag = !!(ev && ev.ctrlKey);
     if (self2._ctrlDrag) {
@@ -2337,7 +2338,7 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
 };
 Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = this.frame;
-  if (frame || !create || !this.body) return frame;
+  if (frame || create === false || !this.body) return frame;
   return this.body.appendChild(document.createElement("iframe"));
 };
 Object.defineProperties(Dialog.prototype, {
