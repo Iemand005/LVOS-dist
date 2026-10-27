@@ -867,7 +867,7 @@ function getSiteName(url) {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 Helpers.isElement = function(object) {
-  return object && "nodeType" in object || false;
+  return typeof object === "object" && "nodeType" in object || false;
 };
 function getWindowChromeHeight(window2) {
   return window2.outerHeight - Helpers.getViewportHeight();
