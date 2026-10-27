@@ -2542,8 +2542,10 @@ function Dialog(object) {
   this._appIcon = null;
   var self2 = this;
   this.activationHandler = function(ev, id2) {
-    if (!ev)
+    if (!ev) {
       ev = window.event;
+      ev.target = ev.srcElement;
+    }
     self2._ctrlDrag = !!(ev && ev.ctrlKey);
     if (self2._ctrlDrag) {
       ev.stopImmediatePropagation();
