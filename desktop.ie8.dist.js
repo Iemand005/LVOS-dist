@@ -3954,13 +3954,13 @@ Dialog.prototype.setZ = function(z) {
     this.broadcastState({ z: this._z });
 };
 Dialog.prototype.updateWidth = function() {
-  if (__lvosGet(this, "useTransform"))
+  if (__lvosGet(this, "useTransform") || __lvosGet(this, "useScale"))
     this.target.style.width = Helpers.toPixels(this._width);
   else
     this.target.style.right = Helpers.toPixels(__lvosGet(this, "right"));
 };
 Dialog.prototype.updateHeight = function() {
-  if (__lvosGet(this, "useTransform"))
+  if (__lvosGet(this, "useTransform") || __lvosGet(this, "useScale"))
     this.target.style.height = Helpers.toPixels(this._height);
   else
     this.target.style.bottom = Helpers.toPixels(__lvosGet(this, "bottom"));
