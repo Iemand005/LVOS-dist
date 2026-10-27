@@ -1992,6 +1992,7 @@ function Dialog(object) {
       ev.stopImmediatePropagation();
       return;
     }
+    ensureClassList(ev.target);
     if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
     windowManager.windowActivationEvent(ev, self2, id2);
