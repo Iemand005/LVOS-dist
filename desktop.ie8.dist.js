@@ -18,6 +18,32 @@ if (!Array.prototype.indexOf) {
     return -1;
   };
 }
+if (typeof window !== "undefined") {
+  if (typeof window.innerWidth === "undefined") {
+    try {
+      Object.defineProperty(window, "innerWidth", {
+        get: function() {
+          return document.documentElement && document.documentElement.clientWidth ? document.documentElement.clientWidth : document.body.clientWidth;
+        },
+        configurable: true
+      });
+    } catch (e) {
+      window.innerWidth = document.documentElement.clientWidth || document.body.clientWidth;
+    }
+  }
+  if (typeof window.innerHeight === "undefined") {
+    try {
+      Object.defineProperty(window, "innerHeight", {
+        get: function() {
+          return document.documentElement && document.documentElement.clientHeight ? document.documentElement.clientHeight : document.body.clientHeight;
+        },
+        configurable: true
+      });
+    } catch (e) {
+      window.innerHeight = document.documentElement.clientHeight || document.body.clientHeight;
+    }
+  }
+}
 if (!Array.prototype.lastIndexOf) {
   Array.prototype.lastIndexOf = function(searchElement, fromIndex) {
     var len = this == null ? 0 : this.length >>> 0;
