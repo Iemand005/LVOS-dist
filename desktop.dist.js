@@ -4079,9 +4079,8 @@ var onLoad = function() {
     contextMenu.close();
   };
   var applist = document.getElementById("applist");
-  if (applist) {
-    applist.addEventListener("submit", eventPrevent, false);
-  }
+  if (applist)
+    applist.onsubmit = eventPrevent;
   var appButtons = document.getElementById("dockapplist");
   if (appButtons) {
     var startButton = document.createElement("button");
