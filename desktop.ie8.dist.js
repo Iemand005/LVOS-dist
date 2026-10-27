@@ -1077,6 +1077,8 @@ function createDialogElement() {
 function removeComments(element) {
   for (var i in element.childNodes) {
     var child = element.childNodes[i];
+    if (!child)
+      continue;
     if (child.nodeName === "#comment")
       element.removeChild(child);
     else if (Helpers.isElement(child))
