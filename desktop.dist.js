@@ -2010,22 +2010,22 @@ function Dialog(object) {
   this.dragging = false;
   this._ctrlDrag = false;
   this._appIcon = null;
-  var self3 = this;
+  var self2 = this;
   this.activationHandler = function(ev, id2) {
     if (!ev) {
       var event2 = window.event;
       event2.target = event2.srcElement;
       ev = event2;
     }
-    self3._ctrlDrag = !!(ev && ev.ctrlKey);
-    if (self3._ctrlDrag) {
+    self2._ctrlDrag = !!(ev && ev.ctrlKey);
+    if (self2._ctrlDrag) {
       ev.stopImmediatePropagation();
       return;
     }
     ensureClassList(ev.target);
     if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
-    windowManager.windowActivationEvent(ev, self3, id2);
+    windowManager.windowActivationEvent(ev, self2, id2);
     return true;
   };
   if (object instanceof Dialog) {
@@ -2045,25 +2045,11 @@ function Dialog(object) {
         if (element && this.application) {
           this.target = element;
           var doc = this.contentDocument;
-          var self2 = this;
-          this.openUrl(this.application.src);
-          setTimeout(function() {
-            if (!self2.frame) self2.openUrl(self2.application.src);
-          }, 0);
-          setTimeout(function() {
-            if (!self2.frame) self2.openUrl(self2.application.src);
-          }, 50);
+          if (doc && doc.readyState !== "complete") this.openUrl(this.application.src);
         }
       } else {
         this.target = createDialogElement();
-        var self3 = this;
         this.openUrl(object.src);
-        setTimeout(function() {
-          if (!self3.frame && self3.application) self3.openUrl(self3.application.src);
-        }, 0);
-        setTimeout(function() {
-          if (!self3.frame && self3.application) self3.openUrl(self3.application.src);
-        }, 50);
       }
       if (this.windowTarget) this.windowTarget.dialog = this;
       if (object.classes && typeof object.classes === "object") {
@@ -2080,7 +2066,7 @@ function Dialog(object) {
       }
       this.moveEvents = object.moveEvents || false;
       this.setIcon(this.getMiniIconUrl(), function() {
-        self3.setIcon(self3.getIconUrl());
+        self2.setIcon(self2.getIconUrl());
       });
     }
   }
@@ -2089,9 +2075,9 @@ function Dialog(object) {
   this.toggleFullButton(true);
   if (this.verifyEjectCapability()) this.toggleEjectButton(true);
   this.exchangeDialogMouseUpEvent = this.messageFrame.bind(this, "mouseUp", { difference: new Vector() });
-  var self3 = this;
+  var self2 = this;
   this.exchangeDialogMoveEvent = function(difference) {
-    if (difference && self3.clickOffset) this.messageFrame("windowMove", self3.clickOffset.update(difference.x, difference.y));
+    if (difference && self2.clickOffset) this.messageFrame("windowMove", self2.clickOffset.update(difference.x, difference.y));
   };
   if (!this.target.classList) ensureClassList(this.target);
   var target = this.target;
@@ -2099,13 +2085,13 @@ function Dialog(object) {
   var createSizers = true;
   if (this.resizable && createSizers) this._createSizers();
   target.onselectstart = function(event2) {
-    if (self3._ctrlDrag) return;
+    if (self2._ctrlDrag) return;
     cancelDomEvent(event2);
   };
   var body = this.body;
   if (body) body.onload = function() {
     try {
-      self3.verifyEjectCapability();
+      self2.verifyEjectCapability();
     } catch (exception) {
       console.log(exception);
       if (buttons[0]) buttons[0].style.display = "none";
@@ -2120,7 +2106,7 @@ function Dialog(object) {
       if (node.nodeName && node.nodeName.toLowerCase() === "button") return;
       node = node.parentElement;
     }
-    self3.toggleMaximized();
+    self2.toggleMaximized();
   };
   if (supportsPointer) target.onpointerdown = this.activationHandler;
   else target.onmousedown = this.activationHandler;
@@ -2133,19 +2119,19 @@ function Dialog(object) {
   var fullscreenButton = buttons[windowButtons.full];
   if (fullscreenButton)
     fullscreenButton.onclick = function() {
-      self3.toggleMaximized();
+      self2.toggleMaximized();
     };
   this.toggleOpen(false);
   target.ondragstart = function(event2) {
-    if (!(event2.ctrlKey || self3._ctrlDrag) || !event2.dataTransfer || !self3.application) {
+    if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
       event2.preventDefault();
       return;
     }
     var dragState = {
-      state: self3.getState(),
-      app: self3.application
+      state: self2.getState(),
+      app: self2.application
     };
-    var rect = getRect(self3.target);
+    var rect = getRect(self2.target);
     if (rect) dragState.offset = {
       x: event2.clientX - (rect.left + rect.width / 2),
       y: event2.clientY - (rect.top + rect.height / 2)
@@ -2157,21 +2143,21 @@ function Dialog(object) {
       if (flagsieDropCompatibleMode) {
         transfer.setData("Text", data);
         transfer.setData("text/plain", data);
-      } else transfer.setData("text/plain", self3.src || self3.title || self3.id);
-      if (self3.src) transfer.setData("text/uri-list", self3.src);
+      } else transfer.setData("text/plain", self2.src || self2.title || self2.id);
+      if (self2.src) transfer.setData("text/uri-list", self2.src);
       transfer.setData("text/html", data);
-      transfer.setData("URL", self3.src + "\n" + data);
+      transfer.setData("URL", self2.src + "\n" + data);
     } catch (ex) {
       console.warn(ex);
       transfer.setData("Text", data);
-      if (self3.src) transfer.setData("URL", self3.src);
+      if (self2.src) transfer.setData("URL", self2.src);
       transfer.setData("URL", "https://example.com");
     }
     transfer.effectAllowed = "copyMove";
-    self3.target.classList.add("hidden");
+    self2.target.classList.add("hidden");
   };
   target.ondragend = function() {
-    self3._ctrlDrag = false;
+    self2._ctrlDrag = false;
   };
   if (this.id) windowManager.windows[this.id] = this;
   this.updateUseTransform(this.useTransform);
@@ -2182,7 +2168,7 @@ function Dialog(object) {
       this.move(object.x, object.y);
     else this.moveCenterTo(Helpers.getViewportWidth() / 2, Helpers.getViewportHeight() / 2);
   if (this.frame) this.frame.addEventListener("load", function() {
-    self3._loaded = true;
+    self2._loaded = true;
   }, false);
   if (!this.scroll && this.body) this.body.style.overflow = "hidden";
   this.originalBody = this.body;
@@ -2364,12 +2350,22 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = this.frame;
   if (frame || create === false) return frame;
   var body = this.body;
-  if (!body) {
-    var content = this.content;
-    if (content) body = content;
-    else body = this.target;
+  if (!body && this.target) {
+    var content = this.content || this.getElementByTagOrClassName("content", this.target);
+    if (content) {
+      body = this.getElementByTagOrClassName("article", content);
+      if (!body && content.getElementsByTagName) {
+        var articles = content.getElementsByTagName("article");
+        if (articles && articles.length) body = articles[0];
+      }
+    }
+    if (!body && this.target.getElementsByTagName) {
+      var articles2 = this.target.getElementsByTagName("article");
+      if (articles2 && articles2.length) body = articles2[0];
+    }
   }
   if (!body) return null;
+  if (this.target && body === this.target) return null;
   return body.appendChild(document.createElement("iframe"));
 };
 Object.defineProperties(Dialog.prototype, {
@@ -3556,14 +3552,9 @@ Dialog.prototype.setInset = function(top, left, right, bottom) {
   else insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
-  var self2 = this;
   var frame = this.getOrCreateFrame(true);
-  if (!frame) {
-    setTimeout(function() {
-      self2.openUrl(url);
-    }, 0);
-    return;
-  }
+  if (!frame) return;
+  var self2 = this;
   var timeout = -1;
   frame.onload = function() {
     clearTimeout(timeout);
@@ -3578,10 +3569,7 @@ Dialog.prototype.openUrl = function(url) {
     var nextUrl;
     while (index < fallbackUrls.length && !(nextUrl = fallbackUrls[index++])) ;
     if (!nextUrl || !frame) return;
-    try {
-      frame.src = nextUrl;
-    } catch (ex) {
-    }
+    frame.src = nextUrl;
     self2._src = nextUrl;
     clearTimeout(timeout);
     timeout = setTimeout(tryNext, 3e3);

@@ -2553,22 +2553,22 @@ function Dialog(object) {
   this.dragging = false;
   this._ctrlDrag = false;
   this._appIcon = null;
-  var self3 = this;
+  var self2 = this;
   this.activationHandler = function(ev, id2) {
     if (!ev) {
       var event2 = window.event;
       event2.target = event2.srcElement;
       ev = event2;
     }
-    self3._ctrlDrag = !!(ev && ev.ctrlKey);
-    if (self3._ctrlDrag) {
+    self2._ctrlDrag = !!(ev && ev.ctrlKey);
+    if (self2._ctrlDrag) {
       ev.stopImmediatePropagation();
       return;
     }
     ensureClassList(ev.target);
     if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
-    windowManager.windowActivationEvent(ev, self3, id2);
+    windowManager.windowActivationEvent(ev, self2, id2);
     return true;
   };
   if (object instanceof Dialog) {
@@ -2590,29 +2590,12 @@ function Dialog(object) {
         if (element && this.application) {
           this.target = element;
           var doc = __lvosGet(this, "contentDocument");
-          var self2 = this;
-          this.openUrl(__lvosGet(this.application, "src"));
-          setTimeout(function() {
-            if (!__lvosGet(self2, "frame"))
-              self2.openUrl(__lvosGet(self2.application, "src"));
-          }, 0);
-          setTimeout(function() {
-            if (!__lvosGet(self2, "frame"))
-              self2.openUrl(__lvosGet(self2.application, "src"));
-          }, 50);
+          if (doc && doc.readyState !== "complete")
+            this.openUrl(__lvosGet(this.application, "src"));
         }
       } else {
         this.target = createDialogElement();
-        var self3 = this;
         this.openUrl(__lvosGet(object, "src"));
-        setTimeout(function() {
-          if (!__lvosGet(self3, "frame") && self3.application)
-            self3.openUrl(__lvosGet(self3.application, "src"));
-        }, 0);
-        setTimeout(function() {
-          if (!__lvosGet(self3, "frame") && self3.application)
-            self3.openUrl(__lvosGet(self3.application, "src"));
-        }, 50);
       }
       if (__lvosGet(this, "windowTarget"))
         __lvosGet(this, "windowTarget").dialog = this;
@@ -2631,7 +2614,7 @@ function Dialog(object) {
       }
       this.moveEvents = object.moveEvents || false;
       this.setIcon(this.getMiniIconUrl(), function() {
-        self3.setIcon(self3.getIconUrl());
+        self2.setIcon(self2.getIconUrl());
       });
     }
   }
@@ -2641,10 +2624,10 @@ function Dialog(object) {
   if (this.verifyEjectCapability())
     this.toggleEjectButton(true);
   this.exchangeDialogMouseUpEvent = this.messageFrame.bind(this, "mouseUp", { difference: new Vector() });
-  var self3 = this;
+  var self2 = this;
   this.exchangeDialogMoveEvent = function(difference) {
-    if (difference && self3.clickOffset)
-      this.messageFrame("windowMove", self3.clickOffset.update(__lvosGet(difference, "x"), __lvosGet(difference, "y")));
+    if (difference && self2.clickOffset)
+      this.messageFrame("windowMove", self2.clickOffset.update(__lvosGet(difference, "x"), __lvosGet(difference, "y")));
   };
   if (!this.target.classList)
     ensureClassList(this.target);
@@ -2654,7 +2637,7 @@ function Dialog(object) {
   if (__lvosGet(this, "resizable") && createSizers)
     this._createSizers();
   target.onselectstart = function(event2) {
-    if (self3._ctrlDrag)
+    if (self2._ctrlDrag)
       return;
     cancelDomEvent(event2);
   };
@@ -2662,7 +2645,7 @@ function Dialog(object) {
   if (body)
     body.onload = function() {
       try {
-        self3.verifyEjectCapability();
+        self2.verifyEjectCapability();
       } catch (exception) {
         console.log(exception);
         if (buttons[0])
@@ -2681,7 +2664,7 @@ function Dialog(object) {
           return;
         node = node.parentElement;
       }
-      self3.toggleMaximized();
+      self2.toggleMaximized();
     };
   if (supportsPointer)
     target.onpointerdown = this.activationHandler;
@@ -2696,19 +2679,19 @@ function Dialog(object) {
   var fullscreenButton = buttons[windowButtons.full];
   if (fullscreenButton)
     fullscreenButton.onclick = function() {
-      self3.toggleMaximized();
+      self2.toggleMaximized();
     };
   this.toggleOpen(false);
   target.ondragstart = function(event2) {
-    if (!(event2.ctrlKey || self3._ctrlDrag) || !event2.dataTransfer || !self3.application) {
+    if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
       event2.preventDefault();
       return;
     }
     var dragState = {
-      state: self3.getState(),
-      app: self3.application
+      state: self2.getState(),
+      app: self2.application
     };
-    var rect = getRect(self3.target);
+    var rect = getRect(self2.target);
     if (rect)
       dragState.offset = {
         x: event2.clientX - (__lvosGet(rect, "left") + __lvosGet(rect, "width") / 2),
@@ -2722,23 +2705,23 @@ function Dialog(object) {
         transfer.setData("Text", data);
         transfer.setData("text/plain", data);
       } else
-        transfer.setData("text/plain", __lvosGet(self3, "src") || __lvosGet(self3, "title") || __lvosGet(self3, "id"));
-      if (__lvosGet(self3, "src"))
-        transfer.setData("text/uri-list", __lvosGet(self3, "src"));
+        transfer.setData("text/plain", __lvosGet(self2, "src") || __lvosGet(self2, "title") || __lvosGet(self2, "id"));
+      if (__lvosGet(self2, "src"))
+        transfer.setData("text/uri-list", __lvosGet(self2, "src"));
       transfer.setData("text/html", data);
-      transfer.setData("URL", __lvosGet(self3, "src") + "\n" + data);
+      transfer.setData("URL", __lvosGet(self2, "src") + "\n" + data);
     } catch (ex) {
       console.warn(ex);
       transfer.setData("Text", data);
-      if (__lvosGet(self3, "src"))
-        transfer.setData("URL", __lvosGet(self3, "src"));
+      if (__lvosGet(self2, "src"))
+        transfer.setData("URL", __lvosGet(self2, "src"));
       transfer.setData("URL", "https://example.com");
     }
     transfer.effectAllowed = "copyMove";
-    self3.target.classList.add("hidden");
+    self2.target.classList.add("hidden");
   };
   target.ondragend = function() {
-    self3._ctrlDrag = false;
+    self2._ctrlDrag = false;
   };
   if (__lvosGet(this, "id"))
     __lvosGet(windowManager, "windows")[__lvosGet(this, "id")] = this;
@@ -2752,7 +2735,7 @@ function Dialog(object) {
       this.moveCenterTo(Helpers.getViewportWidth() / 2, Helpers.getViewportHeight() / 2);
   if (__lvosGet(this, "frame"))
     __lvosGet(this, "frame").addEventListener("load", function() {
-      self3._loaded = true;
+      self2._loaded = true;
     }, false);
   if (!this.scroll && __lvosGet(this, "body"))
     __lvosGet(this, "body").style.overflow = "hidden";
@@ -2965,14 +2948,25 @@ Dialog.prototype.getOrCreateFrame = function(create) {
   if (frame || create === false)
     return frame;
   var body = __lvosGet(this, "body");
-  if (!body) {
-    var content = __lvosGet(this, "content");
-    if (content)
-      body = content;
-    else
-      body = this.target;
+  if (!body && this.target) {
+    var content = __lvosGet(this, "content") || this.getElementByTagOrClassName("content", this.target);
+    if (content) {
+      body = this.getElementByTagOrClassName("article", content);
+      if (!body && content.getElementsByTagName) {
+        var articles = content.getElementsByTagName("article");
+        if (articles && articles.length)
+          body = articles[0];
+      }
+    }
+    if (!body && this.target.getElementsByTagName) {
+      var articles2 = this.target.getElementsByTagName("article");
+      if (articles2 && articles2.length)
+        body = articles2[0];
+    }
   }
   if (!body)
+    return null;
+  if (this.target && body === this.target)
     return null;
   return body.appendChild(document.createElement("iframe"));
 };
@@ -4290,14 +4284,10 @@ Dialog.prototype.setInset = function(top, left, right, bottom) {
     insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
-  var self2 = this;
   var frame = this.getOrCreateFrame(true);
-  if (!frame) {
-    setTimeout(function() {
-      self2.openUrl(url);
-    }, 0);
+  if (!frame)
     return;
-  }
+  var self2 = this;
   var timeout = -1;
   frame.onload = function() {
     clearTimeout(timeout);
@@ -4316,10 +4306,7 @@ Dialog.prototype.openUrl = function(url) {
       ;
     if (!nextUrl || !frame)
       return;
-    try {
-      __lvosSet(frame, "src", nextUrl);
-    } catch (ex) {
-    }
+    __lvosSet(frame, "src", nextUrl);
     self2._src = nextUrl;
     clearTimeout(timeout);
     timeout = setTimeout(tryNext, 3e3);
