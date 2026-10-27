@@ -2724,10 +2724,23 @@ Dialog.prototype.getElementByTagOrClassName = function(name, parent) {
   if (!target)
     return null;
   var elements2 = target.getElementsByTagName(name);
-  if (!elements2 || !elements2.length)
-    elements2 = target.getElementsByClassName(name);
-  var element = elements2.length ? elements2[0] : null;
-  if (Helpers.isElement(element))
+  if (!elements2 || !elements2.length) {
+    if (target.getElementsByClassName) {
+      elements2 = target.getElementsByClassName(name);
+    } else if (document.getElementsByClassName) {
+      var candidates = document.getElementsByClassName(name);
+      var filtered = [];
+      for (var i = 0; i < candidates.length; i++) {
+        var node = candidates[i];
+        if (target.contains ? target.contains(node) : target.compareDocumentPosition && target.compareDocumentPosition(node) & 16) {
+          filtered.push(node);
+        }
+      }
+      elements2 = filtered;
+    }
+  }
+  var element = elements2 && elements2.length ? elements2[0] : null;
+  if (element && Helpers.isElement(element))
     return element;
   return null;
 };
