@@ -176,15 +176,20 @@ function __lvosObject(target, accessors) {
   return target;
 }
 function __lvosGet(object, key) {
-  if (object == null)
-    return void 0;
-  var info = __lvosAccessors[key];
-  if (info && info.get) {
-    var getter = object[info.get];
-    if (typeof getter === "function")
-      return getter.call(object);
+  try {
+    if (object == null)
+      return;
+    var info = __lvosAccessors[key];
+    if (info && info.get) {
+      var getter = object[info.get];
+      if (typeof getter === "function")
+        return getter.call(object);
+    }
+    return object[key];
+  } catch (ex) {
+    console.warn("Failed to get key in object:", object, key, ex);
   }
-  return object[key];
+  return;
 }
 function __lvosSet(object, key, value) {
   if (object == null)
