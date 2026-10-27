@@ -2064,21 +2064,21 @@ function Dialog(object) {
   var buttons = target.getElementsByTagName("button");
   var createSizers = true;
   if (this.resizable && createSizers) this._createSizers();
-  target.addEventListener("selectstart", function(event2) {
+  target.onselectstart = function(event2) {
     if (self2._ctrlDrag) return;
     cancelDomEvent(event2);
-  }, false);
+  };
   var body = this.body;
-  if (body) body.addEventListener("load", function() {
+  if (body) body.onload = function() {
     try {
       self2.verifyEjectCapability();
     } catch (exception) {
       console.log(exception);
       if (buttons[0]) buttons[0].style.display = "none";
     }
-  }, false);
+  };
   var header = this.titleBar;
-  if (header) target.addEventListener("dblclick", function(event2) {
+  if (header) target.ondblclick = function(event2) {
     var rect = getRect(header);
     if (!rect || event2.clientX < rect.left || event2.clientX > rect.right || event2.clientY < rect.top || event2.clientY > rect.bottom) return;
     var node = event2.target instanceof HTMLElement ? event2.target : null;
@@ -2087,7 +2087,7 @@ function Dialog(object) {
       node = node.parentElement;
     }
     self2.toggleMaximized();
-  }, false);
+  };
   if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
   else target.addEventListener("mousedown", this.activationHandler, false);
   var ejectButton = buttons[windowButtons.eject];

@@ -2613,14 +2613,14 @@ function Dialog(object) {
   var createSizers = true;
   if (__lvosGet(this, "resizable") && createSizers)
     this._createSizers();
-  target.addEventListener("selectstart", function(event2) {
+  target.onselectstart = function(event2) {
     if (self2._ctrlDrag)
       return;
     cancelDomEvent(event2);
-  }, false);
+  };
   var body = __lvosGet(this, "body");
   if (body)
-    body.addEventListener("load", function() {
+    body.onload = function() {
       try {
         self2.verifyEjectCapability();
       } catch (exception) {
@@ -2628,10 +2628,10 @@ function Dialog(object) {
         if (buttons[0])
           buttons[0].style.display = "none";
       }
-    }, false);
+    };
   var header = __lvosGet(this, "titleBar");
   if (header)
-    target.addEventListener("dblclick", function(event2) {
+    target.ondblclick = function(event2) {
       var rect = getRect(header);
       if (!rect || event2.clientX < __lvosGet(rect, "left") || event2.clientX > __lvosGet(rect, "right") || event2.clientY < __lvosGet(rect, "top") || event2.clientY > __lvosGet(rect, "bottom"))
         return;
@@ -2642,7 +2642,7 @@ function Dialog(object) {
         node = node.parentElement;
       }
       self2.toggleMaximized();
-    }, false);
+    };
   if (supportsPointer)
     target.addEventListener("pointerdown", this.activationHandler, false);
   else
