@@ -761,9 +761,10 @@ var flags = __lvosObject({
   updateRateLimit: allowUpdateRateLimit,
   useDragOverlay: true,
   broadcastWindowMoves: !document.documentMode,
-  _useTransform: useTransform,
   useAnimations: true,
   ieDropCompatibleMode: true,
+  _useTransform: useTransform,
+  _useScale: useScale,
   _compositorResize: true,
   _useViewTransitionMaximize: true,
   _preserveMaximizeAspect: false,
@@ -781,6 +782,18 @@ var flags = __lvosObject({
       this._useTransform = value;
       windowManager.forEachWindow(function(dialog) {
         __lvosSet(dialog, "useTransform", value);
+      });
+    }
+  },
+  {
+    name: "useScale",
+    get: function() {
+      return this._useScale;
+    },
+    set: function(value) {
+      this._useScale = value;
+      windowManager.forEachWindow(function(dialog) {
+        __lvosSet(dialog, "useScale", value);
       });
     }
   },
