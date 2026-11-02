@@ -464,6 +464,7 @@ var flags = {
   broadcastWindowMoves: !document.documentMode,
   useAnimations: true,
   ieDropCompatibleMode: true,
+  bootAnimation: true,
   _useTransform: useTransform,
   get useTransform() {
     return this._useTransform;
@@ -767,7 +768,7 @@ function clearFlip(element) {
   element.style.transformOrigin = "";
   element.classList.remove("flipping");
 }
-function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, timeout, flip2) {
+Helpers.animateElement = function(element, onToggled, onTransitionEnd, onEnd, thisArg, timeout, flip2) {
   var boundContext = thisArg || element;
   var callEnd = function() {
     if (!state.active) return;
@@ -796,10 +797,11 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       flipElement(element, onToggled, boundContext);
     } else element.classList.add("animating");
     var animationHandler = function(event2) {
-      if (!onTransitionEnd) return;
-      if (typeof onTransitionEnd === "string") {
-        if (event2.propertyName !== onTransitionEnd) return;
-      } else if (!onTransitionEnd(event2.propertyName)) return;
+      if (onTransitionEnd) {
+        if (typeof onTransitionEnd === "string") {
+          if (event2.propertyName !== onTransitionEnd) return;
+        } else if (!onTransitionEnd(event2.propertyName)) return;
+      }
       element.removeEventListener(transitionEndEvent, animationHandler, false);
       clearTimeout(state.timer);
       callEnd();
@@ -813,7 +815,7 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       if (onToggled) onToggled.call(boundContext);
     });
   }
-}
+};
 function WindowManager() {
   this._windows = {};
   this._windowStates = null;
@@ -1721,7 +1723,7 @@ WindowSnap.prototype.moveToDialog = function(dialog, outset, direction, noAnimat
   this.element.style.zIndex = dialog.z.toString();
   this.hidden = false;
   if (isTouch && !direction) dialog.setDragScale(0.9, 0.9);
-  if (!noAnimation) animateElement(this.element, function() {
+  if (!noAnimation) Helpers.animateElement(this.element, function() {
     this.applyInsetStyle(top, left, right, bottom);
   }, function(name) {
     return name === "inset";
@@ -1766,7 +1768,7 @@ WindowSnap.prototype.snap = function(type, dialog) {
   }
   this.hidden = false;
   if (dialog) this.element.style.zIndex = dialog.z.toString();
-  animateElement(this.element, function() {
+  Helpers.animateElement(this.element, function() {
     switch (type) {
       case "maximize":
         this.setInset(WindowSnap.margin);
@@ -1787,7 +1789,7 @@ WindowSnap.prototype.snap = function(type, dialog) {
 WindowSnap.prototype.hideBehind = function(dialog, keepScale) {
   if (!keepScale) dialog.setDragScale(1, 1);
   if (this.hidden) return;
-  animateElement(this.element, function() {
+  Helpers.animateElement(this.element, function() {
     this.moveToDialog(dialog, 0, void 0, true);
   }, function(name) {
     return name === "inset";
@@ -1896,7 +1898,7 @@ Transformable.prototype.applyTransform = function() {
   transformElement(this.target, this._transform);
 };
 Transformable.prototype.update = function(animate) {
-  if (animate) animateElement(this.target, this.applyTransform, "transform", void 0, this, 1e3);
+  if (animate) Helpers.animateElement(this.target, this.applyTransform, "transform", void 0, this, 1e3);
   else this.applyTransform();
 };
 Transformable.prototype.move = function(x, y, animate) {
@@ -1962,8 +1964,8 @@ function Dialog(object) {
   this._previousX = 0;
   this._previousY = 0;
   this._minWidth = 200;
-  this._minHeight = 200;
-  this._maxWidth = 1e3;
+  this._minHeight = 40;
+  this._maxWidth = 2e3;
   this._maxHeight = 1e3;
   this._minAspectRatio = 0;
   this._maxAspectRatio = Infinity;
@@ -1990,9 +1992,11 @@ function Dialog(object) {
   if (!object) return;
   var id = object.id;
   this.application = null;
-  if (!Helpers.isElement(object))
+  if (!Helpers.isElement(object)) {
     this.application = object;
-  else this.target = object;
+    if (object.minWidth) this._minWidth = object.minWidth;
+    if (object.minHeight) this._minHeight = object.minHeight;
+  } else this.target = object;
   if (!id) id = object.title;
   if (object.title) this._title = object.title;
   else {
@@ -2996,7 +3000,7 @@ Dialog.prototype.stopAnimating = function() {
   this.target.classList.remove("animating");
 };
 Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd, timeout, flip2) {
-  animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
+  Helpers.animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
 };
 Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled, timeout) {
   var self2 = this;
@@ -4169,6 +4173,54 @@ class Modern {
   }
 }
 "use strict";
+var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
+function loadScript(url, callback) {
+  var script2 = document.createElement("script");
+  script2.src = url;
+  script2.onload = callback;
+  document.head.appendChild(script2);
+}
+function init() {
+  if (typeof windowManager !== "undefined" && "windowManager" in window) {
+    if (launchpad) windowManager.forEachWindow(function(dialog) {
+      if (dialog.application) launchpad.addApp(dialog);
+    });
+    if (!isBlink) DesktopManager.removeTheme("glass");
+    windowManager.initializeDialogs();
+    LVMessenger.receive(messageReceived);
+  }
+  var launchpadElement = document.getElementById("launchpad");
+  if (launchpad && launchpadElement) {
+    launchpad.init(launchpadElement);
+    if (typeof appManager !== "undefined") {
+      appManager.forEachApp(launchpad.addApp.bind(launchpad));
+      appManager.reloadWallpaper();
+    }
+  }
+  if (location.protocol === "file:") try {
+    var scripts = document.querySelectorAll('script[type="module"]');
+    scripts.forEach(function(s) {
+      var replacement = document.createElement("script");
+      replacement.src = s.src;
+      try {
+        s.replaceWith(replacement);
+      } catch (ex) {
+      }
+    });
+  } catch (ex) {
+  }
+  window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
+  if (window.__LVMessenger)
+    window.__LVMessenger.accent = window.metaThemeColor;
+}
+function ready(fn) {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(fn, 0);
+    return;
+  }
+  window.addEventListener("DOMContentLoaded", fn, false);
+}
+ready(init);
 var eventPrevent = function(event2) {
   event2.preventDefault();
 };
@@ -4377,8 +4429,10 @@ window.addEventListener("keydown", function(event2) {
     case "F10":
       event2.preventDefault();
       var c = windowManager.windows["console"];
-      c.open();
-      c.maximize();
+      if (c) {
+        c.open();
+        c.maximize();
+      }
       break;
     case "F9":
       event2.preventDefault();
@@ -4396,6 +4450,7 @@ function DesktopManager() {
   this.scrollTabs = null;
   this.desktopParent = null;
   this.desktopNextSibling = null;
+  this._endAnim = null;
 }
 Object.defineProperty(DesktopManager.prototype, "isExpos\xE9", {
   get: function() {
@@ -4405,20 +4460,72 @@ Object.defineProperty(DesktopManager.prototype, "isExpos\xE9", {
 DesktopManager.prototype.getDesktopIndexAt = function(x, y) {
   for (var i = 0; i < this.desktops.length; i++) {
     var desktop = this.desktops[i];
+    if (!desktop) continue;
     var element = desktop.target;
-    if (!element || !element.getBoundingClientRect) continue;
     var rect = element.getBoundingClientRect();
     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return i;
   }
   return -1;
 };
 DesktopManager.prototype.init = function() {
+  if (flags.bootAnimation) this.playBootAnimation();
   var windowSection = document.getElementById("window-section");
   if (windowSection) {
     this.desktopParent = windowSection.parentNode;
     this.desktopNextSibling = windowSection.nextSibling;
   }
   this.setExpos\u00E9Enabled(!(typeof flags !== "undefined" && flags.exposeAndDesktops === false));
+  initApps();
+  if (document.documentMode === 9) {
+    var script2 = document.createElement("script");
+    script2.src = "./Scripts/Animation.js";
+    document.getElementsByTagName("head")[0].appendChild(script2);
+  }
+  setTimeout(this.finishBootAnimationEarly, 200);
+};
+Object.defineProperty(DesktopManager.prototype, "overlay", {
+  get: function() {
+    return document.getElementById("overlay");
+  }
+});
+DesktopManager.prototype.toggleOverlayVisible = function(visible, animate, extraClass) {
+  var overlay = this.overlay;
+  if (!overlay) return;
+  if (visible) overlay.classList.add("open");
+  else overlay.classList.remove("open");
+  if (animate !== false) overlay.classList.add("animating");
+  else overlay.classList.remove("animating");
+  if (extraClass) overlay.classList.add(extraClass);
+};
+DesktopManager.prototype.resetOverlay = function() {
+  var overlay = this.overlay;
+  if (!overlay) return;
+  overlay.className = "";
+};
+DesktopManager.prototype.playBootAnimation = function(name) {
+  this.toggleOverlayVisible(true, false, name || "zoom");
+  var overlay = this.overlay;
+  if (!overlay) return;
+  var logo = document.getElementById("boot-logo");
+  if (!logo) return;
+  var log = logo;
+  log.className = "";
+  var self2 = this;
+  this._endAnim = function() {
+    self2.toggleOverlayVisible(false);
+    Helpers.animateElement(log, function() {
+      log.classList.add("end");
+    });
+  };
+  Helpers.animateElement(log, function() {
+    log.classList.add("neutral");
+  }, "transform", function() {
+    log.classList.add("neutral-big");
+    if (this._endAnim) setTimeout(this._endAnim, 500);
+  }, this, 2e3);
+};
+DesktopManager.prototype.finishBootAnimationEarly = function() {
+  if (this._endAnim) this._endAnim();
 };
 DesktopManager.prototype.isExpos\u00E9Supported = function() {
   return "TabScroller" in window && !(document.documentMode && document.documentMode < 10);
@@ -4436,7 +4543,8 @@ DesktopManager.prototype.enableExpos\u00E9 = function() {
     this.desktopNextSibling = windowSection.nextSibling;
   }
   document.body.classList.add("expos\xE9");
-  this.scrollTabs = new TabScroller(document.querySelector("main"));
+  var main = document.getElementById("desktop-area");
+  this.scrollTabs = main ? new TabScroller(main) : null;
   this.addDesktop("Main", windowSection);
   this.addDesktop();
   this.addDesktop();
@@ -4719,9 +4827,18 @@ if (document.readyState === "loading") {
 } else {
   loadWallpaperFromCache();
 }
+var jebNumber = 0;
 window.addEventListener("keydown", function(event2) {
   if (event2.key === "Shift" || event2.keyCode === 16) {
     document.body.classList.add("slow-animations");
+  }
+  console.log(event2.key);
+  if (event2.key === "j" && jebNumber === 0) {
+    jebNumber++;
+  } else if (event2.key === "e" && jebNumber === 1) {
+    jebNumber++;
+  } else if (event2.key === "b" && jebNumber === 2) {
+    setTheme("jeb");
   }
 }, false);
 window.addEventListener("keyup", function(event2) {
@@ -4765,7 +4882,7 @@ function formatCamelCase(text) {
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 function SettingsHandler() {
-  this.storage = typeof localStorage != "undefined" && localStorage || typeof ActiveXStorage != "undefined" && new ActiveXStorage();
+  this.storage = typeof localStorage !== "undefined" && localStorage || typeof ActiveXStorage !== "undefined" && new ActiveXStorage();
 }
 SettingsHandler.prototype.get = function(key) {
   if (!this.storage) return null;
@@ -4790,10 +4907,10 @@ SettingsHandler.prototype.saveFlags = function(flags2) {
 };
 SettingsHandler.prototype.restoreFlags = function(flags2) {
   var saved = this.get("flags");
-  if (!saved || typeof saved != "object") return;
+  if (!saved || typeof saved !== "object") return;
   for (var flagId in saved) {
     if (!saved.hasOwnProperty(flagId)) continue;
-    if (typeof flags2[flagId] == "boolean" && typeof saved[flagId] == "boolean") {
+    if (typeof flags2[flagId] === "boolean" && typeof saved[flagId] === "boolean") {
       flags2[flagId] = saved[flagId];
     }
   }
@@ -4903,18 +5020,18 @@ function setBorderSize(size) {
   }
 }
 function hexToRGB(hex) {
-  if (typeof hex == "undefined" || !hex) return;
+  if (typeof hex === "undefined" || !hex) return;
   var bla = 0;
   return { r: bla >> 16 & 255, g: bla >> 8 & 255, b: bla & 255 };
 }
 function isColorDark(color) {
-  if (typeof color == "undefined") return;
+  if (typeof color === "undefined") return;
   var rgb = hexToRGB(color);
   if (!rgb) return false;
   return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b < 128;
 }
 function setColor(color) {
-  if (typeof color == "undefined" || !(elements.color instanceof HTMLInputElement)) return;
+  if (typeof color === "undefined" || !(elements.color instanceof HTMLInputElement)) return;
   settings.set("color", elements.color.value = color);
   var isWhite = isColorDark(color);
   if (!("windowManager" in window)) return;
@@ -4930,10 +5047,12 @@ function setColor(color) {
 }
 function setAccentColor(color) {
   if (!color) return;
-  elements.accent.value = color;
+  if (elements.accent) elements.accent.value = color;
   settings.set("accentColor", color);
   var isWhite = isColorDark(color);
-  var metroStyle = document.getElementById("metro").style, charmStyle = document.getElementById("charms").style;
+  var metro = document.getElementById("metro");
+  if (!metro) return;
+  var metroStyle = metro.style, charmStyle = document.getElementById("charms").style;
   metroStyle.backgroundColor = charmStyle.backgroundColor = color;
   metroStyle.color = charmStyle.color = isWhite ? "white" : "black";
 }
@@ -4955,7 +5074,7 @@ function loadWallpaperOptions() {
   noneOption.value = "";
   noneOption.textContent = "None";
   elements.wallpaperSelect.appendChild(noneOption);
-  if (typeof appManager != "undefined" && typeof appManager.forEachWallpaper == "function") {
+  if (typeof appManager !== "undefined" && typeof appManager.forEachWallpaper === "function") {
     appManager.forEachWallpaper(function(app, id) {
       var option = document.createElement("option");
       option.value = "registered:" + id;
@@ -4973,9 +5092,9 @@ function loadWallpaperOptions() {
 function restoreWallpaperSetting() {
   loadWallpaperOptions();
   var wallpaper2 = settings.get("wallpaper");
-  if (typeof wallpaper2 != "string" || !wallpaper2) return;
+  if (typeof wallpaper2 !== "string" || !wallpaper2) return;
   if (wallpaper2 === "image") return;
-  if (wallpaper2.indexOf("registered:") === 0 && window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function") {
+  if (wallpaper2.indexOf("registered:") === 0 && window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper === "function") {
     window.desktopManager.applyRegisteredWallpaper(wallpaper2.slice("registered:".length));
   }
 }
@@ -4983,12 +5102,12 @@ function setWallpaperOption(value) {
   settings.set("wallpaper", value);
   updateWallpaperImageButton();
   if (value === "image") {
-    if (typeof loadWallpaperFromCache == "function") loadWallpaperFromCache();
+    if (typeof loadWallpaperFromCache === "function") loadWallpaperFromCache();
     return;
   }
   if (value.indexOf("registered:") === 0) {
     var id = value.slice("registered:".length);
-    if (window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function")
+    if (window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper === "function")
       window.desktopManager.applyRegisteredWallpaper(id);
     return;
   }
@@ -5035,12 +5154,12 @@ function loadThemeSetting() {
     if (elements.theme) elements.theme.value = theme;
   }
   var colorDebug = settings.get("color-debug");
-  if (typeof colorDebug == "boolean") {
+  if (typeof colorDebug === "boolean") {
     document.body.classList.toggle("color-debug", colorDebug);
     if (elements.colorDebug) elements.colorDebug.checked = colorDebug;
   }
   var squircles = settings.get("squircles");
-  if (typeof squircles == "boolean") {
+  if (typeof squircles === "boolean") {
     document.body.classList.toggle("squircles", squircles);
     if (elements.squircles) elements.squircles.checked = squircles;
   }
@@ -5082,15 +5201,20 @@ function installAppFromUrl(useProxy) {
     return;
   }
   if (typeof windowManager !== "undefined") {
-    if (useProxy && typeof windowManager.installAppProxied == "function") {
+    if (useProxy && typeof windowManager.installAppProxied === "function") {
       windowManager.installAppProxied(url);
-    } else if (typeof windowManager.installApp == "function") {
+    } else if (typeof windowManager.installApp === "function") {
       windowManager.installApp(url);
     }
     if (elements.installAppUrl) elements.installAppUrl.value = "";
   }
 }
 function loadElements() {
+  if (typeof flags !== "undefined") settings.loadFlags(flags);
+  if (!flags.bootAnimation) {
+    var logo = document.getElementById("overlay");
+    logo.style.display = "none";
+  }
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
   elements.border = document.getElementById("border");
@@ -5152,7 +5276,6 @@ function loadElements() {
       installAppFromUrl(false);
     }, false);
   }
-  if (typeof flags !== "undefined") settings.loadFlags(flags);
 }
 addEventListener("load", function() {
   loadElements();
@@ -5178,7 +5301,7 @@ function provisionedApp(title, id, src, extra) {
 var applications = [
   provisionedApp("Settings App", "settings", "./Applications/Settings/settings.html"),
   provisionedApp("Frosted Colors", "colors", "Applications/FrostedColours/index.html", { distSrc: "https://iemand005.github.io/FrostedColours", wallpaper: true }),
-  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 40 }),
   provisionedApp("Color Tool", "colortool", "./Applications/ColorTool/colors.html", { minWidth: 180, minHeight: 240 }),
   provisionedApp("Example", "0", "./example.html"),
   provisionedApp("Camera", "camera", "./Applications/Camera/index.html", { camera: true, microphone: true }),
@@ -5225,7 +5348,8 @@ var applications = [
   provisionedApp("LVOS", "lvos", "index.html", { distSrc: "https://iemand005.github.io/LVOS/", altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"] }),
   provisionedApp("Speak", "speak", "Applications/Speak/speak.html"),
   provisionedApp("Tepartive.NET", "tepartive", "https://tepartive.net/"),
-  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html")
+  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html"),
+  provisionedApp("AIOne", "aione-web", "https://aione-web.pages.dev/")
 ];
 var games = [
   provisionedApp("Conway", "conway", "./Games/Conway/index.html", { classes: ["rounded-corners"] }),
@@ -5270,7 +5394,6 @@ function finishAppInstall() {
   if (typeof restoreWallpaperSetting === "function") restoreWallpaperSetting();
 }
 finishAppInstall();
-window.addEventListener("load", initApps, false);
 var bindConsole = true;
 var ConsoleOutType = {
   Input: -1,
