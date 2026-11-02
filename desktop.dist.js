@@ -453,15 +453,19 @@ var isLocal = location.protocol === "file:" || location.hostname === "localhost"
 var transitionEndEvent = "transition" in document.documentElement.style ? "transitionend" : "webkitTransition" in document.documentElement.style ? "webkitTransitionEnd" : "transitionend";
 if (isIE) useTransform = true;
 if (!supportsTransform) useTransform = false;
+var allowUpdateRateLimit = false;
+if (document.documentMode && document.documentMode < 9) allowUpdateRateLimit = false;
+if (document.documentMode && document.documentMode < 8) useScale = true;
 var flags = {
   useSkewAnimations: false,
   aeroSnap: true,
-  updateRateLimit: true,
+  updateRateLimit: allowUpdateRateLimit,
   useDragOverlay: true,
   broadcastWindowMoves: !document.documentMode,
-  _useTransform: useTransform,
   useAnimations: true,
   ieDropCompatibleMode: true,
+  bootAnimation: true,
+  _useTransform: useTransform,
   get useTransform() {
     return this._useTransform;
   },
@@ -469,6 +473,16 @@ var flags = {
     this._useTransform = value;
     windowManager.forEachWindow(function(dialog) {
       dialog.useTransform = value;
+    });
+  },
+  _useScale: useScale,
+  get useScale() {
+    return this._useScale;
+  },
+  set useScale(value) {
+    this._useScale = value;
+    windowManager.forEachWindow(function(dialog) {
+      dialog.useScale = value;
     });
   },
   _compositorResize: true,
@@ -518,10 +532,15 @@ var flags = {
   }
 };
 function cancelDomEvent(event2) {
-  if (typeof event2.preventDefault === "function") event2.preventDefault();
-  event2.returnValue = false;
-  if (typeof event2.stopPropagation === "function") event2.stopPropagation();
-  event2.cancelBubble = true;
+  try {
+    if (typeof event2.preventDefault === "function") event2.preventDefault();
+    event2.returnValue = false;
+    if (typeof event2.stopPropagation === "function") event2.stopPropagation();
+    event2.cancelBubble = true;
+    return false;
+  } catch (ex) {
+    console.warn("Failed co tancel dom evemnt.txt", ex);
+  }
   return false;
 }
 function getFaviconUrl(url) {
@@ -540,10 +559,10 @@ function getSiteName(url) {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 Helpers.isElement = function(object) {
-  return object && "nodeType" in object || false;
+  return typeof object === "object" && "nodeType" in object || false;
 };
 function getWindowChromeHeight(window2) {
-  return window2.outerHeight - window2.innerHeight;
+  return window2.outerHeight - Helpers.getViewportHeight();
 }
 Helpers.translateElement = function(element, x, y) {
   transformElement(element, { x, y });
@@ -666,6 +685,12 @@ Helpers.stringifyWindowOpenProperties = function(properties) {
 Helpers.getViewBoxPosition = function() {
   return { x: window.screenLeft, y: window.screenTop };
 };
+Helpers.getViewportHeight = function() {
+  return window.innerHeight || document.documentElement && document.documentElement.clientHeight || document.body && document.body.clientHeight || 0;
+};
+Helpers.getViewportWidth = function() {
+  return window.innerWidth || document.documentElement && document.documentElement.clientWidth || document.body && document.body.clientWidth || 0;
+};
 Helpers.toPixels = function(value) {
   return Math.round(value || 0) + "px";
 };
@@ -693,20 +718,22 @@ function getDialogTemplate() {
   if (!template) return;
   var content = template;
   if (template instanceof HTMLTemplateElement) return template.content.children[0];
-  return content.children[0];
+  return content.children ? content.children[0] : content.childNodes[1];
 }
 function createDialogElement() {
   var template = getDialogTemplate();
   if (!template) throw new Error("Can't find dialog template!");
   var clone = removeComments(template.cloneNode(true));
-  if (!(clone instanceof HTMLElement)) throw new Error("Cloned dialog is not an element");
+  if (!Helpers.isElement(clone)) throw new Error("Cloned dialog is not an element");
   return clone;
 }
 function removeComments(element) {
-  element.childNodes.forEach(function(child) {
+  for (var i in element.childNodes) {
+    var child = element.childNodes[i];
+    if (!child) continue;
     if (child.nodeName === "#comment") element.removeChild(child);
     else if (Helpers.isElement(child)) removeComments(child);
-  });
+  }
   return element;
 }
 function flipElement(element, onToggled, thisArg) {
@@ -741,7 +768,7 @@ function clearFlip(element) {
   element.style.transformOrigin = "";
   element.classList.remove("flipping");
 }
-function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, timeout, flip2) {
+Helpers.animateElement = function(element, onToggled, onTransitionEnd, onEnd, thisArg, timeout, flip2) {
   var boundContext = thisArg || element;
   var callEnd = function() {
     if (!state.active) return;
@@ -770,10 +797,11 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       flipElement(element, onToggled, boundContext);
     } else element.classList.add("animating");
     var animationHandler = function(event2) {
-      if (!onTransitionEnd) return;
-      if (typeof onTransitionEnd === "string") {
-        if (event2.propertyName !== onTransitionEnd) return;
-      } else if (!onTransitionEnd(event2.propertyName)) return;
+      if (onTransitionEnd) {
+        if (typeof onTransitionEnd === "string") {
+          if (event2.propertyName !== onTransitionEnd) return;
+        } else if (!onTransitionEnd(event2.propertyName)) return;
+      }
       element.removeEventListener(transitionEndEvent, animationHandler, false);
       clearTimeout(state.timer);
       callEnd();
@@ -787,7 +815,7 @@ function animateElement(element, onToggled, onTransitionEnd, onEnd, thisArg, tim
       if (onToggled) onToggled.call(boundContext);
     });
   }
-}
+};
 function WindowManager() {
   this._windows = {};
   this._windowStates = null;
@@ -818,8 +846,8 @@ function WindowManager() {
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
-  this.channel = BroadcastChannel && new BroadcastChannel("lvos");
-  this.channel.onmessage = function(ev) {
+  this.channel = "BroadcastChannel" in window && new BroadcastChannel("lvos");
+  if (this.channel) this.channel.onmessage = function(ev) {
     var data = ev.data;
     if (typeof data === "string") try {
       data = JSON.parse(data);
@@ -1079,8 +1107,8 @@ WindowManager.recalculateWindowBounds = function() {
   var inset = WindowManager.windowBoundsInset;
   WindowManager._windowBounds.top = inset.top !== null ? inset.top : -Infinity;
   WindowManager._windowBounds.left = inset.left !== null ? inset.left : -Infinity;
-  WindowManager._windowBounds.right = inset.right !== null ? window.innerWidth - inset.right : Infinity;
-  WindowManager._windowBounds.bottom = inset.bottom !== null ? window.innerHeight - inset.bottom : Infinity;
+  WindowManager._windowBounds.right = inset.right !== null ? Helpers.getViewportWidth() - inset.right : Infinity;
+  WindowManager._windowBounds.bottom = inset.bottom !== null ? Helpers.getViewportHeight() - inset.bottom : Infinity;
 };
 Object.defineProperty(WindowManager, "windowBounds", {
   get: function() {
@@ -1335,11 +1363,11 @@ WindowManager.prototype.getSnapGroup = function(section) {
 };
 WindowManager.prototype.snapWidth = function(section) {
   var area = section || this.getSnapContainer();
-  return area ? area.clientWidth : window.innerWidth;
+  return area ? area.clientWidth : Helpers.getViewportWidth();
 };
 WindowManager.prototype.snapHeight = function(section) {
   var area = section || this.getSnapContainer();
-  return area ? area.clientHeight : window.innerHeight;
+  return area ? area.clientHeight : Helpers.getViewportHeight();
 };
 WindowManager.prototype.setPointerPosition = function(x, y) {
   this.pointerPosition.x = x;
@@ -1646,7 +1674,7 @@ function WindowSnap() {
   this._snapped = "";
   this._section = null;
   if (document.documentMode && document.documentMode < 9) return;
-  this.element.classList.add("hidden");
+  if (this.element.classList) this.element.classList.add("hidden");
 }
 Object.defineProperty(WindowSnap.prototype, "hidden", {
   get: function() {
@@ -1695,7 +1723,7 @@ WindowSnap.prototype.moveToDialog = function(dialog, outset, direction, noAnimat
   this.element.style.zIndex = dialog.z.toString();
   this.hidden = false;
   if (isTouch && !direction) dialog.setDragScale(0.9, 0.9);
-  if (!noAnimation) animateElement(this.element, function() {
+  if (!noAnimation) Helpers.animateElement(this.element, function() {
     this.applyInsetStyle(top, left, right, bottom);
   }, function(name) {
     return name === "inset";
@@ -1710,7 +1738,7 @@ WindowSnap.prototype.setInset = function(inset) {
 };
 WindowSnap.prototype.areaWidth = function() {
   var section = this._section || windowManager && windowManager.getSnapContainer() || document.getElementById("window-section");
-  return section ? section.clientWidth : window.innerWidth;
+  return section ? section.clientWidth : Helpers.getViewportWidth();
 };
 WindowSnap.prototype.setHalfInset = function(side) {
   var half = Math.round(this.areaWidth() / 2);
@@ -1740,7 +1768,7 @@ WindowSnap.prototype.snap = function(type, dialog) {
   }
   this.hidden = false;
   if (dialog) this.element.style.zIndex = dialog.z.toString();
-  animateElement(this.element, function() {
+  Helpers.animateElement(this.element, function() {
     switch (type) {
       case "maximize":
         this.setInset(WindowSnap.margin);
@@ -1761,7 +1789,7 @@ WindowSnap.prototype.snap = function(type, dialog) {
 WindowSnap.prototype.hideBehind = function(dialog, keepScale) {
   if (!keepScale) dialog.setDragScale(1, 1);
   if (this.hidden) return;
-  animateElement(this.element, function() {
+  Helpers.animateElement(this.element, function() {
     this.moveToDialog(dialog, 0, void 0, true);
   }, function(name) {
     return name === "inset";
@@ -1870,7 +1898,7 @@ Transformable.prototype.applyTransform = function() {
   transformElement(this.target, this._transform);
 };
 Transformable.prototype.update = function(animate) {
-  if (animate) animateElement(this.target, this.applyTransform, "transform", void 0, this, 1e3);
+  if (animate) Helpers.animateElement(this.target, this.applyTransform, "transform", void 0, this, 1e3);
   else this.applyTransform();
 };
 Transformable.prototype.move = function(x, y, animate) {
@@ -1936,8 +1964,8 @@ function Dialog(object) {
   this._previousX = 0;
   this._previousY = 0;
   this._minWidth = 200;
-  this._minHeight = 200;
-  this._maxWidth = 1e3;
+  this._minHeight = 40;
+  this._maxWidth = 2e3;
   this._maxHeight = 1e3;
   this._minAspectRatio = 0;
   this._maxAspectRatio = Infinity;
@@ -1964,9 +1992,11 @@ function Dialog(object) {
   if (!object) return;
   var id = object.id;
   this.application = null;
-  if (!Helpers.isElement(object))
+  if (!Helpers.isElement(object)) {
     this.application = object;
-  else this.target = object;
+    if (object.minWidth) this._minWidth = object.minWidth;
+    if (object.minHeight) this._minHeight = object.minHeight;
+  } else this.target = object;
   if (!id) id = object.title;
   if (object.title) this._title = object.title;
   else {
@@ -1987,11 +2017,17 @@ function Dialog(object) {
   this._appIcon = null;
   var self2 = this;
   this.activationHandler = function(ev, id2) {
-    self2._ctrlDrag = !!ev.ctrlKey;
-    if (ev.ctrlKey) {
+    if (!ev) {
+      var event2 = window.event;
+      event2.target = event2.srcElement;
+      ev = event2;
+    }
+    self2._ctrlDrag = !!(ev && ev.ctrlKey);
+    if (self2._ctrlDrag) {
       ev.stopImmediatePropagation();
       return;
     }
+    ensureClassList(ev.target);
     if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
     windowManager.windowActivationEvent(ev, self2, id2);
@@ -2053,21 +2089,21 @@ function Dialog(object) {
   var buttons = target.getElementsByTagName("button");
   var createSizers = true;
   if (this.resizable && createSizers) this._createSizers();
-  target.addEventListener("selectstart", function(event2) {
+  target.onselectstart = function(event2) {
     if (self2._ctrlDrag) return;
     cancelDomEvent(event2);
-  }, false);
+  };
   var body = this.body;
-  if (body) body.addEventListener("load", function() {
+  if (body) body.onload = function() {
     try {
       self2.verifyEjectCapability();
     } catch (exception) {
       console.log(exception);
       if (buttons[0]) buttons[0].style.display = "none";
     }
-  }, false);
+  };
   var header = this.titleBar;
-  if (header) target.addEventListener("dblclick", function(event2) {
+  if (header) target.ondblclick = function(event2) {
     var rect = getRect(header);
     if (!rect || event2.clientX < rect.left || event2.clientX > rect.right || event2.clientY < rect.top || event2.clientY > rect.bottom) return;
     var node = event2.target instanceof HTMLElement ? event2.target : null;
@@ -2076,20 +2112,22 @@ function Dialog(object) {
       node = node.parentElement;
     }
     self2.toggleMaximized();
-  }, false);
-  if (supportsPointer) target.addEventListener("pointerdown", this.activationHandler, false);
-  else target.addEventListener("mousedown", this.activationHandler, false);
+  };
+  if (supportsPointer) target.onpointerdown = this.activationHandler;
+  else target.onmousedown = this.activationHandler;
   var ejectButton = buttons[windowButtons.eject];
   if (ejectButton)
-    ejectButton.addEventListener("click", this.eject.bind(this), false);
+    ejectButton.onclick = this.eject.bind(this);
   var closeButton = buttons[windowButtons.close];
   if (closeButton)
-    closeButton.addEventListener("click", this.close.bind(this), false);
+    closeButton.onclick = this.close.bind(this);
   var fullscreenButton = buttons[windowButtons.full];
   if (fullscreenButton)
-    fullscreenButton.addEventListener("click", this.toggleMaximized.bind(this, void 0), false);
+    fullscreenButton.onclick = function() {
+      self2.toggleMaximized();
+    };
   this.toggleOpen(false);
-  target.addEventListener("dragstart", function(event2) {
+  target.ondragstart = function(event2) {
     if (!(event2.ctrlKey || self2._ctrlDrag) || !event2.dataTransfer || !self2.application) {
       event2.preventDefault();
       return;
@@ -2122,10 +2160,10 @@ function Dialog(object) {
     }
     transfer.effectAllowed = "copyMove";
     self2.target.classList.add("hidden");
-  }, false);
-  target.addEventListener("dragend", function() {
+  };
+  target.ondragend = function() {
     self2._ctrlDrag = false;
-  }, false);
+  };
   if (this.id) windowManager.windows[this.id] = this;
   this.updateUseTransform(this.useTransform);
   this.updateScale(this.useScale);
@@ -2133,7 +2171,7 @@ function Dialog(object) {
   if (!Helpers.isElement(object))
     if (object instanceof Dialog)
       this.move(object.x, object.y);
-    else this.moveCenterTo(window.innerWidth / 2, window.innerHeight / 2);
+    else this.moveCenterTo(Helpers.getViewportWidth() / 2, Helpers.getViewportHeight() / 2);
   if (this.frame) this.frame.addEventListener("load", function() {
     self2._loaded = true;
   }, false);
@@ -2146,9 +2184,23 @@ Dialog.prototype.getElementByTagOrClassName = function(name, parent) {
   var target = parent || this.target;
   if (!target) return null;
   var elements2 = target.getElementsByTagName(name);
-  if (!elements2 || !elements2.length) elements2 = target.getElementsByClassName(name);
-  var element = elements2.length ? elements2[0] : null;
-  if (Helpers.isElement(element)) return element;
+  if (!elements2 || !elements2.length) {
+    if (target.getElementsByClassName) {
+      elements2 = target.getElementsByClassName(name);
+    } else if (document.getElementsByClassName) {
+      var candidates = document.getElementsByClassName(name);
+      var filtered = [];
+      for (var i = 0; i < candidates.length; i++) {
+        var node = candidates[i];
+        if (target.contains ? target.contains(node) : target.compareDocumentPosition && target.compareDocumentPosition(node) & 16) {
+          filtered.push(node);
+        }
+      }
+      elements2 = filtered;
+    }
+  }
+  var element = elements2 && elements2.length ? elements2[0] : null;
+  if (element && Helpers.isElement(element)) return element;
   return null;
 };
 Dialog.prototype.setParentElement = function(element) {
@@ -2238,6 +2290,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
     var sizerId = "sizer-" + id;
     var sizer = self2.getElementByTagOrClassName(sizerId);
     if (!sizer || !Helpers.isElement(sizer)) sizer = document.createElement("div");
+    ensureClassList(sizer);
     sizer.draggable = false;
     sizer.id = id.toString();
     sizer.classList.add(sizerId);
@@ -2300,8 +2353,35 @@ Dialog.prototype.toggleOpen = function(forceOpen, kill) {
 };
 Dialog.prototype.getOrCreateFrame = function(create) {
   var frame = this.frame;
-  if (frame || !create || !this.body) return frame;
-  return this.body.appendChild(document.createElement("iframe"));
+  if (frame || create === false) return frame;
+  var body = null;
+  if (this.target) {
+    if (this.target.getElementsByTagName) {
+      var articles = this.target.getElementsByTagName("article");
+      if (articles && articles.length) {
+        body = articles[0];
+      }
+    }
+    if (!body && this.target.getElementsByClassName) {
+      var ac = this.target.getElementsByClassName("article");
+      if (ac && ac.length) body = ac[0];
+    }
+  }
+  if (!body) body = this.body;
+  if (!body && this.target) {
+    if (this.target.getElementsByTagName) {
+      var articles2 = this.target.getElementsByTagName("article");
+      if (articles2 && articles2.length) body = articles2[0];
+    }
+  }
+  if (!body) return null;
+  try {
+    var frameEl = document.createElement("iframe");
+    body.appendChild(frameEl);
+    return frameEl;
+  } catch (ex) {
+    return null;
+  }
 };
 Object.defineProperties(Dialog.prototype, {
   isOpen: {
@@ -2359,7 +2439,7 @@ Object.defineProperties(Dialog.prototype, {
   },
   x: {
     get: function() {
-      return this._x * window.innerWidth;
+      return this._x * Helpers.getViewportWidth();
     },
     set: function(x) {
       if (typeof x === "number") this.move(x, this.y);
@@ -2367,7 +2447,7 @@ Object.defineProperties(Dialog.prototype, {
   },
   y: {
     get: function() {
-      return this._y * window.innerHeight;
+      return this._y * Helpers.getViewportHeight();
     },
     set: function(y) {
       if (typeof y === "number") this.move(this.x, y);
@@ -2517,11 +2597,11 @@ Object.defineProperties(Dialog.prototype, {
       var height = Math.max(Math.min(bottom - top, this.maxHeight), this.minHeight);
       top = bottom - height;
       this._height = height;
-      this._y = top / window.innerHeight;
+      this._y = top / Helpers.getViewportHeight();
       if (this.useTransform) {
         this.target.style.height = Helpers.toPixels(height);
         this.updateTransform();
-      } else this.setInset(top, this.left, this.right, window.innerHeight - bottom);
+      } else this.setInset(top, this.left, this.right, Helpers.getViewportHeight() - bottom);
       this._isMinHeight = height === this.minHeight;
     }
   },
@@ -2537,11 +2617,11 @@ Object.defineProperties(Dialog.prototype, {
       var width = Math.max(Math.min(right - left, this.maxWidth), this.minWidth);
       left = right - width;
       this._width = width;
-      this._x = left / window.innerWidth;
+      this._x = left / Helpers.getViewportWidth();
       if (this.useTransform) {
         this.target.style.width = Helpers.toPixels(width);
         this.updateTransform();
-      } else this.setInset(this.top, left, window.innerWidth - right, this.bottom);
+      } else this.setInset(this.top, left, Helpers.getViewportWidth() - right, this.bottom);
       this._isMinWidth = width === this.minWidth;
     }
   },
@@ -2556,14 +2636,14 @@ Object.defineProperties(Dialog.prototype, {
   right: {
     get: function() {
       var rfl = this.rightFromLeft;
-      return typeof rfl === "number" && rfl === rfl ? window.innerWidth - rfl : 0;
+      return typeof rfl === "number" && rfl === rfl ? Helpers.getViewportWidth() - rfl : 0;
     },
     set: function(right) {
       if (typeof right === "number") {
         var bounds = WindowManager.windowBounds;
         if (right > bounds.right) right = bounds.right;
         if (right < bounds.left) right = bounds.left;
-        this.width = window.innerWidth - right - this.x;
+        this.width = Helpers.getViewportWidth() - right - this.x;
       }
     }
   },
@@ -2578,14 +2658,14 @@ Object.defineProperties(Dialog.prototype, {
   bottom: {
     get: function() {
       var bft = this.bottomFromTop;
-      return typeof bft === "number" && bft === bft ? window.innerHeight - bft : 0;
+      return typeof bft === "number" && bft === bft ? Helpers.getViewportHeight() - bft : 0;
     },
     set: function(bottom) {
       if (typeof bottom === "number") {
         var bounds = WindowManager.windowBounds;
         if (bottom > bounds.bottom) bottom = bounds.bottom;
         if (bottom < bounds.top) bottom = bounds.top;
-        this.height = window.innerHeight - bottom - this.y;
+        this.height = Helpers.getViewportHeight() - bottom - this.y;
       }
     }
   },
@@ -2920,7 +3000,7 @@ Dialog.prototype.stopAnimating = function() {
   this.target.classList.remove("animating");
 };
 Dialog.prototype.animate = function(onToggled, onTransitionEnd, onEnd, timeout, flip2) {
-  animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
+  Helpers.animateElement(this.target, onToggled, onTransitionEnd, onEnd, this, timeout, flip2);
 };
 Dialog.prototype.toggleClassAnimated = function(className, force, onTransitionEnd, onEnd, onToggled, timeout) {
   var self2 = this;
@@ -3001,13 +3081,13 @@ Dialog.prototype.toggleMaximized = function(enable) {
       if (enable) {
         self2.x = Anim.lerp(startPos.x, 0, ease(t));
         self2.y = Anim.lerp(startPos.y, 0, ease(t));
-        self2.width = Anim.lerp(startSize.x, window.innerWidth, ease(t));
-        self2.height = Anim.lerp(startSize.y, window.innerHeight, ease(t));
+        self2.width = Anim.lerp(startSize.x, Helpers.getViewportWidth(), ease(t));
+        self2.height = Anim.lerp(startSize.y, Helpers.getViewportHeight(), ease(t));
       } else {
         self2.x = Anim.lerp(0, startPos.x, ease(t));
         self2.y = Anim.lerp(0, startPos.y, ease(t));
-        self2.width = Anim.lerp(window.innerWidth, startSize.x, ease(t));
-        self2.height = Anim.lerp(window.innerHeight, startSize.y, ease(t));
+        self2.width = Anim.lerp(Helpers.getViewportWidth(), startSize.x, ease(t));
+        self2.height = Anim.lerp(Helpers.getViewportHeight(), startSize.y, ease(t));
       }
     }, function() {
       if (enable) toggleMaximizedFallback();
@@ -3040,8 +3120,8 @@ Dialog.prototype.toggleMaximized = function(enable) {
     this._compositorMaxState = null;
   }
   var windowSection = windowManager.getSnapContainer(this);
-  var endWidth = windowSection ? windowSection.clientWidth : window.innerWidth;
-  var endHeight = windowSection ? windowSection.clientHeight : window.innerHeight;
+  var endWidth = windowSection ? windowSection.clientWidth : Helpers.getViewportWidth();
+  var endHeight = windowSection ? windowSection.clientHeight : Helpers.getViewportHeight();
   var startWidth = this.width || target.offsetWidth || 300;
   var startHeight = this.height || target.offsetHeight || 200;
   var startX = this.x;
@@ -3192,8 +3272,8 @@ Dialog.prototype.move = function(x, y, update, animate) {
     if (y < bounds.top) y = bounds.top;
     if (bounds.bottom !== Infinity && y > bounds.bottom - this.height) y = bounds.bottom - this.height;
   }
-  var windowWidth = window.innerWidth;
-  var windowHeight = window.innerHeight;
+  var windowWidth = Helpers.getViewportWidth();
+  var windowHeight = Helpers.getViewportHeight();
   var previousX = this._x, previousY = this._y;
   this._x = x / windowWidth;
   this._y = y / windowHeight;
@@ -3223,11 +3303,11 @@ Dialog.prototype.setZ = function(z) {
   if (previous !== this._z) this.broadcastState({ z: this._z });
 };
 Dialog.prototype.updateWidth = function() {
-  if (this.useTransform) this.target.style.width = Helpers.toPixels(this._width);
+  if (this.useTransform || this.useScale) this.target.style.width = Helpers.toPixels(this._width);
   else this.target.style.right = Helpers.toPixels(this.right);
 };
 Dialog.prototype.updateHeight = function() {
-  if (this.useTransform) this.target.style.height = Helpers.toPixels(this._height);
+  if (this.useTransform || this.useScale) this.target.style.height = Helpers.toPixels(this._height);
   else this.target.style.bottom = Helpers.toPixels(this.bottom);
 };
 Dialog.prototype._setSize = function(axis, size, update, animate) {
@@ -3487,13 +3567,44 @@ Dialog.prototype.setInset = function(top, left, right, bottom) {
   else insetElement(this.target, top, left, right, bottom);
 };
 Dialog.prototype.openUrl = function(url) {
+  var self2 = this;
   var frame = this.getOrCreateFrame(true);
-  if (!frame) return;
+  if (!frame) {
+    setTimeout(function() {
+      self2.openUrl(url);
+    }, 5);
+    return;
+  }
   var self2 = this;
   var timeout = -1;
   frame.onload = function() {
     clearTimeout(timeout);
     self2.reportState();
+    try {
+      self2.updateBodyOffset();
+      if (typeof self2.resize === "function") self2.resize(self2.width, self2.height);
+    } catch (ex) {
+    }
+    try {
+      if (typeof self2.update === "function") self2.update();
+    } catch (ex) {
+    }
+    setTimeout(function() {
+      try {
+        self2.updateBodyOffset();
+        if (typeof self2.resize === "function") self2.resize(self2.width, self2.height);
+        if (typeof self2.update === "function") self2.update();
+      } catch (ex) {
+      }
+    }, 0);
+    setTimeout(function() {
+      try {
+        self2.updateBodyOffset();
+        if (typeof self2.resize === "function") self2.resize(self2.width, self2.height);
+        if (typeof self2.update === "function") self2.update();
+      } catch (ex) {
+      }
+    }, 50);
   };
   if (!this.application) return;
   var baseUrls = [url || this.src, this.application.distSrc];
@@ -3501,15 +3612,19 @@ Dialog.prototype.openUrl = function(url) {
   var fallbackUrls = baseUrls.concat(this.application.altUrls);
   var index = 0;
   function tryNext() {
-    var url2;
-    while (index < fallbackUrls.length && !(url2 = fallbackUrls[index++])) ;
-    if (!url2 || !frame) return;
-    frame.src = url2;
-    self2._src = url2;
+    var nextUrl;
+    while (index < fallbackUrls.length && !(nextUrl = fallbackUrls[index++])) ;
+    if (!nextUrl || !frame) return;
+    frame.src = nextUrl;
+    self2._src = nextUrl;
     clearTimeout(timeout);
     timeout = setTimeout(tryNext, 3e3);
   }
-  frame.addEventListener("error", tryNext, false);
+  if (frame.attachEvent) {
+    frame.attachEvent("onerror", tryNext);
+  } else if (frame.addEventListener) {
+    frame.addEventListener("error", tryNext, false);
+  }
   tryNext();
 };
 Dialog.prototype.refresh = function() {
@@ -3561,7 +3676,7 @@ Dialog.prototype.createPopOut = function() {
       return;
     }
     var outerX = self2._popupWindow.screenX, outerY = self2._popupWindow.screenY;
-    var width = self2._popupWindow.innerWidth || self2._popupWindow.outerWidth, height = self2._popupWindow.innerHeight || self2._popupWindow.outerHeight;
+    var width = self2._popupHelpers.getViewportWidth() || self2._popupWindow.outerWidth, height = self2._popupWindow.innerHeight || self2._popupWindow.outerHeight;
     outerX = Math.round(outerX);
     outerY = Math.round(outerY);
     width = Math.round(width);
@@ -3594,7 +3709,7 @@ Dialog.prototype.updateUseTransform = function(useTransform2) {
     target.style.width = "";
     target.style.height = "";
   }
-  this.updateScale(useTransform2);
+  this.updateScale(this.useScale);
   this.update();
 };
 Dialog.prototype.updateScale = function(useScale2) {
@@ -4058,20 +4173,67 @@ class Modern {
   }
 }
 "use strict";
+var launchpad = typeof Launchpad !== "undefined" ? new Launchpad() : null;
+function loadScript(url, callback) {
+  var script2 = document.createElement("script");
+  script2.src = url;
+  script2.onload = callback;
+  document.head.appendChild(script2);
+}
+function init() {
+  if (typeof windowManager !== "undefined" && "windowManager" in window) {
+    if (launchpad) windowManager.forEachWindow(function(dialog) {
+      if (dialog.application) launchpad.addApp(dialog);
+    });
+    if (!isBlink) DesktopManager.removeTheme("glass");
+    windowManager.initializeDialogs();
+    LVMessenger.receive(messageReceived);
+  }
+  var launchpadElement = document.getElementById("launchpad");
+  if (launchpad && launchpadElement) {
+    launchpad.init(launchpadElement);
+    if (typeof appManager !== "undefined") {
+      appManager.forEachApp(launchpad.addApp.bind(launchpad));
+      appManager.reloadWallpaper();
+    }
+  }
+  if (location.protocol === "file:") try {
+    var scripts = document.querySelectorAll('script[type="module"]');
+    scripts.forEach(function(s) {
+      var replacement = document.createElement("script");
+      replacement.src = s.src;
+      try {
+        s.replaceWith(replacement);
+      } catch (ex) {
+      }
+    });
+  } catch (ex) {
+  }
+  window.metaThemeColor = document.querySelector('meta[name="theme-color"]') || void 0;
+  if (window.__LVMessenger)
+    window.__LVMessenger.accent = window.metaThemeColor;
+}
+function ready(fn) {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(fn, 0);
+    return;
+  }
+  window.addEventListener("DOMContentLoaded", fn, false);
+}
+ready(init);
 var eventPrevent = function(event2) {
   event2.preventDefault();
 };
 var onLoad = function() {
   var desktop = document.getElementById("desktop");
-  if (desktop) desktop.addEventListener("mousedown", function() {
+  if (desktop) desktop.onmousedown = function() {
     DesktopManager.toggleCharms(false);
     if (launchpad) launchpad.close();
     contextMenu.close();
-  }, false);
+  };
   var applist = document.getElementById("applist");
-  if (applist) {
-    applist.addEventListener("submit", eventPrevent, false);
-  }
+  if (applist)
+    applist.onsubmit = eventPrevent;
   var appButtons = document.getElementById("dockapplist");
   if (appButtons) {
     var startButton = document.createElement("button");
@@ -4267,8 +4429,10 @@ window.addEventListener("keydown", function(event2) {
     case "F10":
       event2.preventDefault();
       var c = windowManager.windows["console"];
-      c.open();
-      c.maximize();
+      if (c) {
+        c.open();
+        c.maximize();
+      }
       break;
     case "F9":
       event2.preventDefault();
@@ -4286,6 +4450,7 @@ function DesktopManager() {
   this.scrollTabs = null;
   this.desktopParent = null;
   this.desktopNextSibling = null;
+  this._endAnim = null;
 }
 Object.defineProperty(DesktopManager.prototype, "isExpos\xE9", {
   get: function() {
@@ -4295,20 +4460,72 @@ Object.defineProperty(DesktopManager.prototype, "isExpos\xE9", {
 DesktopManager.prototype.getDesktopIndexAt = function(x, y) {
   for (var i = 0; i < this.desktops.length; i++) {
     var desktop = this.desktops[i];
+    if (!desktop) continue;
     var element = desktop.target;
-    if (!element || !element.getBoundingClientRect) continue;
     var rect = element.getBoundingClientRect();
     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return i;
   }
   return -1;
 };
 DesktopManager.prototype.init = function() {
+  if (flags.bootAnimation) this.playBootAnimation();
   var windowSection = document.getElementById("window-section");
   if (windowSection) {
     this.desktopParent = windowSection.parentNode;
     this.desktopNextSibling = windowSection.nextSibling;
   }
   this.setExpos\u00E9Enabled(!(typeof flags !== "undefined" && flags.exposeAndDesktops === false));
+  initApps();
+  if (document.documentMode === 9) {
+    var script2 = document.createElement("script");
+    script2.src = "./Scripts/Animation.js";
+    document.getElementsByTagName("head")[0].appendChild(script2);
+  }
+  setTimeout(this.finishBootAnimationEarly, 200);
+};
+Object.defineProperty(DesktopManager.prototype, "overlay", {
+  get: function() {
+    return document.getElementById("overlay");
+  }
+});
+DesktopManager.prototype.toggleOverlayVisible = function(visible, animate, extraClass) {
+  var overlay = this.overlay;
+  if (!overlay) return;
+  if (visible) overlay.classList.add("open");
+  else overlay.classList.remove("open");
+  if (animate !== false) overlay.classList.add("animating");
+  else overlay.classList.remove("animating");
+  if (extraClass) overlay.classList.add(extraClass);
+};
+DesktopManager.prototype.resetOverlay = function() {
+  var overlay = this.overlay;
+  if (!overlay) return;
+  overlay.className = "";
+};
+DesktopManager.prototype.playBootAnimation = function(name) {
+  this.toggleOverlayVisible(true, false, name || "zoom");
+  var overlay = this.overlay;
+  if (!overlay) return;
+  var logo = document.getElementById("boot-logo");
+  if (!logo) return;
+  var log = logo;
+  log.className = "";
+  var self2 = this;
+  this._endAnim = function() {
+    self2.toggleOverlayVisible(false);
+    Helpers.animateElement(log, function() {
+      log.classList.add("end");
+    });
+  };
+  Helpers.animateElement(log, function() {
+    log.classList.add("neutral");
+  }, "transform", function() {
+    log.classList.add("neutral-big");
+    if (this._endAnim) setTimeout(this._endAnim, 500);
+  }, this, 2e3);
+};
+DesktopManager.prototype.finishBootAnimationEarly = function() {
+  if (this._endAnim) this._endAnim();
 };
 DesktopManager.prototype.isExpos\u00E9Supported = function() {
   return "TabScroller" in window && !(document.documentMode && document.documentMode < 10);
@@ -4326,7 +4543,8 @@ DesktopManager.prototype.enableExpos\u00E9 = function() {
     this.desktopNextSibling = windowSection.nextSibling;
   }
   document.body.classList.add("expos\xE9");
-  this.scrollTabs = new TabScroller(document.querySelector("main"));
+  var main = document.getElementById("desktop-area");
+  this.scrollTabs = main ? new TabScroller(main) : null;
   this.addDesktop("Main", windowSection);
   this.addDesktop();
   this.addDesktop();
@@ -4362,10 +4580,12 @@ DesktopManager.prototype.addOrMoveDesktopGap = function() {
   this.scrollTabs.element.appendChild(this.gapDesktop);
 };
 function setTheme(theme) {
+  ensureClassList(document.body);
   document.body.classList.add(theme);
   window.windowManager.synchronizeStates();
 }
 DesktopManager.removeTheme = function(theme) {
+  ensureClassList(document.body);
   document.body.classList.remove(theme);
 };
 DesktopManager.toggleCharms = function(force) {
@@ -4607,9 +4827,18 @@ if (document.readyState === "loading") {
 } else {
   loadWallpaperFromCache();
 }
+var jebNumber = 0;
 window.addEventListener("keydown", function(event2) {
   if (event2.key === "Shift" || event2.keyCode === 16) {
     document.body.classList.add("slow-animations");
+  }
+  console.log(event2.key);
+  if (event2.key === "j" && jebNumber === 0) {
+    jebNumber++;
+  } else if (event2.key === "e" && jebNumber === 1) {
+    jebNumber++;
+  } else if (event2.key === "b" && jebNumber === 2) {
+    setTheme("jeb");
   }
 }, false);
 window.addEventListener("keyup", function(event2) {
@@ -4653,7 +4882,7 @@ function formatCamelCase(text) {
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 function SettingsHandler() {
-  this.storage = typeof localStorage != "undefined" && localStorage || typeof ActiveXStorage != "undefined" && new ActiveXStorage();
+  this.storage = typeof localStorage !== "undefined" && localStorage || typeof ActiveXStorage !== "undefined" && new ActiveXStorage();
 }
 SettingsHandler.prototype.get = function(key) {
   if (!this.storage) return null;
@@ -4678,10 +4907,10 @@ SettingsHandler.prototype.saveFlags = function(flags2) {
 };
 SettingsHandler.prototype.restoreFlags = function(flags2) {
   var saved = this.get("flags");
-  if (!saved || typeof saved != "object") return;
+  if (!saved || typeof saved !== "object") return;
   for (var flagId in saved) {
     if (!saved.hasOwnProperty(flagId)) continue;
-    if (typeof flags2[flagId] == "boolean" && typeof saved[flagId] == "boolean") {
+    if (typeof flags2[flagId] === "boolean" && typeof saved[flagId] === "boolean") {
       flags2[flagId] = saved[flagId];
     }
   }
@@ -4702,10 +4931,10 @@ SettingsHandler.prototype.loadFlags = function(flags2) {
           toggle.type = "checkbox";
           toggle.id = "flag-" + flagId;
           toggle.checked = flagValue;
-          toggle.addEventListener("change", function() {
+          toggle.onchange = function() {
             flags2[currentKey] = toggle.checked;
             handler.saveFlags(flags2);
-          }, false);
+          };
           var label = document.createElement("label");
           label.htmlFor = toggle.id;
           label.appendChild(document.createTextNode(formatCamelCase(flagId)));
@@ -4791,18 +5020,18 @@ function setBorderSize(size) {
   }
 }
 function hexToRGB(hex) {
-  if (typeof hex == "undefined" || !hex) return;
+  if (typeof hex === "undefined" || !hex) return;
   var bla = 0;
   return { r: bla >> 16 & 255, g: bla >> 8 & 255, b: bla & 255 };
 }
 function isColorDark(color) {
-  if (typeof color == "undefined") return;
+  if (typeof color === "undefined") return;
   var rgb = hexToRGB(color);
   if (!rgb) return false;
   return 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b < 128;
 }
 function setColor(color) {
-  if (typeof color == "undefined" || !(elements.color instanceof HTMLInputElement)) return;
+  if (typeof color === "undefined" || !(elements.color instanceof HTMLInputElement)) return;
   settings.set("color", elements.color.value = color);
   var isWhite = isColorDark(color);
   if (!("windowManager" in window)) return;
@@ -4818,10 +5047,12 @@ function setColor(color) {
 }
 function setAccentColor(color) {
   if (!color) return;
-  elements.accent.value = color;
+  if (elements.accent) elements.accent.value = color;
   settings.set("accentColor", color);
   var isWhite = isColorDark(color);
-  var metroStyle = document.getElementById("metro").style, charmStyle = document.getElementById("charms").style;
+  var metro = document.getElementById("metro");
+  if (!metro) return;
+  var metroStyle = metro.style, charmStyle = document.getElementById("charms").style;
   metroStyle.backgroundColor = charmStyle.backgroundColor = color;
   metroStyle.color = charmStyle.color = isWhite ? "white" : "black";
 }
@@ -4843,7 +5074,7 @@ function loadWallpaperOptions() {
   noneOption.value = "";
   noneOption.textContent = "None";
   elements.wallpaperSelect.appendChild(noneOption);
-  if (typeof appManager != "undefined" && typeof appManager.forEachWallpaper == "function") {
+  if (typeof appManager !== "undefined" && typeof appManager.forEachWallpaper === "function") {
     appManager.forEachWallpaper(function(app, id) {
       var option = document.createElement("option");
       option.value = "registered:" + id;
@@ -4861,9 +5092,9 @@ function loadWallpaperOptions() {
 function restoreWallpaperSetting() {
   loadWallpaperOptions();
   var wallpaper2 = settings.get("wallpaper");
-  if (typeof wallpaper2 != "string" || !wallpaper2) return;
+  if (typeof wallpaper2 !== "string" || !wallpaper2) return;
   if (wallpaper2 === "image") return;
-  if (wallpaper2.indexOf("registered:") === 0 && window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function") {
+  if (wallpaper2.indexOf("registered:") === 0 && window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper === "function") {
     window.desktopManager.applyRegisteredWallpaper(wallpaper2.slice("registered:".length));
   }
 }
@@ -4871,12 +5102,12 @@ function setWallpaperOption(value) {
   settings.set("wallpaper", value);
   updateWallpaperImageButton();
   if (value === "image") {
-    if (typeof loadWallpaperFromCache == "function") loadWallpaperFromCache();
+    if (typeof loadWallpaperFromCache === "function") loadWallpaperFromCache();
     return;
   }
   if (value.indexOf("registered:") === 0) {
     var id = value.slice("registered:".length);
-    if (window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper == "function")
+    if (window.desktopManager && typeof window.desktopManager.applyRegisteredWallpaper === "function")
       window.desktopManager.applyRegisteredWallpaper(id);
     return;
   }
@@ -4923,12 +5154,12 @@ function loadThemeSetting() {
     if (elements.theme) elements.theme.value = theme;
   }
   var colorDebug = settings.get("color-debug");
-  if (typeof colorDebug == "boolean") {
+  if (typeof colorDebug === "boolean") {
     document.body.classList.toggle("color-debug", colorDebug);
     if (elements.colorDebug) elements.colorDebug.checked = colorDebug;
   }
   var squircles = settings.get("squircles");
-  if (typeof squircles == "boolean") {
+  if (typeof squircles === "boolean") {
     document.body.classList.toggle("squircles", squircles);
     if (elements.squircles) elements.squircles.checked = squircles;
   }
@@ -4970,15 +5201,20 @@ function installAppFromUrl(useProxy) {
     return;
   }
   if (typeof windowManager !== "undefined") {
-    if (useProxy && typeof windowManager.installAppProxied == "function") {
+    if (useProxy && typeof windowManager.installAppProxied === "function") {
       windowManager.installAppProxied(url);
-    } else if (typeof windowManager.installApp == "function") {
+    } else if (typeof windowManager.installApp === "function") {
       windowManager.installApp(url);
     }
     if (elements.installAppUrl) elements.installAppUrl.value = "";
   }
 }
 function loadElements() {
+  if (typeof flags !== "undefined") settings.loadFlags(flags);
+  if (!flags.bootAnimation) {
+    var logo = document.getElementById("overlay");
+    logo.style.display = "none";
+  }
   elements.color = document.getElementById("color");
   elements.accent = document.getElementById("accent");
   elements.border = document.getElementById("border");
@@ -5040,7 +5276,6 @@ function loadElements() {
       installAppFromUrl(false);
     }, false);
   }
-  if (typeof flags !== "undefined") settings.loadFlags(flags);
 }
 addEventListener("load", function() {
   loadElements();
@@ -5066,7 +5301,7 @@ function provisionedApp(title, id, src, extra) {
 var applications = [
   provisionedApp("Settings App", "settings", "./Applications/Settings/settings.html"),
   provisionedApp("Frosted Colors", "colors", "Applications/FrostedColours/index.html", { distSrc: "https://iemand005.github.io/FrostedColours", wallpaper: true }),
-  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 240 }),
+  provisionedApp("Calculator", "calculator", "./Applications/Calculator/calculator.html", { minWidth: 180, minHeight: 40 }),
   provisionedApp("Color Tool", "colortool", "./Applications/ColorTool/colors.html", { minWidth: 180, minHeight: 240 }),
   provisionedApp("Example", "0", "./example.html"),
   provisionedApp("Camera", "camera", "./Applications/Camera/index.html", { camera: true, microphone: true }),
@@ -5113,7 +5348,8 @@ var applications = [
   provisionedApp("LVOS", "lvos", "index.html", { distSrc: "https://iemand005.github.io/LVOS/", altUrls: ["https://iemand005.github.io/LVOS-dist/", "https://vulpos.pages.dev/", "https://localhost:5000/index.html", "https://localhost:5001/index.html", "https://lvos.neocities.org"] }),
   provisionedApp("Speak", "speak", "Applications/Speak/speak.html"),
   provisionedApp("Tepartive.NET", "tepartive", "https://tepartive.net/"),
-  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html")
+  provisionedApp("ColourTool", "color-tool", "Applications/ColorTool/colors.html"),
+  provisionedApp("AIOne", "aione-web", "https://aione-web.pages.dev/")
 ];
 var games = [
   provisionedApp("Conway", "conway", "./Games/Conway/index.html", { classes: ["rounded-corners"] }),
@@ -5127,13 +5363,11 @@ var games = [
   provisionedApp("Planet Life", "planetlife", "https://www.planetlife.space/static/game/index.html"),
   provisionedApp("Horizon Background", "horizon-bg", "https://iemand005.github.io/HorizonBackground/", { wallpaper: true })
 ];
-if (typeof windowManager !== "undefined") {
-  Object.defineProperty(Window.prototype, "windows", {
-    get: function() {
-      return windowManager.windows;
-    }
-  });
+function getWindows() {
+  return windowManager.windows;
 }
+if (typeof windowManager !== "undefined" && "Window" in window)
+  Object.defineProperty(Window.prototype, "windows", { get: getWindows });
 function dockApp(dialog) {
   if (dockAppList && dialog) dockAppList.appendChild(dialog.createOpenButton());
 }
@@ -5160,7 +5394,6 @@ function finishAppInstall() {
   if (typeof restoreWallpaperSetting === "function") restoreWallpaperSetting();
 }
 finishAppInstall();
-window.addEventListener("load", initApps, false);
 var bindConsole = true;
 var ConsoleOutType = {
   Input: -1,
@@ -5214,7 +5447,7 @@ ConsoleInterceptor.prototype.init = function() {
 };
 ConsoleInterceptor.prototype.bindage = function() {
   var self2 = this;
-  if (bindConsole) {
+  if (bindConsole && console && console.log) {
     console.standardLog = console.log.bind(console);
     console.logs = [];
     console.log = function() {

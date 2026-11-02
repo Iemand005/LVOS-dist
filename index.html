@@ -44,7 +44,7 @@
 	
 	
 		
-	
+	<!--  -->
 	
 	<!-- Extensions -->
 	
@@ -85,6 +85,7 @@
 	
 
 <script nomodule src="./Scripts/LegacyPolyfills.js"></script>
+<script nomodule src="./Scripts/Animation.js"></script>
 <script src="./desktop.dist.js" defer></script>
 <script src="./Scripts/WebGraphics/Graphics.js" defer></script>
 <script src="./Scripts/WebGraphics/Graphics3D.js" defer></script>
@@ -94,7 +95,7 @@
 </head>
 <!-- <body class="blur gnome"> -->
 <!-- <body class="gradient"> -->
-<body class="modern windows gnome desktop exposé">
+<body class="modern windows gnome desktop exposé  boot-flip">
 	<header><h1>VulpOS - Lasses Virtual Operating System</h1></header>
 	<section class="seo-description" aria-label="About VulpOS">
 		<h2>Welcome to VulpOS, Virtual Operating System</h2>
@@ -229,7 +230,12 @@
                 <ul id="flag-settings"></ul>
             </form>
         </aside>
-	<section id="overlay" class=""></section>
+	
+	<section id="overlay" class="open animating zoom">
+		<div>
+			<img id="boot-logo" src="./Assets/Logo_192x192.png" alt="Boot logo">
+		</div>
+	</section>
 
 	<section id="launchpad"></section>
         <svg width="0" height="0">
