@@ -856,20 +856,20 @@ var flags = __lvosObject({
     }
   }
 ]);
-function cancelDomEvent(event2) {
+Helpers.cancelDomEvent = function(event2) {
   try {
     if (typeof event2.preventDefault === "function")
       event2.preventDefault();
-    event2.returnValue = false;
     if (typeof event2.stopPropagation === "function")
       event2.stopPropagation();
+    event2.returnValue = false;
     event2.cancelBubble = true;
     return false;
   } catch (ex) {
     console.warn("Failed co tancel dom evemnt.txt", ex);
   }
   return false;
-}
+};
 function getFaviconUrl(url) {
   return "https://" + getDomain(url) + "/favicon.ico";
 }
@@ -1232,7 +1232,7 @@ function WindowManager() {
   this.flipped = false;
   this.focusedDialog = null;
   this.synchronizing = false;
-  this.channel = "BroadcastChannel" in window && new BroadcastChannel("lvos");
+  this.channel = "BroadcastChannel" in window && new BroadcastChannel("lvos") || null;
   if (this.channel)
     this.channel.onmessage = function(ev) {
       var data = ev.data;
@@ -1258,7 +1258,7 @@ function WindowManager() {
         self2.disableDialogDrag();
         return;
       }
-      cancelDomEvent(event2);
+      Helpers.cancelDomEvent(event2);
       var isTouch = "pointerType" in event2 && event2.pointerType === "touch";
       self2.setPointerPosition(event2.clientX, event2.clientY);
       if (__lvosGet(flags, "updateRateLimit")) {
@@ -1606,7 +1606,7 @@ WindowManager.prototype.windowActivationEvent = function(event2, dialog, id) {
   } catch (ex) {
     console.log(ex);
   }
-  cancelDomEvent(event2);
+  Helpers.cancelDomEvent(event2);
   if (window.desktopManager && __lvosGet(window.desktopManager, "isExpos\xE9")) {
     var root = document.querySelector("main");
     if (root) {
@@ -2068,7 +2068,8 @@ WindowManager.prototype.getWindowById = function(id) {
   return id ? __lvosGet(this, "windows")[id] : null;
 };
 WindowManager.prototype.broadcast = function(type, data, id) {
-  LVMessenger.broadcast(this.channel, type, data, id);
+  if (this.channel)
+    LVMessenger.broadcast(this.channel, type, data, id);
 };
 WindowManager.prototype.broadcastTheme = function() {
   if (!document.hasFocus())
@@ -2564,26 +2565,30 @@ function Dialog(object) {
   this._appIcon = null;
   var self2 = this;
   this.activationHandler = function(ev, id2) {
+    var target2 = ev && ev.target;
     if (!ev) {
       var event2 = window.event;
-      event2.target = event2.srcElement;
-      ev = event2;
+      if (event2) {
+        target2 = event2.srcElement;
+        ev = /** @type {MouseEvent} */
+        event2;
+      }
+      if (!ev)
+        return;
     }
     self2._ctrlDrag = !!(ev && ev.ctrlKey);
     if (self2._ctrlDrag) {
       ev.stopImmediatePropagation();
       return;
     }
-    ensureClassList(ev.target);
-    if (ev.target instanceof HTMLElement && ev.target.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
+    ensureClassList(target2);
+    if (target2 instanceof HTMLElement && target2.classList.contains("touch") && (!("pointerType" in ev) || ev.pointerType !== "touch"))
       return false;
     windowManager.windowActivationEvent(ev, self2, id2);
     return true;
   };
-  if (object instanceof Dialog) {
-    if (object.application)
-      object = object.application;
-  }
+  if (object instanceof Dialog && object.application)
+    object = object.application;
   this.target;
   this.moveEvents = false;
   this.scroll = false;
@@ -2648,7 +2653,7 @@ function Dialog(object) {
   target.onselectstart = function(event2) {
     if (self2._ctrlDrag)
       return;
-    cancelDomEvent(event2);
+    Helpers.cancelDomEvent(event2);
   };
   var body = __lvosGet(this, "body");
   if (body)
@@ -2662,7 +2667,10 @@ function Dialog(object) {
       }
     };
   var header = __lvosGet(this, "titleBar");
-  if (header)
+  if (header) {
+    header.onselectstart = function() {
+      return false;
+    };
     target.ondblclick = function(event2) {
       var rect = getRect(header);
       if (!rect || event2.clientX < __lvosGet(rect, "left") || event2.clientX > __lvosGet(rect, "right") || event2.clientY < __lvosGet(rect, "top") || event2.clientY > __lvosGet(rect, "bottom"))
@@ -2675,6 +2683,7 @@ function Dialog(object) {
       }
       self2.toggleMaximized();
     };
+  }
   if (supportsPointer)
     target.onpointerdown = this.activationHandler;
   else
@@ -2710,7 +2719,7 @@ function Dialog(object) {
     var transfer = event2.dataTransfer;
     try {
       transfer.setData("application/json", data);
-      if (flagsieDropCompatibleMode) {
+      if (__lvosGet(flags, "ieDropCompatibleMode")) {
         transfer.setData("Text", data);
         transfer.setData("text/plain", data);
       } else
@@ -2891,7 +2900,7 @@ Dialog.prototype._createSizers = function(createTouchSizers) {
       windowManager.dragAction.set(id);
       if (windowManager.isTouchDrag)
         windowManager.windowSnap.moveToDialog(self2, 20, id);
-      cancelDomEvent(ev);
+      Helpers.cancelDomEvent(ev);
     };
     var pointerUp = function() {
       windowManager.disableDialogDrag();
@@ -4593,7 +4602,7 @@ window.addEventListener(supportsPointer ? "pointermove" : "mousemove", ClickOffs
 window.addEventListener("unload", function() {
   windowManager && windowManager.saveState();
 }, false);
-window.addEventListener("dragover", cancelDomEvent, false);
+window.addEventListener("dragover", Helpers.cancelDomEvent, false);
 window.addEventListener("drop", function(e) {
   e.preventDefault();
 }, false);
@@ -4874,14 +4883,12 @@ var onLoad = function() {
     appButtons.appendChild(clock);
   }
   __lvosGet(document, "body").ondragover = window.ondragover = function(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
+    Helpers.cancelDomEvent(ev);
     if (ev.dataTransfer)
       ev.dataTransfer.dropEffect = "copy";
   };
   __lvosGet(document, "body").ondrop = function(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
+    Helpers.cancelDomEvent(ev);
     setDesktopDragOpacity("");
     if (!ev.dataTransfer)
       return;

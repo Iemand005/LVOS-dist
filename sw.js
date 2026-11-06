@@ -11,7 +11,9 @@ const precacheUrls = [
 	'./icon-192.png',
 	'./icon-512.png',
 	'./desktop.dist.js',
-	'./mobile.dist.js'
+	'./mobile.dist.js',
+	'./indexIE8.html',
+	'./desktop.ie8.dist.js'
 ];
 
 function isStaticAsset(url) {
