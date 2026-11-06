@@ -1,1 +1,0 @@
-Stereogram generation testing
