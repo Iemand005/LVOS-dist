@@ -336,6 +336,18 @@ article, .article {
 	pointer-events: auto;
 }
 
+.window {
+	display: none;
+}
+
+@supports (opacity: 0) {
+	.window {
+		display: block;
+		opacity: 0;
+		pointer-events: none;
+	}
+}
+
 .window.open {
 	pointer-events: auto;
 }

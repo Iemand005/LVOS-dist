@@ -1,40 +1,42 @@
-"use strict";
 /**
  * @constructor
  * @class
- * @param {CanvasLike} [canvas]
+ * @param {CanvasLike} [element]
  * @param {CanvasContext} [context]
  */
-function Graphics3D(canvas, context) {
-	GraphicsBase.call(this, canvas, context);
-	
-	if (context === "2d") return;
-	this.gl = (context === "webgl2" && this.canvas.getContext("webgl2")) || this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
+function Graphics3D(element, context) {
+  GraphicsBase.call(this, element, context);
+  
 
-	if (!this.gl) throw new Error("WebGL not supported!");
+  // this.gl = (context && this.canvas.getContext("webgl2")) || this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
 
-	this.gl.clearColor(0, 0, 0, 0);
+  // if (context === "webgl2")
+  if (context === "2d") return;
+  this.gl = (context === "webgl2" && this.canvas.getContext("webgl2")) || this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
 
-	this.buffers = {
-		position: [],
-		indices: [],
-		color: []
-	};
+  if (!this.gl) throw new Error("WebGL not supported!");
 
-	this.renderTarget = null;
-	this.blitProgram = null;
-	this.blitBuffer = null;
-	this.blitAttribLocation = -1;
-	this.blitTextureLocation = null;
-	this.hasDepthBuffer = false;
+  this.gl.clearColor(0, 0, 0, 0);
 
-	this.onrender = function () {};
+  this.buffers = {
+    position: [],
+    indices: [],
+    color: []
+  };
+
+  this.renderTarget = null;
+  this.blitProgram = null;
+  this.blitBuffer = null;
+  this.blitAttribLocation = -1;
+  this.blitTextureLocation = null;
+  this.hasDepthBuffer = false;
+
+  this.onrender = function () {};
 }
 
 Graphics3D.prototype = Object.create(GraphicsBase.prototype);
 Graphics3D.prototype.constructor = Graphics3D;
 
-// #region Maths
 
 var mat4 = {
   create: function () {
@@ -246,8 +248,6 @@ Vector3D.prototype.div = function (amount) {
 Vector3D.prototype.normalize = function () {
     return this.div(this.x + this.y + this.z);
 }
-
-// #endregion
 
 Graphics3D.prototype.clear = function () {
   var mask = this.gl.COLOR_BUFFER_BIT;

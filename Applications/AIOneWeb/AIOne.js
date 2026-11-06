@@ -1,177 +1,176 @@
+export default class AIOne {
+	static async create(options = {}) {
+		const workerUrl = new URL(
+			options.workerUrl ?? "/aio1-worker.js",
+			globalThis.location?.href ?? import.meta.url
+		);
 
-/** @param {string} [baseUrl] */
-function AIOne(baseUrl) {
-	this.baseUrl = baseUrl || "https://api.groq.com/openai/v1";
-	this.apiKey = "";
-}
-
-var aiOne = new AIOne("https://openrouter.ai/api/v1");
-
-/** @param {(models:string[])=>void} callback */
-AIOne.prototype.getModels = function(callback) {
-	if (!this.apiKey) throw new Error("API Key not defined");
-
-	fetch(this.baseUrl + "/models", {
-		method: "GET",
-		headers: {
-			"Authorization": `Bearer ${this.apiKey}`,
-			"Content-Type": "application/json"
+		if (options.threads) {
+			workerUrl.searchParams.set("threads", "1");
 		}
-	}).then(function(response) { return response.json(); }).then(function(result) {
-		var models = result.data;
-		console.log(models);
-		callback(models);
-	});
-};
 
-/** 
- * @param {string} model 
- * @param {any[]} messages 
- * @param {(token:string)=>void} onTokenCallback 
- * @param {()=>void} onDoneCallback 
- */
-AIOne.prototype.streamCompletion = function(model, messages, onTokenCallback, onDoneCallback) {
-	if (!this.apiKey) throw new Error("API Key not defined");
+		if (options.runtimeUrl) {
+			workerUrl.searchParams.set("runtime", options.runtimeUrl);
+		}
 
-	var bodyData = {
-		"model": model,
-		"messages": messages,
-		"stream": true
-	};
+		if (options.wasmUrl) {
+			workerUrl.searchParams.set("wasm", options.wasmUrl);
+		}
 
-	fetch(this.baseUrl + "/chat/completions", {
-		method: "POST",
-		headers: {
-			"Authorization": "Bearer " + this.apiKey,
-			"Content-Type": "application/json"
-		},
-		body: JSON.stringify(bodyData)
-	}).then(function(response) {
-		if (!response.body) throw new Error("Streaming not supported by browser response");
-		
-		var reader = response.body.getReader();
-		var decoder = new TextDecoder("utf-8");
-		var buffer = "";
+		const workerType = options.threads ? "dedicated" : (options.workerType ?? "shared");
 
-		/** @param {{done:boolean, value?:Uint8Array}} chunkResult @returns {Promise<void>|void} */
-		function processChunk(chunkResult) {
-			if (chunkResult.done) {
-				if (onDoneCallback) onDoneCallback();
+		workerUrl.searchParams.set("workerType", workerType);
+
+		const worker = workerType === "shared"
+			? new SharedWorker(workerUrl, {
+				name: options.name ?? "AIOne",
+				type: "classic"
+			})
+			: new Worker(workerUrl, {
+				name: options.name ?? "AIOne",
+				type: "classic"
+			});
+
+		worker.onerror = event => {
+			console.error("AIOne worker error:", event);
+		};
+
+		const client = new AIOne(
+			workerType === "shared" ? worker.port : worker
+		);
+
+		await client.ready();
+
+		return client;
+	}
+
+	constructor(port) {
+		this.port = port;
+		this.nextId = 0;
+		this.pending = new Map();
+
+		this.readyPromise = new Promise((resolve, reject) => {
+			this.resolveReady = resolve;
+			this.rejectReady = reject;
+		});
+
+		this.port.onmessage = ({ data }) => {
+			if (data.type === "ready") {
+				this.resolveReady();
 				return;
 			}
 
-			buffer += decoder.decode(chunkResult.value, { stream: true });
-			var lines = buffer.split("\n");
-			
-			buffer = lines.pop() || "";
+			const pending = this.pending.get(data.id);
+			if (!pending) return;
 
-			for (var i = 0; i < lines.length; i++) {
-				var line = lines[i].replace(/^\s+|\s+$/g, "");
-				if (line === "") continue;
-				if (line === "data: [DONE]") {
-					if (onDoneCallback) onDoneCallback();
-					return;
+			if (data.token !== undefined) {
+				pending.onToken?.(data.token, data.thinking ?? false);
+
+				if (data.thinking) {
+					pending.onThinkingToken?.(data.token);
 				}
 
-				if (line.indexOf("data: ") === 0) {
-					var jsonStr = line.substring(6);
-					try {
-						var parsed = JSON.parse(jsonStr);
-						var delta = parsed.choices[0].delta;
-						if (delta && delta.content) {
-							onTokenCallback(delta.content);
-						}
-					} catch (e) {
-						// Sla corrupte of onvolledige regels over
-					}
-				}
+				return;
 			}
 
-			return reader.read().then(processChunk);
-		}
+			if (data.thinkingChange !== undefined) {
+				pending.onThinkingChange?.(data.thinkingChange);
+				return;
+			}
 
-		return reader.read().then(processChunk);
-	})["catch"](function(err) {
-		console.error("Stream error:", err);
-	});
-};
+			if (data.promptProgress !== undefined) {
+				pending.onPromptProgress?.(data.promptProgress);
+				return;
+			}
 
-function initAIOne() {
-	var apiForm = document.getElementById("api-form");
-	var apiKeyInput = document.getElementById("api-key-input");
-	var inputForm = document.getElementById("message-form");
-	var messageInput = document.getElementById("message-input");
-	var modelInput = document.getElementById("model-input");
-	var outputDiv = document.getElementById("message-list");
-	var selectedModel = "llama-3.3-70b-versatile";
-	var modelSelect = modelInput instanceof HTMLSelectElement ? modelInput : null;
+			if (data.generationStart !== undefined) {
+				pending.onGenerationStart?.();
+				return;
+			}
 
-	if (!(inputForm instanceof HTMLFormElement)) return;
-	if (!(apiForm instanceof HTMLFormElement)) return;
+			if (data.progress !== undefined) {
+				pending.onProgress?.(data.progress);
+				return;
+			}
 
-	if (modelSelect) {
-		var currentModelSelect = modelSelect;
-		currentModelSelect.onchange = function() {
-			selectedModel = currentModelSelect.value;
+			this.pending.delete(data.id);
+
+			if (data.error) {
+				pending.reject(new Error(data.error));
+			} else {
+				pending.resolve(data.result);
+			}
 		};
+
+		this.port.onmessageerror = () => {
+			this.rejectReady(new Error("AIOne worker message error"));
+
+			for (const pending of this.pending.values()) {
+				pending.reject(new Error("AIOne worker message error"));
+			}
+
+			this.pending.clear();
+		};
+
+		this.port.start?.();
 	}
 
-	apiForm.onsubmit = function(ev) {
-		ev.preventDefault();
+	ready() {
+		return this.readyPromise;
+	}
 
-		console.log("Sending model request...");
-		if (apiKeyInput instanceof HTMLInputElement) {
-			aiOne.apiKey = apiKeyInput.value.trim();
-		}
-		aiOne.getModels(function(models) {
-			console.log("Received models list!!", models);
-			if (modelSelect) {
-				modelSelect.innerHTML = "";
-				for (var i = 0; i < models.length; i++) {
-					var model = models[i];
-					var option = document.createElement("option");
-					var modelId = model && typeof model === "object" && "id" in model ? String(model["id"]) : String(model);
-					option.value = modelId;
-					option.textContent = modelId;
-					modelSelect.appendChild(option);
-				}
-				if (models.length > 0) {
-					var firstModel = models[0];
-					var firstModelId = firstModel && typeof firstModel === "object" && "id" in firstModel ? String(firstModel["id"]) : String(firstModel);
-					selectedModel = modelSelect.value || firstModelId;
-				}
-			}
+	call(method, args = {}, callbacks = null) {
+		const id = ++this.nextId;
+
+		return new Promise((resolve, reject) => {
+			this.pending.set(id, { resolve, reject, ...callbacks });
+
+			this.port.postMessage({
+				id,
+				method,
+				args
+			});
 		});
-	};
+	}
 
-	inputForm.onsubmit = function(ev) {
-		ev.preventDefault();
-		if (!(messageInput instanceof HTMLInputElement)) return;
-		if (!(outputDiv)) return;
-
-		var messageItem = document.createElement("li");
-		outputDiv.appendChild(messageItem);
-
-		console.log("Sending message...");
-
-		var prompt = messageInput.value;
-		var messages = [
-			{ "role": "user", "content": prompt }
-		];
-
-		aiOne.streamCompletion(
-			selectedModel,
-			messages,
-			function(token) {
-				if (messageItem) {
-					messageItem.innerHTML += token;
-				}
-			},
-			function() {
-				console.log("Stream completely finished!");
-			}
+	loadModel(file, onProgress = null) {
+		return this.call(
+			"loadModel",
+			{ file, progress: Boolean(onProgress) },
+			{ onProgress }
 		);
-	};
-}
+	}
 
-window.addEventListener("load", initAIOne, false);
+	generate(prompt, maxTokens = 512, callbacks = null) {
+		if (typeof callbacks === "function") {
+			callbacks = { onToken: callbacks };
+		}
+
+		return this.call(
+			"generate",
+			{
+				prompt,
+				maxTokens,
+				stream: Boolean(callbacks?.onToken || callbacks?.onThinkingToken),
+				thinkingState: Boolean(callbacks?.onThinkingChange),
+				promptProgress: Boolean(callbacks?.onPromptProgress),
+				generationStart: Boolean(callbacks?.onGenerationStart)
+			},
+			callbacks
+		);
+	}
+
+	unloadModel() {
+		return this.call("unloadModel");
+	}
+
+	close() {
+		this.port.close();
+
+		for (const pending of this.pending.values()) {
+			pending.reject(new Error("AIOne connection closed"));
+		}
+
+		this.pending.clear();
+	}
+}

@@ -33,7 +33,7 @@ class CanvasMaker extends Graphics3D {
 		element.setAttribute("drawable", '');
 
 		// this.canvas.appendChild(element);
-		this.canvas.moveBefore(element, null);
+		this.canvas.moveBefore(element);
 		this.element = element;
 	}
 

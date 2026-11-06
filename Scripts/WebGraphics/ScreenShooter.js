@@ -32,12 +32,11 @@ class ScreenShooter extends CanvasMaker {
 		const savedStyle = element.getAttribute("style");
 		const hadDrawable = element.hasAttribute("drawable");
 
-		/** @param {HTMLElement} to @param {HTMLElement | null} [ref] */
 		const move = (to, ref) => {
 			if (typeof to.moveBefore !== "function")
 				throw new Error("moveBefore() unavailable");
 
-			to.moveBefore(element, ref || null);
+			to.moveBefore(element, ref);
 		};
 
 		const frame = () => new Promise(resolve => {
@@ -47,7 +46,7 @@ class ScreenShooter extends CanvasMaker {
 		});
 
 		try {
-			move(mount);
+			move(mount, null);
 
 			element.setAttribute("drawable", "");
 

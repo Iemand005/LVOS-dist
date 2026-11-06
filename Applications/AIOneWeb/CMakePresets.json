@@ -1,0 +1,82 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "default",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/Release-native",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "emscripten-webgpu",
+      "displayName": "Emscripten WebGPU",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/Release",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "AIONE_WEBGPU": "ON",
+        "GGML_WEBGPU": "ON",
+        "GGML_WEBGPU_JSPI": "ON",
+        "EMDAWNWEBGPU_DIR": "C:/deps/emdawnwebgpu/emdawnwebgpu_pkg",
+        "BUILD_SHARED_LIBS": "OFF",
+        "GGML_NATIVE": "OFF",
+        "GGML_OPENMP": "OFF",
+        "GGML_RPC": "OFF",
+        "GGML_CUDA": "OFF",
+        "GGML_VULKAN": "OFF",
+        "LLAMA_BUILD_TESTS": "OFF",
+        "LLAMA_BUILD_EXAMPLES": "OFF",
+        "LLAMA_BUILD_SERVER": "OFF",
+        "LLAMA_BUILD_COMMON": "ON"
+      }
+    },
+    {
+      "name": "emscripten-webgpu-mt",
+      "displayName": "Emscripten WebGPU (Multithreaded)",
+      "inherits": "emscripten-webgpu",
+      "binaryDir": "${sourceDir}/build/Release-mt",
+      "cacheVariables": {
+        "AIONE_WEB_PTHREADS": "ON",
+        "AIONE_WEB_PTHREAD_POOL_SIZE": "8"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "emscripten-webgpu",
+      "configurePreset": "emscripten-webgpu"
+    },
+    {
+      "name": "emscripten-webgpu-mt",
+      "configurePreset": "emscripten-webgpu-mt"
+    }
+  ]
+}
