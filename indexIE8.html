@@ -36,6 +36,12 @@
     <meta property="og:description" content="Little Web OS with a couple apps to play around on." />
     <!-- <meta property="og:image" content="https://yourwebsite.com" /> -->
     <meta name="theme-color" content="#43b581" />
+	<script>
+		window.onerror = function(msg, url, line, character, error) {
+			alert(url + " JS Error on line " + line + ":" + character + " Because " + msg);
+			return true; // suppress default handling
+		};
+	</script>
 <script nomodule src="./Scripts/LegacyPolyfills.js"></script>
 <script nomodule src="./Scripts/Animation.js"></script>
 <script src="./desktop.ie8.dist.js" defer></script>
