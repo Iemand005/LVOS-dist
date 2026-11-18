@@ -3,14 +3,37 @@ main {
 	display: flex;
 	flex-direction: row;
 
-	height: 100%;
+	width: 100%;
+}
+
+aside,  #content {
+	display: flex;
+	flex-direction: column;
+	overflow: scroll;
+
+	padding: 10px;
+}
+
+aside button, aside li {
+	margin: 0;
+	padding: 0;
+}
+
+aside button {
+	width: 100%;
+
+	background: none;
+	border: none;
+
+	padding: 10px;
+	text-align: start;
+}
+
+#content {
+	width: 100%;
+	flex: 1;
 }
 
 aside {
 	margin-right: 10px;
-}
-
-section {
-	width: 100%;
-	overflow: scroll;
 }
