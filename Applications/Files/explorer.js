@@ -1,5 +1,5 @@
 
-Loader.onVulpOS(function(os) {
+LVMessenger.get("os", function(os) {
 	var view = document.getElementById("file-view");
 	if (!view) return;
 
@@ -13,5 +13,11 @@ Loader.onVulpOS(function(os) {
 	os.to(view).addFileView(files);
 
 	var count = document.getElementById("file-count");
-	if (count) count.textContent = files.length + (files.length === 1 ? " file" : " files");
+	var updateCount = function () {
+		if (!count) return;
+		var total = view.querySelectorAll(".file-item").length;
+		count.textContent = total + (total === 1 ? " file" : " files");
+	};
+	updateCount();
+	view.addEventListener("drop", function () { setTimeout(updateCount, 0); });
 });
